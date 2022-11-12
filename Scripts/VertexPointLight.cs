@@ -1,8 +1,6 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-namespace AlpacaIT
+namespace AlpacaIT.VertexTracer
 {
     public class VertexPointLight : MonoBehaviour
     {

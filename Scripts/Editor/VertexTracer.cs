@@ -1,17 +1,18 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UIElements;
 
-namespace AlpacaIT
+namespace AlpacaIT.VertexTracer
 {
     public static class VertexTracer
     {
         private static VertexPointLight[] pointLights;
+        private static VertexAntiLight[] shadowLights;
 
         [UnityEditor.MenuItem("Vertex Tracer/Trace")]
         public static void Go()
         {
             pointLights = Object.FindObjectsOfType<VertexPointLight>();
+            shadowLights = Object.FindObjectsOfType<VertexAntiLight>();
             var meshFilters = Object.FindObjectsOfType<MeshFilter>();
             foreach (var meshFilter in meshFilters)
             {
@@ -136,7 +137,48 @@ namespace AlpacaIT
                 if (!v3cast) c3 += v3sq * pointLight.lightColor;
             }
 
+            for (int i = 0; i < shadowLights.Length; i++)
+            {
+                var pointLight = shadowLights[i];
+                var position = pointLight.transform.position;
+
+                float v1dist = Vector3.Distance(v1, position);
+                float v2dist = Vector3.Distance(v2, position);
+                float v3dist = Vector3.Distance(v3, position);
+
+                float v1sq = InverseSquareLaw(v1dist);
+                float v2sq = InverseSquareLaw(v2dist);
+                float v3sq = InverseSquareLaw(v3dist);
+
+                v1sq *= pointLight.shadowIntensity;
+                v2sq *= pointLight.shadowIntensity;
+                v3sq *= pointLight.shadowIntensity;
+
+                var v1dir = (position - v1).normalized;
+                var v2dir = (position - v2).normalized;
+                var v3dir = (position - v3).normalized;
+
+                var v1tocenter = (center - v1).normalized;
+                var v2tocenter = (center - v2).normalized;
+                var v3tocenter = (center - v3).normalized;
+
+                bool v1cast = Physics.Raycast(v1 + (normal * 0.1f) + (v1tocenter * 0.1f), v1dir, v1dist);
+                bool v2cast = Physics.Raycast(v2 + (normal * 0.1f) + (v2tocenter * 0.1f), v2dir, v2dist);
+                bool v3cast = Physics.Raycast(v3 + (normal * 0.1f) + (v3tocenter * 0.1f), v3dir, v3dist);
+
+                //Debug.DrawLine(v1 + (normal * 0.1f) + (v1tocenter * 0.1f), v1 + (normal * 0.2f) + (v1tocenter * 0.1f), Color.green, 10f);
+
+                if (!v1cast) c1 = Subtract(c1, v1sq);
+                if (!v2cast) c2 = Subtract(c2, v2sq);
+                if (!v3cast) c3 = Subtract(c3, v3sq);
+            }
+
             return (c1, c2, c3);
+        }
+
+        private static Color Subtract(Color a, float b)
+        {
+            return new Color(a.r - b, a.g - b, a.b - b, a.a - b);
         }
     }
 }

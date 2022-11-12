@@ -1,8 +1,7 @@
 ﻿using Unity.Mathematics;
-using UnityEditor;
 using UnityEngine;
 
-namespace AlpacaIT
+namespace AlpacaIT.VertexTracer
 {
     public class MeshRaycastHit
     {
