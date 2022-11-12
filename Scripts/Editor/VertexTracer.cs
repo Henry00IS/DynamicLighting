@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace AlpacaIT.VertexTracer
@@ -130,11 +131,18 @@ namespace AlpacaIT.VertexTracer
                 bool v2cast = Physics.Raycast(v2 + (normal * 0.1f) + (v2tocenter * 0.1f), v2dir, v2dist);
                 bool v3cast = Physics.Raycast(v3 + (normal * 0.1f) + (v3tocenter * 0.1f), v3dir, v3dist);
 
+                float diff1 = math.max(math.dot(normal, v1dir), 0f);
+                float diff2 = math.max(math.dot(normal, v2dir), 0f);
+                float diff3 = math.max(math.dot(normal, v3dir), 0f);
+
                 //Debug.DrawLine(v1 + (normal * 0.1f) + (v1tocenter * 0.1f), v1 + (normal * 0.2f) + (v1tocenter * 0.1f), Color.green, 10f);
 
-                if (!v1cast) c1 += v1sq * pointLight.lightColor;
-                if (!v2cast) c2 += v2sq * pointLight.lightColor;
-                if (!v3cast) c3 += v3sq * pointLight.lightColor;
+                if (!v1cast)
+                    c1 += v1sq * pointLight.lightColor * diff1;
+                if (!v2cast)
+                    c2 += v2sq * pointLight.lightColor * diff2;
+                if (!v3cast)
+                    c3 += v3sq * pointLight.lightColor * diff3;
             }
 
             for (int i = 0; i < shadowLights.Length; i++)
