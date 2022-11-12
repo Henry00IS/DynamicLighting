@@ -4,7 +4,9 @@ The Vertex Tracer brings an old school lighting technique to Unity.
 
 It traces from all vertices of static meshes to the light sources in the scene. If unobstructed the vertex will be lit with the color. Obviously with the inverse square law and so on.
 
-![Example of the vertex lighting technique](https://github.com/Henry00IS/VertexTracer/wiki/images/home/example.png)
+![Example of the vertex lighting technique](https://github.com/Henry00IS/VertexTracer/wiki/images/home/example1.png)
+![Example of the vertex lighting technique](https://github.com/Henry00IS/VertexTracer/wiki/images/home/example2.png)
+![Example of the vertex lighting technique](https://github.com/Henry00IS/VertexTracer/wiki/images/home/example3.png)
 
 Primarily tested to work with [RealtimeCSG](https://github.com/LogicalError/realtime-CSG-for-unity).
 
