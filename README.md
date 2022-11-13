@@ -2,7 +2,7 @@
 
 The Vertex Tracer brings an old school lighting technique to Unity.
 
-It traces from all vertices of static meshes to the light sources in the scene. If unobstructed the vertex will be lit with the color. Obviously with the inverse square law and so on.
+It traces from all light sources to the vertices of static meshes in the scene. If unobstructed the vertex will be lit with the color. It incorporates as many lighting principles as possible, with diffusion, attenuation (inverse square law) etc. It also comes with anti-lights that subtract lighting. These can for example be used to ensure certain door or pathways are black.
 
 ![Example of the vertex lighting technique](https://github.com/Henry00IS/VertexTracer/wiki/images/home/example1.png)
 ![Example of the vertex lighting technique](https://github.com/Henry00IS/VertexTracer/wiki/images/home/example2.png)
