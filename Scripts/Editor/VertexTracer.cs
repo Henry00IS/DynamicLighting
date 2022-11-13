@@ -27,11 +27,18 @@ namespace AlpacaIT.VertexTracer
         private static void Raytrace(MeshFilter meshFilter)
         {
             Debug.Log("Raytracing " + meshFilter.name);
-            var mesh = meshFilter.sharedMesh;
+            traces = 0;
+
+            MeshBuilder meshBuilder = new MeshBuilder(meshFilter.transform.localToWorldMatrix, meshFilter.sharedMesh);
+            var mesh = meshBuilder.mesh;
+            meshFilter.sharedMesh = mesh;
 
             //var triangles = mesh.triangles;
             //var vertices = mesh.vertices;
-            Triangulate(mesh.triangles, out var triangles, mesh.vertices, out var vertices, mesh.uv, out var uv0);
+            //Triangulate(mesh.triangles, out var triangles, mesh.vertices, out var vertices, mesh.uv, out var uv0);
+
+            var vertices = meshBuilder.worldVertices;
+            var triangles = meshBuilder.meshTriangles;
 
             var colors = new Color[vertices.Count];
 
@@ -48,41 +55,11 @@ namespace AlpacaIT.VertexTracer
                 colors[triangles[i + 2]] = res.c3;
             }
 
-            mesh.SetVertices(vertices);
-            mesh.SetTriangles(triangles, 0);
-            mesh.SetUVs(0, uv0);
+            //mesh.SetVertices(vertices);
+            //mesh.SetTriangles(triangles, 0);
+            //mesh.SetUVs(0, uv0);
             mesh.colors = colors;
-        }
-
-        private static void Triangulate(int[] triangles, out List<int> trianglesOut, Vector3[] vertices, out List<Vector3> verticesOut, Vector2[] uv0, out List<Vector2> uvOut)
-        {
-            trianglesOut = new List<int>();
-            verticesOut = new List<Vector3>();
-            uvOut = new List<Vector2>();
-
-            var j = 0;
-            for (int i = 0; i < triangles.Length; i += 3)
-            {
-                var v1 = vertices[triangles[i]];
-                var v2 = vertices[triangles[i + 1]];
-                var v3 = vertices[triangles[i + 2]];
-
-                var uv1 = uv0[triangles[i]];
-                var uv2 = uv0[triangles[i + 1]];
-                var uv3 = uv0[triangles[i + 2]];
-
-                trianglesOut.Add(j++);
-                trianglesOut.Add(j++);
-                trianglesOut.Add(j++);
-
-                verticesOut.Add(v1);
-                verticesOut.Add(v2);
-                verticesOut.Add(v3);
-
-                uvOut.Add(uv1);
-                uvOut.Add(uv2);
-                uvOut.Add(uv3);
-            }
+            Debug.Log("Raytracing Finished: " + traces);
         }
 
         private static float InverseSquareLaw(float distance)
@@ -90,6 +67,8 @@ namespace AlpacaIT.VertexTracer
             //if (distance == 0f) return 0f;
             return 1.0f / (distance * distance);
         }
+
+        private static int traces = 0;
 
         private static (Color c1, Color c2, Color c3) Raycast(Vector3 v1, Vector3 v2, Vector3 v3)
         {
@@ -107,9 +86,33 @@ namespace AlpacaIT.VertexTracer
                 var pointLight = pointLights[i];
                 var position = pointLight.transform.position;
 
+                var v1dir = (position - v1).normalized;
+                if (math.dot(normal, v1dir) < 0f) continue; // early out by normal.
+                var v2dir = (position - v2).normalized;
+                var v3dir = (position - v3).normalized;
+
                 float v1dist = Vector3.Distance(v1, position);
                 float v2dist = Vector3.Distance(v2, position);
                 float v3dist = Vector3.Distance(v3, position);
+
+                // use hit from light to vertex and check hit position around the same as vertex position.
+                bool v1cast = false;
+                if (Physics.Raycast(position, -v1dir, out var hit1))
+                    v1cast = (Vector3.Distance(hit1.point, v1) < 0.1f);
+
+                bool v2cast = false;
+                if (Physics.Raycast(position, -v2dir, out var hit2))
+                    v2cast = (Vector3.Distance(hit2.point, v2) < 0.1f);
+
+                bool v3cast = false;
+                if (Physics.Raycast(position, -v3dir, out var hit3))
+                    v3cast = (Vector3.Distance(hit3.point, v3) < 0.1f);
+
+                traces += 3;
+
+                float diff1 = math.max(math.dot(normal, v1dir), 0f);
+                float diff2 = math.max(math.dot(normal, v2dir), 0f);
+                float diff3 = math.max(math.dot(normal, v3dir), 0f);
 
                 float v1sq = InverseSquareLaw(v1dist);
                 float v2sq = InverseSquareLaw(v2dist);
@@ -119,29 +122,17 @@ namespace AlpacaIT.VertexTracer
                 v2sq *= pointLight.lightIntensity;
                 v3sq *= pointLight.lightIntensity;
 
-                var v1dir = (position - v1).normalized;
-                var v2dir = (position - v2).normalized;
-                var v3dir = (position - v3).normalized;
+                //Debug.DrawLine(v1 + (normal * 0.01f) + (v1tocenter * 0.01f), v1 + (normal * 0.01f) + (v1tocenter * 0.01f) + (v1dir * v1dist), Color.green, 10f);
 
-                var v1tocenter = (center - v1).normalized;
-                var v2tocenter = (center - v2).normalized;
-                var v3tocenter = (center - v3).normalized;
-
-                bool v1cast = Physics.Raycast(v1 + (normal * 0.1f) + (v1tocenter * 0.1f), v1dir, v1dist);
-                bool v2cast = Physics.Raycast(v2 + (normal * 0.1f) + (v2tocenter * 0.1f), v2dir, v2dist);
-                bool v3cast = Physics.Raycast(v3 + (normal * 0.1f) + (v3tocenter * 0.1f), v3dir, v3dist);
-
-                float diff1 = math.max(math.dot(normal, v1dir), 0f);
-                float diff2 = math.max(math.dot(normal, v2dir), 0f);
-                float diff3 = math.max(math.dot(normal, v3dir), 0f);
-
-                //Debug.DrawLine(v1 + (normal * 0.1f) + (v1tocenter * 0.1f), v1 + (normal * 0.2f) + (v1tocenter * 0.1f), Color.green, 10f);
-
-                if (!v1cast)
+                float attenuation1 = 1.0f / (pointLight.constant + pointLight.linear * v1dist + pointLight.quadratic * (v1dist * v1dist));
+                float attenuation2 = 1.0f / (pointLight.constant + pointLight.linear * v2dist + pointLight.quadratic * (v2dist * v2dist));
+                float attenuation3 = 1.0f / (pointLight.constant + pointLight.linear * v3dist + pointLight.quadratic * (v3dist * v3dist));
+                
+                if (v1cast)
                     c1 += v1sq * pointLight.lightColor * diff1;
-                if (!v2cast)
+                if (v2cast)
                     c2 += v2sq * pointLight.lightColor * diff2;
-                if (!v3cast)
+                if (v3cast)
                     c3 += v3sq * pointLight.lightColor * diff3;
             }
 
@@ -149,6 +140,11 @@ namespace AlpacaIT.VertexTracer
             {
                 var pointLight = shadowLights[i];
                 var position = pointLight.transform.position;
+
+                var v1dir = (position - v1).normalized;
+                if (math.dot(normal, v1dir) < 0f) continue; // early out by normal.
+                var v2dir = (position - v2).normalized;
+                var v3dir = (position - v3).normalized;
 
                 float v1dist = Vector3.Distance(v1, position);
                 float v2dist = Vector3.Distance(v2, position);
@@ -162,23 +158,24 @@ namespace AlpacaIT.VertexTracer
                 v2sq *= pointLight.shadowIntensity;
                 v3sq *= pointLight.shadowIntensity;
 
-                var v1dir = (position - v1).normalized;
-                var v2dir = (position - v2).normalized;
-                var v3dir = (position - v3).normalized;
+                // use hit from light to vertex and check hit position around the same as vertex position.
+                bool v1cast = false;
+                if (Physics.Raycast(position, -v1dir, out var hit1))
+                    v1cast = (Vector3.Distance(hit1.point, v1) < 0.1f);
 
-                var v1tocenter = (center - v1).normalized;
-                var v2tocenter = (center - v2).normalized;
-                var v3tocenter = (center - v3).normalized;
+                bool v2cast = false;
+                if (Physics.Raycast(position, -v2dir, out var hit2))
+                    v2cast = (Vector3.Distance(hit2.point, v2) < 0.1f);
 
-                bool v1cast = Physics.Raycast(v1 + (normal * 0.1f) + (v1tocenter * 0.1f), v1dir, v1dist);
-                bool v2cast = Physics.Raycast(v2 + (normal * 0.1f) + (v2tocenter * 0.1f), v2dir, v2dist);
-                bool v3cast = Physics.Raycast(v3 + (normal * 0.1f) + (v3tocenter * 0.1f), v3dir, v3dist);
+                bool v3cast = false;
+                if (Physics.Raycast(position, -v3dir, out var hit3))
+                    v3cast = (Vector3.Distance(hit3.point, v3) < 0.1f);
 
                 //Debug.DrawLine(v1 + (normal * 0.1f) + (v1tocenter * 0.1f), v1 + (normal * 0.2f) + (v1tocenter * 0.1f), Color.green, 10f);
 
-                if (!v1cast) c1 = Subtract(c1, v1sq);
-                if (!v2cast) c2 = Subtract(c2, v2sq);
-                if (!v3cast) c3 = Subtract(c3, v3sq);
+                if (v1cast) c1 = Subtract(c1, v1sq);
+                if (v2cast) c2 = Subtract(c2, v2sq);
+                if (v3cast) c3 = Subtract(c3, v3sq);
             }
 
             return (c1, c2, c3);
