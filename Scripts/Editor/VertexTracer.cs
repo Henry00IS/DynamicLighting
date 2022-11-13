@@ -85,6 +85,8 @@ namespace AlpacaIT.VertexTracer
             {
                 var pointLight = pointLights[i];
                 var position = pointLight.transform.position;
+                var radius = pointLight.lightRadius;
+                if (radius == 0.0f) continue;
 
                 var v1dir = (position - v1).normalized;
                 if (math.dot(normal, v1dir) < 0f) continue; // early out by normal.
@@ -114,32 +116,26 @@ namespace AlpacaIT.VertexTracer
                 float diff2 = math.max(math.dot(normal, v2dir), 0f);
                 float diff3 = math.max(math.dot(normal, v3dir), 0f);
 
-                float v1sq = InverseSquareLaw(v1dist);
-                float v2sq = InverseSquareLaw(v2dist);
-                float v3sq = InverseSquareLaw(v3dist);
-
-                v1sq *= pointLight.lightIntensity;
-                v2sq *= pointLight.lightIntensity;
-                v3sq *= pointLight.lightIntensity;
-
                 //Debug.DrawLine(v1 + (normal * 0.01f) + (v1tocenter * 0.01f), v1 + (normal * 0.01f) + (v1tocenter * 0.01f) + (v1dir * v1dist), Color.green, 10f);
 
-                float attenuation1 = 1.0f / (pointLight.constant + pointLight.linear * v1dist + pointLight.quadratic * (v1dist * v1dist));
-                float attenuation2 = 1.0f / (pointLight.constant + pointLight.linear * v2dist + pointLight.quadratic * (v2dist * v2dist));
-                float attenuation3 = 1.0f / (pointLight.constant + pointLight.linear * v3dist + pointLight.quadratic * (v3dist * v3dist));
-                
+                float attenuation1 = math.clamp(1.0f - v1dist * v1dist / (radius * radius), 0.0f, 1.0f) * pointLight.lightIntensity;
+                float attenuation2 = math.clamp(1.0f - v2dist * v2dist / (radius * radius), 0.0f, 1.0f) * pointLight.lightIntensity;
+                float attenuation3 = math.clamp(1.0f - v3dist * v3dist / (radius * radius), 0.0f, 1.0f) * pointLight.lightIntensity;
+
                 if (v1cast)
-                    c1 += v1sq * pointLight.lightColor * diff1;
+                    c1 += attenuation1 * pointLight.lightColor * diff1;
                 if (v2cast)
-                    c2 += v2sq * pointLight.lightColor * diff2;
+                    c2 += attenuation2 * pointLight.lightColor * diff2;
                 if (v3cast)
-                    c3 += v3sq * pointLight.lightColor * diff3;
+                    c3 += attenuation3 * pointLight.lightColor * diff3;
             }
 
             for (int i = 0; i < shadowLights.Length; i++)
             {
                 var pointLight = shadowLights[i];
                 var position = pointLight.transform.position;
+                var radius = pointLight.shadowRadius;
+                if (radius == 0.0f) continue;
 
                 var v1dir = (position - v1).normalized;
                 if (math.dot(normal, v1dir) < 0f) continue; // early out by normal.
@@ -149,14 +145,6 @@ namespace AlpacaIT.VertexTracer
                 float v1dist = Vector3.Distance(v1, position);
                 float v2dist = Vector3.Distance(v2, position);
                 float v3dist = Vector3.Distance(v3, position);
-
-                float v1sq = InverseSquareLaw(v1dist);
-                float v2sq = InverseSquareLaw(v2dist);
-                float v3sq = InverseSquareLaw(v3dist);
-
-                v1sq *= pointLight.shadowIntensity;
-                v2sq *= pointLight.shadowIntensity;
-                v3sq *= pointLight.shadowIntensity;
 
                 // use hit from light to vertex and check hit position around the same as vertex position.
                 bool v1cast = false;
@@ -171,11 +159,21 @@ namespace AlpacaIT.VertexTracer
                 if (Physics.Raycast(position, -v3dir, out var hit3))
                     v3cast = (Vector3.Distance(hit3.point, v3) < 0.1f);
 
-                //Debug.DrawLine(v1 + (normal * 0.1f) + (v1tocenter * 0.1f), v1 + (normal * 0.2f) + (v1tocenter * 0.1f), Color.green, 10f);
+                traces += 3;
 
-                if (v1cast) c1 = Subtract(c1, v1sq);
-                if (v2cast) c2 = Subtract(c2, v2sq);
-                if (v3cast) c3 = Subtract(c3, v3sq);
+                float diff1 = math.max(math.dot(normal, v1dir), 0f);
+                float diff2 = math.max(math.dot(normal, v2dir), 0f);
+                float diff3 = math.max(math.dot(normal, v3dir), 0f);
+
+                //Debug.DrawLine(v1 + (normal * 0.01f) + (v1tocenter * 0.01f), v1 + (normal * 0.01f) + (v1tocenter * 0.01f) + (v1dir * v1dist), Color.green, 10f);
+
+                float attenuation1 = math.clamp(1.0f - v1dist * v1dist / (radius * radius), 0.0f, 1.0f) * pointLight.shadowIntensity;
+                float attenuation2 = math.clamp(1.0f - v2dist * v2dist / (radius * radius), 0.0f, 1.0f) * pointLight.shadowIntensity;
+                float attenuation3 = math.clamp(1.0f - v3dist * v3dist / (radius * radius), 0.0f, 1.0f) * pointLight.shadowIntensity;
+
+                if (v1cast) c1 = Subtract(c1, attenuation1 * diff1);
+                if (v2cast) c2 = Subtract(c2, attenuation2 * diff2);
+                if (v3cast) c3 = Subtract(c3, attenuation3 * diff3);
             }
 
             return (c1, c2, c3);
