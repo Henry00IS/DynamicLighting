@@ -7,6 +7,11 @@ It traces from all vertices of static meshes to the light sources in the scene. 
 ![Example of the vertex lighting technique](https://github.com/Henry00IS/VertexTracer/wiki/images/home/example1.png)
 ![Example of the vertex lighting technique](https://github.com/Henry00IS/VertexTracer/wiki/images/home/example2.png)
 ![Example of the vertex lighting technique](https://github.com/Henry00IS/VertexTracer/wiki/images/home/example3.png)
+![Example of the vertex lighting technique](https://github.com/Henry00IS/VertexTracer/wiki/images/home/example4.png)
+![Example of the vertex lighting technique](https://github.com/Henry00IS/VertexTracer/wiki/images/home/example5.png)
+![Example of the vertex lighting technique](https://github.com/Henry00IS/VertexTracer/wiki/images/home/example6.png)
+![Example of the vertex lighting technique](https://github.com/Henry00IS/VertexTracer/wiki/images/home/example7.png)
+![Example of the vertex lighting technique](https://github.com/Henry00IS/VertexTracer/wiki/images/home/example8.png)
 
 Primarily tested to work with [RealtimeCSG](https://github.com/LogicalError/realtime-CSG-for-unity).
 
