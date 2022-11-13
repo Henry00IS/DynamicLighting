@@ -6,12 +6,18 @@ namespace AlpacaIT.VertexTracer
 {
     public static class VertexTracer
     {
+        private static int traces = 0;
+        private static float meshBuilderTime = 0f;
+        private static float tracingTime = 0f;
+
         private static VertexPointLight[] pointLights;
         private static VertexAntiLight[] shadowLights;
 
         [UnityEditor.MenuItem("Vertex Tracer/Trace")]
         public static void Go()
         {
+            meshBuilderTime = 0f;
+            tracingTime = 0f;
             traces = 0;
 
             pointLights = Object.FindObjectsOfType<VertexPointLight>();
@@ -25,14 +31,16 @@ namespace AlpacaIT.VertexTracer
                 }
             }
 
-            Debug.Log("Raytracing Finished: " + traces);
+            Debug.Log("Raytracing Finished: " + traces + " traces in " + tracingTime + "s mesh edits " + meshBuilderTime + "s!");
         }
 
         private static void Raytrace(MeshFilter meshFilter)
         {
+            var t1 = Time.realtimeSinceStartup;
             MeshBuilder meshBuilder = new MeshBuilder(meshFilter.transform.localToWorldMatrix, meshFilter.sharedMesh);
             var mesh = meshBuilder.mesh;
             meshFilter.sharedMesh = mesh;
+            meshBuilderTime += Time.realtimeSinceStartup - t1;
 
             var vertices = meshBuilder.worldVertices;
             var triangles = meshBuilder.meshTriangles;
@@ -45,7 +53,9 @@ namespace AlpacaIT.VertexTracer
                 var v2 = vertices[triangles[i] + 1];
                 var v3 = vertices[triangles[i] + 2];
 
+                var t2 = Time.realtimeSinceStartup;
                 var res = Raycast(v1, v2, v3);
+                tracingTime += Time.realtimeSinceStartup - t2;
 
                 colors[triangles[i]] = res.c1;
                 colors[triangles[i + 1]] = res.c2;
@@ -54,8 +64,6 @@ namespace AlpacaIT.VertexTracer
 
             mesh.colors = colors;
         }
-
-        private static int traces = 0;
 
         private static (Color c1, Color c2, Color c3) Raycast(Vector3 v1, Vector3 v2, Vector3 v3)
         {
