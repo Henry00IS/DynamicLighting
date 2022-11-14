@@ -31,6 +31,9 @@ namespace AlpacaIT.VertexTracer
             // triangulate the mesh into our own lists and convert the vertices to world positions.
             Triangulate(localToWorldMatrix);
 
+            // Tessellate(localToWorldMatrix);
+            // Tessellate(localToWorldMatrix);
+
             // free the original mesh data from memory.
             originalTriangles = null;
             originalVertices = null;
@@ -49,6 +52,7 @@ namespace AlpacaIT.VertexTracer
                 this.mesh.name = mesh.name.Replace(" (Vertex Tracer)", "") + " (Vertex Tracer)";
             }
 
+            this.mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
             this.mesh.SetVertices(meshVertices);
             this.mesh.SetUVs(0, meshUv0);
             this.mesh.SetTriangles(meshTriangles, 0);
@@ -91,6 +95,67 @@ namespace AlpacaIT.VertexTracer
                 worldVertices.Add(localToWorldMatrix.MultiplyPoint(v1));
                 worldVertices.Add(localToWorldMatrix.MultiplyPoint(v2));
                 worldVertices.Add(localToWorldMatrix.MultiplyPoint(v3));
+            }
+        }
+
+        private void Tessellate(Matrix4x4 localToWorldMatrix)
+        {
+            var originalMeshTrianglesCount = meshTriangles.Count;
+            var j = originalMeshTrianglesCount;
+            for (int i = 0; i < originalMeshTrianglesCount; i += 3)
+            {
+                // fetch the 3 vertices of the triangle.
+                var v1 = meshVertices[meshTriangles[i]];
+                var v2 = meshVertices[meshTriangles[i + 1]];
+                var v3 = meshVertices[meshTriangles[i + 2]];
+                var t1 = meshUv0[i];
+                var t2 = meshUv0[i + 1];
+                var t3 = meshUv0[i + 2];
+
+                // find the halfway point on every edge.
+                var l1 = Vector3.Lerp(v1, v2, 0.5f);
+                var l2 = Vector3.Lerp(v2, v3, 0.5f);
+                var l3 = Vector3.Lerp(v3, v1, 0.5f);
+
+                var tl1 = Vector3.Lerp(t1, t2, 0.5f);
+                var tl2 = Vector3.Lerp(t2, t3, 0.5f);
+                var tl3 = Vector3.Lerp(t3, t1, 0.5f);
+
+                // replace the original triangle to be the center triangle.
+                meshVertices[meshTriangles[i]] = l1;
+                meshVertices[meshTriangles[i + 1]] = l2;
+                meshVertices[meshTriangles[i + 2]] = l3;
+                meshUv0[i] = tl1;
+                meshUv0[i + 1] = tl2;
+                meshUv0[i + 2] = tl3;
+                worldVertices[i] = localToWorldMatrix.MultiplyPoint(l1);
+                worldVertices[i + 1] = localToWorldMatrix.MultiplyPoint(l2);
+                worldVertices[i + 2] = localToWorldMatrix.MultiplyPoint(l3);
+
+                // create the new triangles for the triangle.
+                System.Action<Vector3, Vector3, Vector3, Vector2, Vector2, Vector2> AddTri = (a, b, c, t1, t2, t3) =>
+                {
+                    meshTriangles.Add(j++);
+                    meshTriangles.Add(j++);
+                    meshTriangles.Add(j++);
+
+                    meshVertices.Add(a);
+                    meshVertices.Add(b);
+                    meshVertices.Add(c);
+
+                    meshUv0.Add(t1);
+                    meshUv0.Add(t2);
+                    meshUv0.Add(t3);
+
+                    // store the world positions of all vertices.
+                    worldVertices.Add(localToWorldMatrix.MultiplyPoint(a));
+                    worldVertices.Add(localToWorldMatrix.MultiplyPoint(b));
+                    worldVertices.Add(localToWorldMatrix.MultiplyPoint(c));
+                };
+
+                AddTri(v1, l1, l3, t1, tl1, tl3);
+                AddTri(l1, v2, l2, tl1, t2, tl2);
+                AddTri(l2, v3, l3, tl2, t3, tl3);
             }
         }
     }
