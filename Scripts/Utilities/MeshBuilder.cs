@@ -10,11 +10,13 @@ namespace AlpacaIT.VertexTracer
         private int[] originalTriangles;
         private Vector3[] originalVertices;
         private Vector2[] originalUv0;
+        private Vector2[] originalUv1;
 
         // the modified mesh data:
         public List<int> meshTriangles;
         public List<Vector3> meshVertices;
         public List<Vector2> meshUv0;
+        public List<Vector2> meshUv1;
 
         // the world space mesh vertices:
         public List<Vector3> worldVertices;
@@ -27,6 +29,7 @@ namespace AlpacaIT.VertexTracer
             originalTriangles = mesh.triangles;
             originalVertices = mesh.vertices;
             originalUv0 = mesh.uv;
+            originalUv1 = mesh.uv2;
 
             // triangulate the mesh into our own lists and convert the vertices to world positions.
             Triangulate(localToWorldMatrix);
@@ -38,6 +41,7 @@ namespace AlpacaIT.VertexTracer
             originalTriangles = null;
             originalVertices = null;
             originalUv0 = null;
+            originalUv1 = null;
 
             // Realtime CSG hack:
             if (mesh.name.StartsWith("<Renderable generated -"))
@@ -55,6 +59,7 @@ namespace AlpacaIT.VertexTracer
             this.mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
             this.mesh.SetVertices(meshVertices);
             this.mesh.SetUVs(0, meshUv0);
+            this.mesh.SetUVs(1, meshUv1);
             this.mesh.SetTriangles(meshTriangles, 0);
         }
 
@@ -67,6 +72,7 @@ namespace AlpacaIT.VertexTracer
             meshVertices = new List<Vector3>(vertexCount);
             worldVertices = new List<Vector3>(vertexCount);
             meshUv0 = new List<Vector2>(vertexCount);
+            meshUv1 = new List<Vector2>(vertexCount);
 
             var j = 0;
             for (int i = 0; i < originalTriangles.Length; i += 3)
@@ -75,9 +81,13 @@ namespace AlpacaIT.VertexTracer
                 var v2 = originalVertices[originalTriangles[i + 1]];
                 var v3 = originalVertices[originalTriangles[i + 2]];
 
-                var uv1 = originalUv0[originalTriangles[i]];
-                var uv2 = originalUv0[originalTriangles[i + 1]];
-                var uv3 = originalUv0[originalTriangles[i + 2]];
+                var uv01 = originalUv0[originalTriangles[i]];
+                var uv02 = originalUv0[originalTriangles[i + 1]];
+                var uv03 = originalUv0[originalTriangles[i + 2]];
+
+                var uv11 = originalUv1[originalTriangles[i]];
+                var uv12 = originalUv1[originalTriangles[i + 1]];
+                var uv13 = originalUv1[originalTriangles[i + 2]];
 
                 meshTriangles.Add(j++);
                 meshTriangles.Add(j++);
@@ -87,9 +97,13 @@ namespace AlpacaIT.VertexTracer
                 meshVertices.Add(v2);
                 meshVertices.Add(v3);
 
-                meshUv0.Add(uv1);
-                meshUv0.Add(uv2);
-                meshUv0.Add(uv3);
+                meshUv0.Add(uv01);
+                meshUv0.Add(uv02);
+                meshUv0.Add(uv03);
+
+                meshUv1.Add(uv11);
+                meshUv1.Add(uv12);
+                meshUv1.Add(uv13);
 
                 // store the world positions of all vertices.
                 worldVertices.Add(localToWorldMatrix.MultiplyPoint(v1));
