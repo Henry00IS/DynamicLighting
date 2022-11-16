@@ -52,7 +52,7 @@ namespace AlpacaIT.VertexTracer
             for (int i = 0; i < pointLights.Length; i++)
             {
                 // stupid fixme
-                if (channel >= 4) channel = 0;
+                if (channel >= 32) channel = 0;
                 var light = pointLights[i];
                 light.lightChannel = channel;
                 channel++;
@@ -67,7 +67,7 @@ namespace AlpacaIT.VertexTracer
             meshFilter.sharedMesh = mesh;
             meshBuilderTime += Time.realtimeSinceStartup - tt1;
 
-            var pixels = new Color[lightmapSize * lightmapSize];
+            var pixels = new uint[lightmapSize * lightmapSize];
             {
                 var vertices = meshBuilder.worldVertices;
                 var uv1 = meshBuilder.meshUv1;
@@ -87,11 +87,11 @@ namespace AlpacaIT.VertexTracer
                 }
             }
 
-            Texture2D lightmap = new Texture2D(lightmapSize, lightmapSize, TextureFormat.RGBA32, false);
-            // lightmap.filterMode = FilterMode.Point;
-            lightmap.wrapMode = TextureWrapMode.Clamp;
-            lightmap.SetPixels(pixels);
-            lightmap.Apply();
+            //Texture2D lightmap = new Texture2D(lightmapSize, lightmapSize, TextureFormat.RGBA32, false);
+            //lightmap.filterMode = FilterMode.Point;
+            //lightmap.wrapMode = TextureWrapMode.Clamp;
+            //lightmap.SetPixels(pixels);
+            //lightmap.Apply();
 
             //var renderTexture = new RenderTexture(256, 256, 24);
             //RenderTexture.active = renderTexture;
@@ -99,7 +99,12 @@ namespace AlpacaIT.VertexTracer
             var renderer = meshFilter.GetComponent<MeshRenderer>();
             renderer.sharedMaterial = new Material(renderer.sharedMaterial);
             renderer.sharedMaterial.name = "Vertex Tracer Material";
-            renderer.sharedMaterial.SetTexture("_LightmapTex", lightmap);
+
+            Lightmap lightmap;
+            if (!renderer.TryGetComponent<Lightmap>(out lightmap))
+                lightmap = renderer.gameObject.AddComponent<Lightmap>();
+            lightmap.resolution = lightmapSize;
+            lightmap.pixels = pixels;
             //RenderTexture.active = null;
             //renderTexture.Release();
 
@@ -127,7 +132,7 @@ namespace AlpacaIT.VertexTracer
             mesh.colors = colors;*/
         }
 
-        private static void SetPixel(ref Color[] pixels, int x, int y, Color color)
+        private static void SetPixel(ref uint[] pixels, int x, int y, uint color)
         {
             if (x < 0 || y < 0 || x >= lightmapSize || y >= lightmapSize) return;
             pixels[y * lightmapSize + x] = color;
@@ -148,7 +153,7 @@ namespace AlpacaIT.VertexTracer
             return a1 * v1 + a2 * v2 + a3 * v3;
         }
 
-        private static void RaycastTriangle(ref Color[] pixels, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        private static void RaycastTriangle(ref uint[] pixels, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             Plane plane = new Plane(v1, v2, v3);
 
@@ -174,11 +179,11 @@ namespace AlpacaIT.VertexTracer
                     var world = UvTo3d(new Vector2(xx, yy), v1, v2, v3, t1, t2, t3);
                     if (world.Equals(Vector3.zero)) continue;
 
-                    Color px = new Color(0f, 0f, 0f, 0f);
+                    uint px = 0;
                     for (int i = 0; i < pointLights.Length; i++)
                     {
                         var pointLight = pointLights[i];
-                        px += Raycast(pointLight, world, plane);
+                        px |= Raycast(pointLight, world, plane);
                     }
 
                     SetPixel(ref pixels, x, y, px);
@@ -228,9 +233,9 @@ namespace AlpacaIT.VertexTracer
             }*/
         }
 
-        private static Color Raycast(VertexPointLight pointLightsi, Vector3 v1, Plane plane)
+        private static uint Raycast(VertexPointLight pointLightsi, Vector3 v1, Plane plane)
         {
-            Color c1 = new Color(0f, 0f, 0f, 0f);
+            uint c1 = 0;
 
             var normal = plane.normal;
 
@@ -258,22 +263,7 @@ namespace AlpacaIT.VertexTracer
 
             if (v1cast)
             {
-                if (pointLightsi.lightChannel == 0)
-                {
-                    c1 = new Color(1f, 0f, 0f, 0f);
-                }
-                else if (pointLightsi.lightChannel == 1)
-                {
-                    c1 = new Color(0f, 1f, 0f, 0f);
-                }
-                else if (pointLightsi.lightChannel == 2)
-                {
-                    c1 = new Color(0f, 0f, 1f, 0f);
-                }
-                else
-                {
-                    c1 = new Color(0f, 0f, 0f, 1f);
-                }
+                c1 |= (uint)1 << ((int)pointLightsi.lightChannel);
             }
                 //c1 += attenuation1 * pointLight.lightColor * diff1;
 

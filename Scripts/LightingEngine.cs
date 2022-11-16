@@ -6,8 +6,30 @@ using UnityEngine;
 
 namespace AlpacaIT.VertexTracer
 {
+    [ExecuteInEditMode]
     public class LightingEngine : MonoBehaviour
     {
+        private static LightingEngine s_Instance;
+
+        /// <summary>Gets the singleton game manager instance or creates it.</summary>
+        public static LightingEngine Instance
+        {
+            get
+            {
+                // if known, immediately return the instance.
+                if (s_Instance) return s_Instance;
+
+                // C# hot reloading support: try finding an existing instance in the scene.
+                s_Instance = FindObjectOfType<LightingEngine>();
+
+                // otherwise create a new instance in scene.
+                if (!s_Instance)
+                    s_Instance = new GameObject("[LightingEngine]").AddComponent<LightingEngine>();
+
+                return s_Instance;
+            }
+        }
+
         /// <summary>A point light (this struct is mirrored in the shader and can not be modified).</summary>
         private struct ShaderLight
         {
@@ -20,6 +42,7 @@ namespace AlpacaIT.VertexTracer
 
         private readonly int ShaderLightStride;
         private List<Material> materials = new List<Material>();
+        private List<Lightmap> lightmaps = new List<Lightmap>();
         private VertexPointLight[] lights;
 
         private ShaderLight[] shaderLights;
@@ -30,7 +53,7 @@ namespace AlpacaIT.VertexTracer
             ShaderLightStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(ShaderLight));
         }
 
-        private void Start()
+        private void OnEnable()
         {
             lights = FindObjectsOfType<VertexPointLight>();
             shaderLights = new ShaderLight[lights.Length];
@@ -43,15 +66,29 @@ namespace AlpacaIT.VertexTracer
 
                 var material = meshRenderer.sharedMaterial;
                 if (material.name == "Vertex Tracer Material")
-                    materials.Add(material);
+                {
+                    if (meshRenderer.TryGetComponent<Lightmap>(out var lightmap))
+                    {
+                        materials.Add(material);
+                        lightmaps.Add(lightmap);
+
+                        lightmap.buffer = new ComputeBuffer(lightmap.pixels.Length, 4);
+                        lightmap.buffer.SetData(lightmap.pixels);
+                        material.SetBuffer("lightmap", lightmap.buffer);
+                        material.SetInt("lightmap_resolution", lightmap.resolution);
+                    }
+                }
             }
 
             UpdateLightCount();
         }
 
-        private void OnDestroy()
+        private void OnDisable()
         {
             lightsBuffer.Release();
+
+            foreach (var lightmap in lightmaps)
+                lightmap.buffer.Release();
         }
 
         private void Update()
@@ -74,6 +111,7 @@ namespace AlpacaIT.VertexTracer
             }
             lightsBuffer.SetData(shaderLights);
 
+            //UpdateLightCount();
             /*
             var materialsCount = materials.Count;
             for (int i = 0; i < materialsCount; i++)
