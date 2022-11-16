@@ -102,12 +102,29 @@ namespace AlpacaIT.VertexTracer
                 shaderLights[i].radius = light.lightRadius;
                 shaderLights[i].channel = light.lightChannel;
 
-                if (i == 0) shaderLights[i].intensity = UnityEngine.Random.value * 4f;
-                if (i == 3) shaderLights[i].intensity = 1f + Mathf.Sin(Time.realtimeSinceStartup * 20f) * 2f;
-                if (i == 2) shaderLights[i].intensity = 1f + Mathf.Cos(Time.realtimeSinceStartup * 4f) * 2f;
-                if (i == 1) shaderLights[i].radius = 5f + Mathf.Sin(Time.realtimeSinceStartup * 7f);
-                if (i == 1) shaderLights[i].color.x = (1f + Mathf.Sin(Time.realtimeSinceStartup * 4f)) * 0.5f;
-                if (i == 1) shaderLights[i].color.y = (1f + Mathf.Cos(Time.realtimeSinceStartup * 4f)) * 0.5f;
+                switch (light.lightType)
+                {
+                    case LightType.Steady:
+                        break;
+
+                    case LightType.Pulse:
+                        shaderLights[i].intensity *= Mathf.Lerp(light.lightTypePulseModifier, 1.0f, (1f + Mathf.Sin(Time.time * light.lightTypePulseSpeed)) * 0.5f);
+                        break;
+
+                    case LightType.Flicker:
+                        shaderLights[i].intensity *= UnityEngine.Random.value;
+                        break;
+
+                    case LightType.Strobe:
+                        break;
+                }
+
+                //if (i == 0) shaderLights[i].intensity = UnityEngine.Random.value * 4f;
+                //if (i == 3) shaderLights[i].intensity = 1f + Mathf.Sin(Time.realtimeSinceStartup * 20f) * 2f;
+                //if (i == 2) shaderLights[i].intensity = 1f + Mathf.Cos(Time.realtimeSinceStartup * 4f) * 2f;
+                //if (i == 1) shaderLights[i].radius = 5f + Mathf.Sin(Time.realtimeSinceStartup * 7f);
+                //if (i == 1) shaderLights[i].color.x = (1f + Mathf.Sin(Time.realtimeSinceStartup * 4f)) * 0.5f;
+                //if (i == 1) shaderLights[i].color.y = (1f + Mathf.Cos(Time.realtimeSinceStartup * 4f)) * 0.5f;
             }
             lightsBuffer.SetData(shaderLights);
 
