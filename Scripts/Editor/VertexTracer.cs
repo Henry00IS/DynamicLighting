@@ -52,7 +52,7 @@ namespace AlpacaIT.VertexTracer
             for (int i = 0; i < pointLights.Length; i++)
             {
                 // stupid fixme
-                if (channel >= 3) channel = 0;
+                if (channel >= 4) channel = 0;
                 var light = pointLights[i];
                 light.lightChannel = channel;
                 channel++;
@@ -174,7 +174,7 @@ namespace AlpacaIT.VertexTracer
                     var world = UvTo3d(new Vector2(xx, yy), v1, v2, v3, t1, t2, t3);
                     if (world.Equals(Vector3.zero)) continue;
 
-                    Color px = Color.black;
+                    Color px = new Color(0f, 0f, 0f, 0f);
                     for (int i = 0; i < pointLights.Length; i++)
                     {
                         var pointLight = pointLights[i];
@@ -230,7 +230,7 @@ namespace AlpacaIT.VertexTracer
 
         private static Color Raycast(VertexPointLight pointLightsi, Vector3 v1, Plane plane)
         {
-            Color c1 = Color.black;
+            Color c1 = new Color(0f, 0f, 0f, 0f);
 
             var normal = plane.normal;
 
@@ -260,15 +260,19 @@ namespace AlpacaIT.VertexTracer
             {
                 if (pointLightsi.lightChannel == 0)
                 {
-                    c1 = Color.red;
+                    c1 = new Color(1f, 0f, 0f, 0f);
                 }
                 else if (pointLightsi.lightChannel == 1)
                 {
-                    c1 = Color.green;
+                    c1 = new Color(0f, 1f, 0f, 0f);
+                }
+                else if (pointLightsi.lightChannel == 2)
+                {
+                    c1 = new Color(0f, 0f, 1f, 0f);
                 }
                 else
                 {
-                    c1 = Color.blue;
+                    c1 = new Color(0f, 0f, 0f, 1f);
                 }
             }
                 //c1 += attenuation1 * pointLight.lightColor * diff1;

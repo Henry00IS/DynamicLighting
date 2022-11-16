@@ -91,8 +91,10 @@ Shader "Unlit/VertexTracerSimple"
                         light_final += light.color * attenuation * diffusion * map.r;
                     else if (light.channel == 1)
                         light_final += light.color * attenuation * diffusion * map.g;
-                    else
+                    else if (light.channel == 2)
                         light_final += light.color * attenuation * diffusion * map.b;
+                    else
+                        light_final += light.color * attenuation * diffusion * map.a;
                 }
                 
                 // apply fog
