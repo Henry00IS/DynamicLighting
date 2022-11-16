@@ -76,7 +76,6 @@ Shader "Unlit/VertexTracerSimple"
                 fixed4 col = tex2D(_MainTex, i.uv0) * i.color;
                 fixed4 map = tex2D(_LightmapTex, i.uv1);
 
-
                 float3 light_final = float3(0, 0, 0);
                 for (uint k = 0; k < lights_count; k++)
                 {
@@ -90,8 +89,10 @@ Shader "Unlit/VertexTracerSimple"
 
                     if (light.channel == 0)
                         light_final += light.color * attenuation * diffusion * map.r;
-                    else
+                    else if (light.channel == 1)
                         light_final += light.color * attenuation * diffusion * map.g;
+                    else
+                        light_final += light.color * attenuation * diffusion * map.b;
                 }
                 
                 // apply fog

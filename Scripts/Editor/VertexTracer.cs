@@ -24,6 +24,8 @@ namespace AlpacaIT.VertexTracer
             traces = 0;
 
             pointLights = Object.FindObjectsOfType<VertexPointLight>();
+            AssignPointLightChannels();
+
             shadowLights = Object.FindObjectsOfType<VertexAntiLight>();
             var meshFilters = Object.FindObjectsOfType<MeshFilter>();
             foreach (var meshFilter in meshFilters)
@@ -35,6 +37,26 @@ namespace AlpacaIT.VertexTracer
             }
 
             Debug.Log("Raytracing Finished: " + traces + " traces in " + tracingTime + "s mesh edits " + meshBuilderTime + "s!");
+        }
+
+        private static void AssignPointLightChannels()
+        {
+            // first reset all the channels to an invalid value.
+            for (int i = 0; i < pointLights.Length; i++)
+            {
+                var light = pointLights[i];
+                light.lightChannel = 255;
+            }
+
+            uint channel = 0;
+            for (int i = 0; i < pointLights.Length; i++)
+            {
+                // stupid fixme
+                if (channel >= 3) channel = 0;
+                var light = pointLights[i];
+                light.lightChannel = channel;
+                channel++;
+            }
         }
 
         private static void Raytrace(MeshFilter meshFilter)
@@ -243,6 +265,10 @@ namespace AlpacaIT.VertexTracer
                 else if (pointLightsi.lightChannel == 1)
                 {
                     c1 = Color.green;
+                }
+                else
+                {
+                    c1 = Color.blue;
                 }
             }
                 //c1 += attenuation1 * pointLight.lightColor * diff1;
