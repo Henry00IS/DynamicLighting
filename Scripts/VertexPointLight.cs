@@ -7,6 +7,6 @@ namespace AlpacaIT.VertexTracer
         public Color lightColor = Color.white;
         public float lightIntensity = 10.0f;
         public float lightRadius = 2.0f;
-        public int lightChannel = 0;
+        public uint lightChannel = 0;
     }
 }

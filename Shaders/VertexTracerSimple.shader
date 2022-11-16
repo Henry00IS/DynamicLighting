@@ -1,5 +1,3 @@
-// Upgrade NOTE: replaced '_Object2World' with 'unity_ObjectToWorld'
-
 Shader "Unlit/VertexTracerSimple"
 {
     Properties
@@ -7,9 +5,9 @@ Shader "Unlit/VertexTracerSimple"
         _MainTex("Texture", 2D) = "white" {}
         _LightmapTex("Texture", 2D) = "white" {}
     }
-    SubShader
+        SubShader
     {
-        Tags { "RenderType"="Opaque" }
+        Tags { "RenderType" = "Opaque" }
         LOD 100
 
         Pass
@@ -21,7 +19,19 @@ Shader "Unlit/VertexTracerSimple"
             #pragma multi_compile_fog
 
             #include "UnityCG.cginc"
-
+            
+            struct Light
+            {
+                float3 position;
+                float3 color;
+                float  intensity;
+                float  radius;
+                uint   channel;
+            };
+            
+            StructuredBuffer<Light> lights;
+            uint lights_count;
+            
             struct appdata
             {
                 float4 vertex : POSITION;
@@ -68,31 +78,20 @@ Shader "Unlit/VertexTracerSimple"
 
 
                 float3 light_final = float3(0, 0, 0);
-                for (int k = 0; k < 2; k++)
+                for (uint k = 0; k < lights_count; k++)
                 {
-                    float3 light_position = float3(-3, 3, -12.125);
-                    float3 light_color = float3(1, 0.726, 0);
-                    float light_intensity = 1 + _SinTime.w;
-                    float light_radius = 6;
+                    Light light = lights[k];
 
-                    if (k == 1)
-                    {
-                        light_radius = 3;
-                        light_position = float3(-3.375, 1.375, -8.75);
-                        light_color = float3(0.1485849, 0.2623755, 0.5943396);
-                        light_intensity = 2 + sin(_Time.w * 10);
-                    }
-
-                    float3 light_direction = normalize(light_position - i.world);
-                    float light_distance = distance(i.world, light_position);
+                    float3 light_direction = normalize(light.position - i.world);
+                    float light_distance = distance(i.world, light.position);
 
                     float diffusion = max(dot(i.normal, light_direction), 0);
-                    float attenuation = saturate(1.0 - light_distance * light_distance / (light_radius * light_radius)) * light_intensity;
+                    float attenuation = saturate(1.0 - light_distance * light_distance / (light.radius * light.radius)) * light.intensity;
 
-                    if (k == 0)
-                        light_final += light_color * attenuation * diffusion * map.r;
+                    if (light.channel == 0)
+                        light_final += light.color * attenuation * diffusion * map.r;
                     else
-                        light_final += light_color * attenuation * diffusion * map.g;
+                        light_final += light.color * attenuation * diffusion * map.g;
                 }
                 
                 // apply fog

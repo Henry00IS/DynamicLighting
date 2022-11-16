@@ -76,6 +76,7 @@ namespace AlpacaIT.VertexTracer
 
             var renderer = meshFilter.GetComponent<MeshRenderer>();
             renderer.sharedMaterial = new Material(renderer.sharedMaterial);
+            renderer.sharedMaterial.name = "Vertex Tracer Material";
             renderer.sharedMaterial.SetTexture("_LightmapTex", lightmap);
             //RenderTexture.active = null;
             //renderTexture.Release();
@@ -151,7 +152,7 @@ namespace AlpacaIT.VertexTracer
                     var world = UvTo3d(new Vector2(xx, yy), v1, v2, v3, t1, t2, t3);
                     if (world.Equals(Vector3.zero)) continue;
 
-                    Color px = new Color(0.05f, 0.01f, 0.01f);
+                    Color px = Color.black;
                     for (int i = 0; i < pointLights.Length; i++)
                     {
                         var pointLight = pointLights[i];
