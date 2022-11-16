@@ -9,12 +9,14 @@ namespace AlpacaIT.VertexTracer
         // the original mesh data:
         private int[] originalTriangles;
         private Vector3[] originalVertices;
+        private Vector3[] originalNormals;
         private Vector2[] originalUv0;
         private Vector2[] originalUv1;
 
         // the modified mesh data:
         public List<int> meshTriangles;
         public List<Vector3> meshVertices;
+        public List<Vector3> meshNormals;
         public List<Vector2> meshUv0;
         public List<Vector2> meshUv1;
 
@@ -28,6 +30,7 @@ namespace AlpacaIT.VertexTracer
             // read the mesh data into memory.
             originalTriangles = mesh.triangles;
             originalVertices = mesh.vertices;
+            originalNormals = mesh.normals;
             originalUv0 = mesh.uv;
             originalUv1 = mesh.uv2;
 
@@ -40,6 +43,7 @@ namespace AlpacaIT.VertexTracer
             // free the original mesh data from memory.
             originalTriangles = null;
             originalVertices = null;
+            originalNormals = null;
             originalUv0 = null;
             originalUv1 = null;
 
@@ -58,6 +62,7 @@ namespace AlpacaIT.VertexTracer
 
             this.mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
             this.mesh.SetVertices(meshVertices);
+            this.mesh.SetNormals(meshNormals);
             this.mesh.SetUVs(0, meshUv0);
             this.mesh.SetUVs(1, meshUv1);
             this.mesh.SetTriangles(meshTriangles, 0);
@@ -70,6 +75,7 @@ namespace AlpacaIT.VertexTracer
 
             meshTriangles = new List<int>(triangleCount);
             meshVertices = new List<Vector3>(vertexCount);
+            meshNormals = new List<Vector3>(vertexCount);
             worldVertices = new List<Vector3>(vertexCount);
             meshUv0 = new List<Vector2>(vertexCount);
             meshUv1 = new List<Vector2>(vertexCount);
@@ -80,6 +86,10 @@ namespace AlpacaIT.VertexTracer
                 var v1 = originalVertices[originalTriangles[i]];
                 var v2 = originalVertices[originalTriangles[i + 1]];
                 var v3 = originalVertices[originalTriangles[i + 2]];
+
+                var n1 = originalNormals[originalTriangles[i]];
+                var n2 = originalNormals[originalTriangles[i + 1]];
+                var n3 = originalNormals[originalTriangles[i + 2]];
 
                 var uv01 = originalUv0[originalTriangles[i]];
                 var uv02 = originalUv0[originalTriangles[i + 1]];
@@ -96,6 +106,10 @@ namespace AlpacaIT.VertexTracer
                 meshVertices.Add(v1);
                 meshVertices.Add(v2);
                 meshVertices.Add(v3);
+
+                meshNormals.Add(n1);
+                meshNormals.Add(n2);
+                meshNormals.Add(n3);
 
                 meshUv0.Add(uv01);
                 meshUv0.Add(uv02);

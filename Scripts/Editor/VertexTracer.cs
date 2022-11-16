@@ -66,7 +66,7 @@ namespace AlpacaIT.VertexTracer
             }
 
             Texture2D lightmap = new Texture2D(lightmapSize, lightmapSize, TextureFormat.RGBA32, false);
-            //lightmap.filterMode = FilterMode.Point;
+            // lightmap.filterMode = FilterMode.Point;
             lightmap.wrapMode = TextureWrapMode.Clamp;
             lightmap.SetPixels(pixels);
             lightmap.Apply();
@@ -207,8 +207,7 @@ namespace AlpacaIT.VertexTracer
 
         private static Color Raycast(VertexPointLight pointLightsi, Vector3 v1, Plane plane)
         {
-            Color c1 = new Color();
-            c1.a = 1f;
+            Color c1 = Color.black;
 
             var normal = plane.normal;
 
@@ -230,14 +229,22 @@ namespace AlpacaIT.VertexTracer
 
             traces += (v1dist <= radius ? 1 : 0);
 
-            float diff1 = math.max(math.dot(normal, v1dir), 0f);
+            //float diff1 = math.max(math.dot(normal, v1dir), 0f);
 
-            //Debug.DrawLine(v1 + (normal * 0.01f) + (v1tocenter * 0.01f), v1 + (normal * 0.01f) + (v1tocenter * 0.01f) + (v1dir * v1dist), Color.green, 10f);
-
-            float attenuation1 = math.clamp(1.0f - v1dist * v1dist / (radius * radius), 0.0f, 1.0f) * pointLight.lightIntensity;
+            //float attenuation1 = math.clamp(1.0f - v1dist * v1dist / (radius * radius), 0.0f, 1.0f) * pointLight.lightIntensity;
 
             if (v1cast)
-                c1 += attenuation1 * pointLight.lightColor * diff1;
+            {
+                if (pointLightsi.lightChannel == 0)
+                {
+                    c1 = Color.red;
+                }
+                else if (pointLightsi.lightChannel == 1)
+                {
+                    c1 = Color.green;
+                }
+            }
+                //c1 += attenuation1 * pointLight.lightColor * diff1;
 
             return c1;
         }
