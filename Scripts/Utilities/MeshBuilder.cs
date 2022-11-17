@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using Unity.Mathematics;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace AlpacaIT.VertexTracer
 {

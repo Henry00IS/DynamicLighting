@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.IO;
 using System.IO.Compression;
 using UnityEngine;
@@ -9,7 +8,6 @@ namespace AlpacaIT.VertexTracer
 {
     public class RuntimeUtilities
     {
-
         public static bool ReadLightmapData(int identifier, out uint[] pixels)
         {
             try
@@ -27,9 +25,7 @@ namespace AlpacaIT.VertexTracer
                 {
                     gzip.CopyTo(decompressed);
                     gzip.Close();
-
                     byteArray = decompressed.ToArray();
-                    Debug.Log(byteArray.Length);
                 }
 
                 uint[] uintArray = new uint[byteArray.Length / 4];

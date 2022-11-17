@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace AlpacaIT.VertexTracer
 {
@@ -12,7 +7,7 @@ namespace AlpacaIT.VertexTracer
         [HideInInspector]
         [SerializeField]
         public int identifier;
-        
+
         [HideInInspector]
         [SerializeField]
         public int resolution;

@@ -1,5 +1,4 @@
-﻿
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace AlpacaIT.VertexTracer
@@ -45,7 +44,7 @@ namespace AlpacaIT.VertexTracer
         private ShaderLight[] shaderLights;
         private ComputeBuffer lightsBuffer;
 
-        LightingEngine()
+        private LightingEngine()
         {
             ShaderLightStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(ShaderLight));
         }
@@ -92,8 +91,6 @@ namespace AlpacaIT.VertexTracer
                     }
                 }
             }
-
-            UpdateLightCount();
         }
 
         private void OnDisable()
@@ -108,7 +105,6 @@ namespace AlpacaIT.VertexTracer
         {
             for (int i = 0; i < lights.Length; i++)
             {
-
                 var light = lights[i];
                 shaderLights[i].position = light.transform.position;
                 shaderLights[i].color = new Vector3(light.lightColor.r, light.lightColor.g, light.lightColor.b);
@@ -132,7 +128,6 @@ namespace AlpacaIT.VertexTracer
                     case LightType.Strobe:
                         break;
                 }
-
             }
             lightsBuffer.SetData(shaderLights);
 

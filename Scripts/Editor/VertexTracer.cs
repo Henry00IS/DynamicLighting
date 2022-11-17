@@ -11,7 +11,6 @@ namespace AlpacaIT.VertexTracer
         private static float tracingTime = 0f;
 
         private static VertexPointLight[] pointLights;
-        private static VertexAntiLight[] shadowLights;
 
         private const int lightmapSize = 2048;
         private const float lightmapSizeMin1 = lightmapSize - 1;
