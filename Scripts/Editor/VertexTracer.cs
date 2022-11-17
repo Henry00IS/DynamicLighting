@@ -127,10 +127,10 @@ namespace AlpacaIT.VertexTracer
             //v2 -= (center - v2).normalized * ((1.0f / lightmapSizeMin1) * 4f);
             //v3 -= (center - v3).normalized * ((1.0f / lightmapSizeMin1) * 4f);
 
-            Vector2 center2 = (t1 + t2 + t3) / 3f;
-            t1 -= (center2 - t1).normalized * ((1.0f / lightmapSizeMin1) * 4f);
-            t2 -= (center2 - t2).normalized * ((1.0f / lightmapSizeMin1) * 4f);
-            t3 -= (center2 - t3).normalized * ((1.0f / lightmapSizeMin1) * 4f);
+            //Vector2 center2 = (t1 + t2 + t3) / 3f;
+            //t1 -= (center2 - t1).normalized * ((1.0f / lightmapSizeMin1) * 4f);
+            //t2 -= (center2 - t2).normalized * ((1.0f / lightmapSizeMin1) * 4f);
+            //t3 -= (center2 - t3).normalized * ((1.0f / lightmapSizeMin1) * 4f);
 
             // calculate the bounding box of the polygon in UV space.
             // we only have to raycast these pixels and can skip the rest.
