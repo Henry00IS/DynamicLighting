@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 
 using Unity.Mathematics;
+using UnityEditor;
 using UnityEngine;
 
 namespace AlpacaIT.VertexTracer
@@ -25,7 +26,6 @@ namespace AlpacaIT.VertexTracer
             pointLights = Object.FindObjectsOfType<VertexPointLight>();
             AssignPointLightChannels();
 
-            shadowLights = Object.FindObjectsOfType<VertexAntiLight>();
             var meshFilters = Object.FindObjectsOfType<MeshFilter>();
             foreach (var meshFilter in meshFilters)
             {
@@ -47,15 +47,41 @@ namespace AlpacaIT.VertexTracer
                 light.lightChannel = 255;
             }
 
-            uint channel = 0;
             for (int i = 0; i < pointLights.Length; i++)
             {
-                // stupid fixme
-                if (channel >= 32) channel = 0;
                 var light = pointLights[i];
-                light.lightChannel = channel;
-                channel++;
+
+                if (TryFindFreeLightChannelAt(light.transform.position, light.lightRadius, out var channel))
+                {
+                    light.lightChannel = channel;
+                    Debug.Log(channel);
+                }
+                else
+                {
+                    Debug.LogError("More than 32 lights intersect at the same position! This is not supported! Please spread your light sources further apart or reduce their radius.");
+                }
             }
+        }
+
+        private static bool TryFindFreeLightChannelAt(Vector3 position, float radius, out uint channel)
+        {
+            // find all used channels that intersect our radius.
+            var channels = new bool[32];
+            for (int i = 0; i < pointLights.Length; i++)
+            {
+                var light = pointLights[i];
+                if (light.lightChannel == 255) continue;
+
+                if (MathEx.SpheresIntersect(light.transform.position, light.lightRadius, position, radius))
+                    channels[light.lightChannel] = true;
+            }
+
+            // find a free channel.
+            for (channel = 0; channel < channels.Length; channel++)
+                if (!channels[channel])
+                    return true;
+
+            return false;
         }
 
         private static void Raytrace(MeshFilter meshFilter)
