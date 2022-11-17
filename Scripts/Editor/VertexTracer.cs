@@ -1,7 +1,6 @@
 #if UNITY_EDITOR
 
 using Unity.Mathematics;
-using UnityEditor;
 using UnityEngine;
 
 namespace AlpacaIT.VertexTracer
@@ -17,11 +16,14 @@ namespace AlpacaIT.VertexTracer
         private const int lightmapSize = 2048;
         private const float lightmapSizeMin1 = lightmapSize - 1;
 
+        private static int uniqueIdentifier = 0;
+
         [UnityEditor.MenuItem("Vertex Tracer/Trace")]
         public static void Go()
         {
             tracingTime = 0f;
             traces = 0;
+            uniqueIdentifier = 0;
 
             pointLights = Object.FindObjectsOfType<VertexPointLight>();
             AssignPointLightChannels();
@@ -54,7 +56,6 @@ namespace AlpacaIT.VertexTracer
                 if (TryFindFreeLightChannelAt(light.transform.position, light.lightRadius, out var channel))
                 {
                     light.lightChannel = channel;
-                    Debug.Log(channel);
                 }
                 else
                 {
@@ -110,15 +111,21 @@ namespace AlpacaIT.VertexTracer
             }
             tracingTime += Time.realtimeSinceStartup - tt1;
 
-            var renderer = meshFilter.GetComponent<MeshRenderer>();
-            renderer.sharedMaterial = new Material(renderer.sharedMaterial);
-            renderer.sharedMaterial.name = "Vertex Tracer Material";
-
             Lightmap lightmap;
-            if (!renderer.TryGetComponent<Lightmap>(out lightmap))
-                lightmap = renderer.gameObject.AddComponent<Lightmap>();
+            if (!meshFilter.TryGetComponent(out lightmap))
+                lightmap = meshFilter.gameObject.AddComponent<Lightmap>();
             lightmap.resolution = lightmapSize;
-            lightmap.pixels = pixels;
+            lightmap.identifier = uniqueIdentifier++;
+
+            var sceneStorageDirectory = EditorUtilities.CreateAndGetActiveSceneStorageDirectory();
+            if (sceneStorageDirectory != null)
+            {
+                EditorUtilities.WriteLightmapData(lightmap.identifier, pixels);
+            }
+            else
+            {
+                Debug.LogError("Unable to find or create the active scene storage directory or write the lightmap file!");
+            }
         }
 
         private static void SetPixel(ref uint[] pixels, int x, int y, uint color)

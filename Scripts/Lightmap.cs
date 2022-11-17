@@ -11,7 +11,7 @@ namespace AlpacaIT.VertexTracer
     {
         [HideInInspector]
         [SerializeField]
-        public uint[] pixels;
+        public int identifier;
         
         [HideInInspector]
         [SerializeField]

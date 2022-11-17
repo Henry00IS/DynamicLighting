@@ -1,12 +1,9 @@
 ﻿
-using System;
 using System.Collections.Generic;
-using Unity.Mathematics;
 using UnityEngine;
 
 namespace AlpacaIT.VertexTracer
 {
-    [ExecuteInEditMode]
     public class LightingEngine : MonoBehaviour
     {
         private static LightingEngine s_Instance;
@@ -62,20 +59,36 @@ namespace AlpacaIT.VertexTracer
             var meshRenderers = FindObjectsOfType<MeshRenderer>();
             foreach (var meshRenderer in meshRenderers)
             {
+#if UNITY_EDITOR
                 if (!meshRenderer.gameObject.isStatic) continue;
-
-                var material = meshRenderer.sharedMaterial;
-                if (material.name == "Vertex Tracer Material")
+#else
+                if (!meshRenderer.isPartOfStaticBatch) continue;
+#endif
+                if (meshRenderer.TryGetComponent<Lightmap>(out var lightmap))
                 {
-                    if (meshRenderer.TryGetComponent<Lightmap>(out var lightmap))
+                    var material = meshRenderer.sharedMaterial;
+                    if (material == null)
                     {
-                        materials.Add(material);
-                        lightmaps.Add(lightmap);
+                        Debug.LogError("Encountered a null material. Please rebake your lightmap again.");
+                        continue;
+                    }
 
-                        lightmap.buffer = new ComputeBuffer(lightmap.pixels.Length, 4);
-                        lightmap.buffer.SetData(lightmap.pixels);
+                    // create an instantiated copy of the material.
+                    material = new Material(material);
+                    meshRenderer.sharedMaterial = material;
+                    materials.Add(material);
+                    lightmaps.Add(lightmap);
+
+                    if (RuntimeUtilities.ReadLightmapData(lightmap.identifier, out uint[] pixels))
+                    {
+                        lightmap.buffer = new ComputeBuffer(pixels.Length, 4);
+                        lightmap.buffer.SetData(pixels);
                         material.SetBuffer("lightmap", lightmap.buffer);
                         material.SetInt("lightmap_resolution", lightmap.resolution);
+                    }
+                    else
+                    {
+                        Debug.LogError("Unable to read the lightmap " + lightmap.identifier + " data file!");
                     }
                 }
             }
@@ -95,6 +108,7 @@ namespace AlpacaIT.VertexTracer
         {
             for (int i = 0; i < lights.Length; i++)
             {
+
                 var light = lights[i];
                 shaderLights[i].position = light.transform.position;
                 shaderLights[i].color = new Vector3(light.lightColor.r, light.lightColor.g, light.lightColor.b);
@@ -119,16 +133,10 @@ namespace AlpacaIT.VertexTracer
                         break;
                 }
 
-                //if (i == 0) shaderLights[i].intensity = UnityEngine.Random.value * 4f;
-                //if (i == 3) shaderLights[i].intensity = 1f + Mathf.Sin(Time.realtimeSinceStartup * 20f) * 2f;
-                //if (i == 2) shaderLights[i].intensity = 1f + Mathf.Cos(Time.realtimeSinceStartup * 4f) * 2f;
-                //if (i == 1) shaderLights[i].radius = 5f + Mathf.Sin(Time.realtimeSinceStartup * 7f);
-                //if (i == 1) shaderLights[i].color.x = (1f + Mathf.Sin(Time.realtimeSinceStartup * 4f)) * 0.5f;
-                //if (i == 1) shaderLights[i].color.y = (1f + Mathf.Cos(Time.realtimeSinceStartup * 4f)) * 0.5f;
             }
             lightsBuffer.SetData(shaderLights);
 
-            //UpdateLightCount();
+            UpdateLightCount();
             /*
             var materialsCount = materials.Count;
             for (int i = 0; i < materialsCount; i++)
