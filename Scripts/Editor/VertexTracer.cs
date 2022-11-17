@@ -157,7 +157,16 @@ namespace AlpacaIT.VertexTracer
                         px |= Raycast(pointLight, world, normal);
                     }
 
-                    SetPixel(ref pixels, x, y, px);
+                    if (px > 0)
+                    {
+                        SetPixel(ref pixels, x, y, px);
+                        // deal with seams using some padding.
+                        // todo: only pad the exterior edges of every UV polygon.
+                        SetPixel(ref pixels, x - 1, y, px);
+                        SetPixel(ref pixels, x + 1, y, px);
+                        SetPixel(ref pixels, x, y - 1, px);
+                        SetPixel(ref pixels, x, y + 1, px);
+                    }
                 }
             }
         }
