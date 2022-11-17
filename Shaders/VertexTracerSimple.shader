@@ -88,6 +88,16 @@ Shader "Unlit/VertexTracerSimple"
                     // get the current light from memory.
                     Light light = lights[k];
 
+                    // calculate the distance between the light source and the fragment.
+                    float light_distance = distance(i.world, light.position);
+
+                    // we can use the distance and guaranteed maximum light radius to early out.
+                    // confirmed with NVIDIA Quadro K1000M doubling the framerate.
+                    if (light_distance > light.radius) continue;
+
+                    // calculate the direction between the light source and the fragment.
+                    float3 light_direction = normalize(light.position - i.world);
+
                     // x x x
                     // x   x apply a simple 3x3 sampling with averaged results to the shadow bits.
                     // x x x
@@ -103,10 +113,6 @@ Shader "Unlit/VertexTracerSimple"
                           map += lightmap_pixel(lightmap_uv + uint2( 0, 1), light.channel);
                           map += lightmap_pixel(lightmap_uv + uint2( 1, 1), light.channel);
                     map /= 9.0;
-
-                    // calculate the direction and distance between the light source and the fragment.
-                    float3 light_direction = normalize(light.position - i.world);
-                    float light_distance = distance(i.world, light.position);
 
                     // a simple dot product with the normal gives us diffusion.
                     float diffusion = max(dot(i.normal, light_direction), 0);
