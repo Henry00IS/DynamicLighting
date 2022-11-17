@@ -118,7 +118,9 @@ namespace AlpacaIT.VertexTracer
 
         private static void RaycastTriangle(ref uint[] pixels, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
-            Plane plane = new Plane(v1, v2, v3);
+            // skip degenerate triangles.
+            Vector3 normal = new Plane(v1, v2, v3).normal;
+            if (normal.Equals(Vector3.zero)) { return; };
 
             //Vector3 center = (v1 + v2 + v3) / 3f;
             //v1 -= (center - v1).normalized * ((1.0f / lightmapSizeMin1) * 4f);
@@ -142,10 +144,8 @@ namespace AlpacaIT.VertexTracer
             {
                 for (int y = minY; y < maxY; y++)
                 {
-                    float xx = 0.0f;
-                    float yy = 0.0f;
-                    if (x != 0) xx = x / lightmapSizeMin1;
-                    if (y != 0) yy = y / lightmapSizeMin1;
+                    float xx = x / lightmapSizeMin1;
+                    float yy = y / lightmapSizeMin1;
 
                     var world = UvTo3d(new Vector2(xx, yy), v1, v2, v3, t1, t2, t3);
                     if (world.Equals(Vector3.zero)) continue;
@@ -154,7 +154,7 @@ namespace AlpacaIT.VertexTracer
                     for (int i = 0; i < pointLights.Length; i++)
                     {
                         var pointLight = pointLights[i];
-                        px |= Raycast(pointLight, world, plane);
+                        px |= Raycast(pointLight, world, normal);
                     }
 
                     SetPixel(ref pixels, x, y, px);
@@ -162,36 +162,25 @@ namespace AlpacaIT.VertexTracer
             }
         }
 
-        private static uint Raycast(VertexPointLight pointLightsi, Vector3 v1, Plane plane)
+        private static uint Raycast(VertexPointLight pointLight, Vector3 world, Vector3 normal)
         {
-            uint c1 = 0;
-
-            var normal = plane.normal;
-
-            var pointLight = pointLightsi;
             var radius = pointLight.lightRadius;
-            if (radius == 0.0f) return c1;
+            if (radius == 0.0f) return 0; // early out by radius.
+
             var position = pointLight.transform.position;
+            float distance = Vector3.Distance(world, position);
+            if (distance > radius) return 0; // early out by distance.
 
-            var v1dir = (position - v1).normalized;
-            if (math.dot(normal, v1dir) < 0f) return c1; // early out by normal.
+            var direction = (position - world).normalized;
+            if (math.dot(normal, direction) < 0f) return 0; // early out by normal.
 
-            float v1dist = Vector3.Distance(v1, position);
+            // trace from the light to the world position and check whether we hit close to it.
+            traces++;
+            if (Physics.Raycast(position, -direction, out var hit, radius))
+                if (Vector3.Distance(hit.point, world) < 0.01f)
+                    return (uint)1 << ((int)pointLight.lightChannel);
 
-            // trace from the light to the vertex and check whether we hit close to the vertex.
-            // we check whether the vertex is within the light radius or else skip it.
-            bool v1cast = false;
-            if (v1dist <= radius && Physics.Raycast(position, -v1dir, out var hit1))
-                v1cast = (Vector3.Distance(hit1.point, v1) < 0.01f);
-
-            traces += (v1dist <= radius ? 1 : 0);
-
-            if (v1cast)
-            {
-                c1 |= (uint)1 << ((int)pointLightsi.lightChannel);
-            }
-
-            return c1;
+            return 0;
         }
 
         // calculate signed triangle area using a kind of "2D cross product":
