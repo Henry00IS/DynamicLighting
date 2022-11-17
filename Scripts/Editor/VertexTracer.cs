@@ -1,3 +1,5 @@
+#if UNITY_EDITOR
+
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -6,19 +8,17 @@ namespace AlpacaIT.VertexTracer
     public static class VertexTracer
     {
         private static int traces = 0;
-        private static float meshBuilderTime = 0f;
         private static float tracingTime = 0f;
 
         private static VertexPointLight[] pointLights;
         private static VertexAntiLight[] shadowLights;
 
-        private const int lightmapSize = 512;
+        private const int lightmapSize = 2048;
         private const float lightmapSizeMin1 = lightmapSize - 1;
 
         [UnityEditor.MenuItem("Vertex Tracer/Trace")]
         public static void Go()
         {
-            meshBuilderTime = 0f;
             tracingTime = 0f;
             traces = 0;
 
@@ -35,7 +35,7 @@ namespace AlpacaIT.VertexTracer
                 }
             }
 
-            Debug.Log("Raytracing Finished: " + traces + " traces in " + tracingTime + "s mesh edits " + meshBuilderTime + "s!");
+            Debug.Log("Raytracing Finished: " + traces + " traces in " + tracingTime + "s!");
         }
 
         private static void AssignPointLightChannels()
@@ -60,31 +60,29 @@ namespace AlpacaIT.VertexTracer
 
         private static void Raytrace(MeshFilter meshFilter)
         {
-            var tt1 = Time.realtimeSinceStartup;
             MeshBuilder meshBuilder = new MeshBuilder(meshFilter.transform.localToWorldMatrix, meshFilter.sharedMesh);
-            var mesh = meshBuilder.mesh;
-            meshFilter.sharedMesh = mesh;
-            meshBuilderTime += Time.realtimeSinceStartup - tt1;
 
+            var tt1 = Time.realtimeSinceStartup;
             var pixels = new uint[lightmapSize * lightmapSize];
             {
                 var vertices = meshBuilder.worldVertices;
                 var uv1 = meshBuilder.meshUv1;
                 var triangles = meshBuilder.meshTriangles;
 
-                for (int i = 0; i < triangles.Count; i += 3)
+                for (int i = 0; i < triangles.Length; i += 3)
                 {
                     var v1 = vertices[triangles[i]];
-                    var v2 = vertices[triangles[i] + 1];
-                    var v3 = vertices[triangles[i] + 2];
+                    var v2 = vertices[triangles[i + 1]];
+                    var v3 = vertices[triangles[i + 2]];
 
                     var t1 = uv1[triangles[i]];
-                    var t2 = uv1[triangles[i] + 1];
-                    var t3 = uv1[triangles[i] + 2];
+                    var t2 = uv1[triangles[i + 1]];
+                    var t3 = uv1[triangles[i + 2]];
 
                     RaycastTriangle(ref pixels, v1, v2, v3, t1, t2, t3);
                 }
             }
+            tracingTime += Time.realtimeSinceStartup - tt1;
 
             var renderer = meshFilter.GetComponent<MeshRenderer>();
             renderer.sharedMaterial = new Material(renderer.sharedMaterial);
@@ -162,48 +160,6 @@ namespace AlpacaIT.VertexTracer
                     SetPixel(ref pixels, x, y, px);
                 }
             }
-
-            /*
-            var t1x = Mathf.FloorToInt(t1.x * 255);
-            var t1y = Mathf.FloorToInt(t1.y * 255);
-            var t2x = Mathf.FloorToInt(t2.x * 255);
-            var t2y = Mathf.FloorToInt(t2.y * 255);
-            var t3x = Mathf.FloorToInt(t3.x * 255);
-            var t3y = Mathf.FloorToInt(t3.y * 255);
-
-            if (t1x < t2x)
-            {
-                if (t1y < t2y)
-                {
-                    for (int x = t1x - 2; x <= t2x + 1; x++)
-                    {
-                        for (int y = t1y - 2; y <= t2y + 1; y++)
-                        {
-                            if (t1y < t3y)
-                            {
-                                if (y >= t1y && y <= t3y)
-                                {
-                                    Debug.DrawLine(Vector3.Lerp(v1, v2, x / (float)(t2x - t1x)), Vector3.Lerp(v1, v2, y / (float)t2y) + Vector3.up * 0.1f, Color.green, 10f);
-
-                                    SetPixel(ref pixels, x, y, Color.white);
-                                }
-                            }
-                        }
-                    }
-                }
-            }*/
-
-            /*
-            var v1dir = (position - v1).normalized;
-            var v2dir = (position - v2).normalized;
-            var v3dir = (position - v3).normalized;
-            if (Physics.Raycast(position, UnityEngine.Random.onUnitSphere, out var hit1))
-            {
-                var coord = hit1.lightmapCoord;
-                SetPixel(ref pixels, Mathf.FloorToInt(coord.x * 255), Mathf.FloorToInt(coord.y * 255), Color.white);
-
-                Debug.Log(coord);
-            }*/
         }
 
         private static uint Raycast(VertexPointLight pointLightsi, Vector3 v1, Plane plane)
@@ -230,15 +186,10 @@ namespace AlpacaIT.VertexTracer
 
             traces += (v1dist <= radius ? 1 : 0);
 
-            //float diff1 = math.max(math.dot(normal, v1dir), 0f);
-
-            //float attenuation1 = math.clamp(1.0f - v1dist * v1dist / (radius * radius), 0.0f, 1.0f) * pointLight.lightIntensity;
-
             if (v1cast)
             {
                 c1 |= (uint)1 << ((int)pointLightsi.lightChannel);
             }
-                //c1 += attenuation1 * pointLight.lightColor * diff1;
 
             return c1;
         }
@@ -269,3 +220,5 @@ namespace AlpacaIT.VertexTracer
         }
     }
 }
+
+#endif
