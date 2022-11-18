@@ -13,5 +13,14 @@ namespace AlpacaIT.DynamicLighting
         public float lightTypePulseSpeed = 10.0f;
         [Range(0f, 1f)]
         public float lightTypePulseModifier = 0.25f;
+
+#if UNITY_EDITOR
+        private void OnDrawGizmos()
+        {
+            Gizmos.color = lightColor;
+
+            Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/Gizmos/DynamicLightingPointLight.psd", true, lightColor);
+        }
+#endif
     }
 }

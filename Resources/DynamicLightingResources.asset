@@ -1,0 +1,15 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d27faa8137848c74e9e2ab0701b08b77, type: 3}
+  m_Name: DynamicLightingResources
+  m_EditorClassIdentifier: 
+  dynamicPointLightIcon: {fileID: 2800000, guid: 1646eb50de3a9b14f90eef653beeca4b, type: 3}
