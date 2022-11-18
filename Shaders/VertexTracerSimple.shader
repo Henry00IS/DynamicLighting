@@ -108,27 +108,32 @@ Shader "Unlit/VertexTracerSimple"
                     // calculate the direction between the light source and the fragment.
                     float3 light_direction = normalize(light.position - i.world);
 
-                    // x x x
-                    // x   x apply a simple 3x3 sampling with averaged results to the shadow bits.
-                    // x x x
-                    float map  = lightmap_pixel(lightmap_uv, light.channel);
-                          map += lightmap_pixel(lightmap_uv + uint2(-1, -1), light.channel);
-                          map += lightmap_pixel(lightmap_uv + uint2( 0, -1), light.channel);
-                          map += lightmap_pixel(lightmap_uv + uint2( 1, -1), light.channel);
-                          
-                          map += lightmap_pixel(lightmap_uv + uint2(-1, 0), light.channel);
-                          map += lightmap_pixel(lightmap_uv + uint2( 1, 0), light.channel);
-                          
-                          map += lightmap_pixel(lightmap_uv + uint2(-1, 1), light.channel);
-                          map += lightmap_pixel(lightmap_uv + uint2( 0, 1), light.channel);
-                          map += lightmap_pixel(lightmap_uv + uint2( 1, 1), light.channel);
-                    map /= 9.0;
-
                     // a simple dot product with the normal gives us diffusion.
                     float diffusion = max(dot(i.normal, light_direction), 0);
 
                     // important attenuation that actually creates the spot light with maximum radius.
                     float attenuation = saturate(1.0 - light_distance * light_distance / (light.radius * light.radius)) * light.intensity;
+
+                    // if this renderer has a lightmap we use shadow bits otherwise it's a dynamic object.
+                    float map = 1.0;
+                    if (lightmap_resolution > 0)
+                    {
+                        // x x x
+                        // x   x apply a simple 3x3 sampling with averaged results to the shadow bits.
+                        // x x x
+                        map  = lightmap_pixel(lightmap_uv, light.channel);
+                        map += lightmap_pixel(lightmap_uv + uint2(-1, -1), light.channel);
+                        map += lightmap_pixel(lightmap_uv + uint2(0, -1), light.channel);
+                        map += lightmap_pixel(lightmap_uv + uint2(1, -1), light.channel);
+
+                        map += lightmap_pixel(lightmap_uv + uint2(-1, 0), light.channel);
+                        map += lightmap_pixel(lightmap_uv + uint2(1, 0), light.channel);
+
+                        map += lightmap_pixel(lightmap_uv + uint2(-1, 1), light.channel);
+                        map += lightmap_pixel(lightmap_uv + uint2(0, 1), light.channel);
+                        map += lightmap_pixel(lightmap_uv + uint2(1, 1), light.channel);
+                        map /= 9.0;
+                    }
 
                     // add this light to the final color of the fragment.
                     light_final += light.color * attenuation * diffusion * map;
