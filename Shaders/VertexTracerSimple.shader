@@ -14,8 +14,8 @@ Shader "Unlit/VertexTracerSimple"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            // make fog work
             #pragma multi_compile_fog
+            #pragma shader_feature DYNAMIC_LIGHTING_UNLIT
 
             #include "UnityCG.cginc"
             
@@ -75,6 +75,15 @@ Shader "Unlit/VertexTracerSimple"
                 return (lightmap[uv.y * lightmap_resolution + uv.x] & (1 << channel)) > 0;
             }
 
+#if DYNAMIC_LIGHTING_UNLIT
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                return tex2D(_MainTex, i.uv0);
+            }
+
+#else
+
             fixed4 frag (v2f i) : SV_Target
             {
                 // calculate the lightmap pixel coordinates in advance.
@@ -131,6 +140,9 @@ Shader "Unlit/VertexTracerSimple"
                 UNITY_APPLY_FOG(i.fogCoord, col);
                 return col;
             }
+
+#endif
+
             ENDCG
         }
     }

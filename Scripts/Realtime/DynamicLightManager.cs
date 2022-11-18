@@ -2,6 +2,7 @@
 
 namespace AlpacaIT.DynamicLighting
 {
+    [ExecuteInEditMode]
     public class DynamicLightManager : MonoBehaviour
     {
         private static DynamicLightManager s_Instance;
@@ -32,7 +33,7 @@ namespace AlpacaIT.DynamicLighting
         public int dynamicLightBudget = 64;
         public int realtimeLightBudget = 32;
 
-        /// <summary>The memory size in bytes of the <see cref="DynamicLight"/> struct.</summary>
+        /// <summary>The memory size in bytes of the <see cref="DynamicLight"/> struct.x</summary>
         private int dynamicLightStride;
         private Lightmap[] lightmaps;
         private DynamicPointLight[] dynamicPointLights;
@@ -40,7 +41,42 @@ namespace AlpacaIT.DynamicLighting
         private DynamicLight[] dynamicLights;
         private ComputeBuffer dynamicLightsBuffer;
 
-        private void Awake()
+#if UNITY_EDITOR
+
+        private bool useContinuousPreview = false;
+
+        private void OnEnable()
+        {
+            // handle C# reloads in the editor.
+            if (!Application.isPlaying)
+                Awake();
+        }
+
+        private void OnDisable()
+        {
+            // handle C# reloads in the editor.
+            if (!Application.isPlaying)
+                OnDestroy();
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Toggle Continuous Preview", false, 11)]
+        public static void EnableContinuousPreview()
+        {
+            Instance.useContinuousPreview = !Instance.useContinuousPreview;
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Toggle Unlit Surfaces", false, 12)]
+        public static void ToggleUnlitSurfaces()
+        {
+            if (Shader.IsKeywordEnabled("DYNAMIC_LIGHTING_UNLIT"))
+                Shader.DisableKeyword("DYNAMIC_LIGHTING_UNLIT");
+            else
+                Shader.EnableKeyword("DYNAMIC_LIGHTING_UNLIT");
+        }
+
+#endif
+
+        public void Awake()
         {
             dynamicLightStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(DynamicLight));
 
@@ -116,6 +152,21 @@ namespace AlpacaIT.DynamicLighting
             dynamicLightsBuffer.SetData(dynamicLights);
 
             Shader.SetGlobalInt("dynamic_lights_count", dynamicPointLights.Length);
+        }
+
+        private void OnDrawGizmos()
+        {
+#if UNITY_EDITOR
+            if (useContinuousPreview)
+            {
+                // ensure continuous update calls.
+                if (!Application.isPlaying)
+                {
+                    UnityEditor.EditorApplication.QueuePlayerLoopUpdate();
+                    UnityEditor.SceneView.RepaintAll();
+                }
+            }
+#endif
         }
     }
 }

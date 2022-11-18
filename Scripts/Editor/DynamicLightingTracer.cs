@@ -17,7 +17,7 @@ namespace AlpacaIT.DynamicLighting
 
         private static int uniqueIdentifier = 0;
 
-        [UnityEditor.MenuItem("Dynamic Lighting/Trace")]
+        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene", false, 0)]
         public static void Go()
         {
             tracingTime = 0f;
