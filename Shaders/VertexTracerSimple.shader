@@ -30,6 +30,7 @@ Shader "Unlit/VertexTracerSimple"
             
             StructuredBuffer<DynamicLight> dynamic_lights;
             uint dynamic_lights_count;
+            uint dynamic_lights_realtime_count;
 
             StructuredBuffer<uint> lightmap;
             uint lightmap_resolution;
@@ -90,7 +91,7 @@ Shader "Unlit/VertexTracerSimple"
                 // clamp uv to 0-1 and multiply by resolution cast to uint.
                 uint2 lightmap_uv = saturate(i.uv1) * lightmap_resolution;
 
-                // iterate over every light in the scene:
+                // iterate over every dynamic light in the scene:
                 float3 light_final = float3(0, 0, 0);
                 for (uint k = 0; k < dynamic_lights_count; k++)
                 {
@@ -131,6 +132,32 @@ Shader "Unlit/VertexTracerSimple"
 
                     // add this light to the final color of the fragment.
                     light_final += light.color * attenuation * diffusion * map;
+                }
+
+                // iterate over every realtime light in the scene:
+                for (k = 0; k < dynamic_lights_realtime_count; k++)
+                {
+                    // get the current light from memory.
+                    DynamicLight light = dynamic_lights[dynamic_lights_count + k];
+
+                    // calculate the distance between the light source and the fragment.
+                    float light_distance = distance(i.world, light.position);
+
+                    // we can use the distance and guaranteed maximum light radius to early out.
+                    // confirmed with NVIDIA Quadro K1000M doubling the framerate.
+                    if (light_distance > light.radius) continue;
+
+                    // calculate the direction between the light source and the fragment.
+                    float3 light_direction = normalize(light.position - i.world);
+
+                    // a simple dot product with the normal gives us diffusion.
+                    float diffusion = max(dot(i.normal, light_direction), 0);
+
+                    // important attenuation that actually creates the spot light with maximum radius.
+                    float attenuation = saturate(1.0 - light_distance * light_distance / (light.radius * light.radius)) * light.intensity;
+
+                    // add this light to the final color of the fragment.
+                    light_final += light.color * attenuation * diffusion;
                 }
                 
                 // sample the main texture, multiply by the light and add vertex colors.

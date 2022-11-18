@@ -1,13 +1,14 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
-    public class DynamicPointLight : MonoBehaviour, IDynamicLight
+    public class RealtimePointLight : MonoBehaviour, IDynamicLight
     {
         public Color lightColor = Color.white;
-        public float lightIntensity = 2.0f;
-        public float lightRadius = 8.0f;
-        public uint lightChannel = 0;
+        public float lightIntensity = 4.0f;
+        public float lightRadius = 2.0f;
 
         public LightType lightType = LightType.Steady;
         public float lightTypePulseSpeed = 10.0f;

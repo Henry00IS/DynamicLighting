@@ -88,6 +88,7 @@ namespace AlpacaIT.DynamicLighting
             dynamicLightsBuffer = new ComputeBuffer(dynamicLights.Length, dynamicLightStride, ComputeBufferType.Default);
             Shader.SetGlobalBuffer("dynamic_lights", dynamicLightsBuffer);
             Shader.SetGlobalInt("dynamic_lights_count", 0);
+            Shader.SetGlobalInt("dynamic_lights_realtime_count", 0);
 
             // prepare the scene for dynamic lighting.
             lightmaps = FindObjectsOfType<Lightmap>();
@@ -121,37 +122,64 @@ namespace AlpacaIT.DynamicLighting
                 lightmaps[i].buffer.Release();
         }
 
+        /// <summary>This handles the CPU side lighting effects.</summary>
         private void Update()
         {
+            var idx = 0;
+
+            // dynamic lights:
             for (int i = 0; i < dynamicPointLights.Length; i++)
             {
                 var light = dynamicPointLights[i];
-                dynamicLights[i].position = light.transform.position;
-                dynamicLights[i].color = new Vector3(light.lightColor.r, light.lightColor.g, light.lightColor.b);
-                dynamicLights[i].intensity = light.lightIntensity;
-                dynamicLights[i].radius = light.lightRadius;
-                dynamicLights[i].channel = light.lightChannel;
+                dynamicLights[idx].position = light.transform.position;
+                dynamicLights[idx].color = new Vector3(light.lightColor.r, light.lightColor.g, light.lightColor.b);
+                dynamicLights[idx].intensity = light.lightIntensity;
+                dynamicLights[idx].radius = light.lightRadius;
+                dynamicLights[idx].channel = light.lightChannel;
 
-                switch (light.lightType)
-                {
-                    case LightType.Steady:
-                        break;
-
-                    case LightType.Pulse:
-                        dynamicLights[i].intensity *= Mathf.Lerp(light.lightTypePulseModifier, 1.0f, (1f + Mathf.Sin(Time.time * light.lightTypePulseSpeed)) * 0.5f);
-                        break;
-
-                    case LightType.Flicker:
-                        dynamicLights[i].intensity *= Random.value;
-                        break;
-
-                    case LightType.Strobe:
-                        break;
-                }
+                UpdateLightEffects(light, idx);
+                idx++;
             }
+
+            // realtime lights:
+            var realtimePointLights = FindObjectsOfType<RealtimePointLight>();
+            for (int i = 0; i < realtimePointLights.Length; i++)
+            {
+                var light = realtimePointLights[i];
+                dynamicLights[idx].position = light.transform.position;
+                dynamicLights[idx].color = new Vector3(light.lightColor.r, light.lightColor.g, light.lightColor.b);
+                dynamicLights[idx].intensity = light.lightIntensity;
+                dynamicLights[idx].radius = light.lightRadius;
+
+                UpdateLightEffects(light, idx);
+                idx++;
+            }
+
             dynamicLightsBuffer.SetData(dynamicLights);
 
             Shader.SetGlobalInt("dynamic_lights_count", dynamicPointLights.Length);
+            Shader.SetGlobalInt("dynamic_lights_realtime_count", realtimePointLights.Length);
+
+        }
+
+        private void UpdateLightEffects(IDynamicLight light, int shaderLightIndex)
+        {
+            switch (light.lightType)
+            {
+                case LightType.Steady:
+                    break;
+
+                case LightType.Pulse:
+                    dynamicLights[shaderLightIndex].intensity *= Mathf.Lerp(light.lightTypePulseModifier, 1.0f, (1f + Mathf.Sin(Time.time * light.lightTypePulseSpeed)) * 0.5f);
+                    break;
+
+                case LightType.Flicker:
+                    dynamicLights[shaderLightIndex].intensity *= Random.value;
+                    break;
+
+                case LightType.Strobe:
+                    break;
+            }
         }
 
         private void OnDrawGizmos()
