@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
@@ -63,19 +62,16 @@ namespace AlpacaIT.DynamicLighting
 
                 // fetch the active material on the mesh renderer.
                 var meshRenderer = lightmap.GetComponent<MeshRenderer>();
-                var material = meshRenderer.sharedMaterial;
-                Debug.Assert(material != null, "Encountered a null material. Please rebake your lightmap again.");
+                var materialPropertyBlock = new MaterialPropertyBlock();
 
-                // create and assign an instanced copy of the material.
-                meshRenderer.sharedMaterial = material = new Material(material);
-
-                // assign the lightmap data to the material.
+                // assign the lightmap data to the material property block.
                 if (RuntimeUtilities.ReadLightmapData(lightmap.identifier, out uint[] pixels))
                 {
                     lightmap.buffer = new ComputeBuffer(pixels.Length, 4);
                     lightmap.buffer.SetData(pixels);
-                    material.SetBuffer("lightmap", lightmap.buffer);
-                    material.SetInt("lightmap_resolution", lightmap.resolution);
+                    materialPropertyBlock.SetBuffer("lightmap", lightmap.buffer);
+                    materialPropertyBlock.SetInt("lightmap_resolution", lightmap.resolution);
+                    meshRenderer.SetPropertyBlock(materialPropertyBlock);
                 }
                 else Debug.LogError("Unable to read the lightmap " + lightmap.identifier + " data file!");
             }
@@ -110,7 +106,7 @@ namespace AlpacaIT.DynamicLighting
                         break;
 
                     case LightType.Flicker:
-                        dynamicLights[i].intensity *= UnityEngine.Random.value;
+                        dynamicLights[i].intensity *= Random.value;
                         break;
 
                     case LightType.Strobe:
