@@ -26,81 +26,79 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
-        private readonly int dynamicLightStride;
-        private List<Material> materials = new List<Material>();
-        private List<Lightmap> lightmaps = new List<Lightmap>();
-        private DynamicPointLight[] lights;
+        // the NVIDIA Quadro K1000M (2012) can handle 25 lights at 30fps.
+        // the NVIDIA GeForce GTX 1050 Ti (2016) can handle 125 lights between 53-68fps.
+        // the NVIDIA GeForce RTX 3080 (2020) can handle 2000 lights at 70fps.
 
-        private DynamicLight[] shaderLights;
-        private ComputeBuffer lightsBuffer;
+        public int dynamicLightBudget = 64;
+        public int realtimeLightBudget = 32;
 
-        private DynamicLightManager()
+        /// <summary>The memory size in bytes of the <see cref="DynamicLight"/> struct.</summary>
+        private int dynamicLightStride;
+        private Lightmap[] lightmaps;
+        private DynamicPointLight[] dynamicPointLights;
+
+        private DynamicLight[] dynamicLights;
+        private ComputeBuffer dynamicLightsBuffer;
+
+        private void Awake()
         {
             dynamicLightStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(DynamicLight));
-        }
 
-        private void OnEnable()
-        {
-            lights = FindObjectsOfType<DynamicPointLight>();
-            shaderLights = new DynamicLight[lights.Length];
-            lightsBuffer = new ComputeBuffer(lights.Length, dynamicLightStride, ComputeBufferType.Default);
+            // more dynamic point lights will never be instantiated during play so we fetch them here once.
+            dynamicPointLights = FindObjectsOfType<DynamicPointLight>();
 
-            var meshRenderers = FindObjectsOfType<MeshRenderer>();
-            foreach (var meshRenderer in meshRenderers)
+            // allocate the required arrays and buffers according to our budget.
+            dynamicLights = new DynamicLight[dynamicLightBudget + realtimeLightBudget];
+            dynamicLightsBuffer = new ComputeBuffer(dynamicLights.Length, dynamicLightStride, ComputeBufferType.Default);
+            Shader.SetGlobalBuffer("dynamic_lights", dynamicLightsBuffer);
+            Shader.SetGlobalInt("dynamic_lights_count", 0);
+
+            // prepare the scene for dynamic lighting.
+            lightmaps = FindObjectsOfType<Lightmap>();
+            for (int i = 0; i < lightmaps.Length; i++)
             {
-#if UNITY_EDITOR
-                if (!meshRenderer.gameObject.isStatic) continue;
-#else
-                if (!meshRenderer.isPartOfStaticBatch) continue;
-#endif
-                if (meshRenderer.TryGetComponent<Lightmap>(out var lightmap))
+                // for every game object that requires a lightmap:
+                var lightmap = lightmaps[i];
+
+                // fetch the active material on the mesh renderer.
+                var meshRenderer = lightmap.GetComponent<MeshRenderer>();
+                var material = meshRenderer.sharedMaterial;
+                Debug.Assert(material != null, "Encountered a null material. Please rebake your lightmap again.");
+
+                // create and assign an instanced copy of the material.
+                meshRenderer.sharedMaterial = material = new Material(material);
+
+                // assign the lightmap data to the material.
+                if (RuntimeUtilities.ReadLightmapData(lightmap.identifier, out uint[] pixels))
                 {
-                    var material = meshRenderer.sharedMaterial;
-                    if (material == null)
-                    {
-                        Debug.LogError("Encountered a null material. Please rebake your lightmap again.");
-                        continue;
-                    }
-
-                    // create an instantiated copy of the material.
-                    material = new Material(material);
-                    meshRenderer.sharedMaterial = material;
-                    materials.Add(material);
-                    lightmaps.Add(lightmap);
-
-                    if (RuntimeUtilities.ReadLightmapData(lightmap.identifier, out uint[] pixels))
-                    {
-                        lightmap.buffer = new ComputeBuffer(pixels.Length, 4);
-                        lightmap.buffer.SetData(pixels);
-                        material.SetBuffer("lightmap", lightmap.buffer);
-                        material.SetInt("lightmap_resolution", lightmap.resolution);
-                    }
-                    else
-                    {
-                        Debug.LogError("Unable to read the lightmap " + lightmap.identifier + " data file!");
-                    }
+                    lightmap.buffer = new ComputeBuffer(pixels.Length, 4);
+                    lightmap.buffer.SetData(pixels);
+                    material.SetBuffer("lightmap", lightmap.buffer);
+                    material.SetInt("lightmap_resolution", lightmap.resolution);
                 }
+                else Debug.LogError("Unable to read the lightmap " + lightmap.identifier + " data file!");
             }
         }
 
-        private void OnDisable()
+        private void OnDestroy()
         {
-            lightsBuffer.Release();
+            dynamicLightsBuffer.Release();
 
-            foreach (var lightmap in lightmaps)
-                lightmap.buffer.Release();
+            for (int i = 0; i < lightmaps.Length; i++)
+                lightmaps[i].buffer.Release();
         }
 
         private void Update()
         {
-            for (int i = 0; i < lights.Length; i++)
+            for (int i = 0; i < dynamicPointLights.Length; i++)
             {
-                var light = lights[i];
-                shaderLights[i].position = light.transform.position;
-                shaderLights[i].color = new Vector3(light.lightColor.r, light.lightColor.g, light.lightColor.b);
-                shaderLights[i].intensity = light.lightIntensity;
-                shaderLights[i].radius = light.lightRadius;
-                shaderLights[i].channel = light.lightChannel;
+                var light = dynamicPointLights[i];
+                dynamicLights[i].position = light.transform.position;
+                dynamicLights[i].color = new Vector3(light.lightColor.r, light.lightColor.g, light.lightColor.b);
+                dynamicLights[i].intensity = light.lightIntensity;
+                dynamicLights[i].radius = light.lightRadius;
+                dynamicLights[i].channel = light.lightChannel;
 
                 switch (light.lightType)
                 {
@@ -108,37 +106,20 @@ namespace AlpacaIT.DynamicLighting
                         break;
 
                     case LightType.Pulse:
-                        shaderLights[i].intensity *= Mathf.Lerp(light.lightTypePulseModifier, 1.0f, (1f + Mathf.Sin(Time.time * light.lightTypePulseSpeed)) * 0.5f);
+                        dynamicLights[i].intensity *= Mathf.Lerp(light.lightTypePulseModifier, 1.0f, (1f + Mathf.Sin(Time.time * light.lightTypePulseSpeed)) * 0.5f);
                         break;
 
                     case LightType.Flicker:
-                        shaderLights[i].intensity *= UnityEngine.Random.value;
+                        dynamicLights[i].intensity *= UnityEngine.Random.value;
                         break;
 
                     case LightType.Strobe:
                         break;
                 }
             }
-            lightsBuffer.SetData(shaderLights);
+            dynamicLightsBuffer.SetData(dynamicLights);
 
-            UpdateLightCount();
-            /*
-            var materialsCount = materials.Count;
-            for (int i = 0; i < materialsCount; i++)
-            {
-                var material = materials[i];
-            }*/
-        }
-
-        private void UpdateLightCount()
-        {
-            var materialsCount = materials.Count;
-            for (int i = 0; i < materialsCount; i++)
-            {
-                var material = materials[i];
-                material.SetInt("lights_count", lights.Length);
-                material.SetBuffer("lights", lightsBuffer);
-            }
+            Shader.SetGlobalInt("dynamic_lights_count", dynamicPointLights.Length);
         }
     }
 }

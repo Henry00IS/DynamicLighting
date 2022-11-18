@@ -12,6 +12,7 @@ namespace AlpacaIT.DynamicLighting
         [SerializeField]
         public int resolution;
 
+        [HideInInspector]
         public ComputeBuffer buffer;
     }
 }

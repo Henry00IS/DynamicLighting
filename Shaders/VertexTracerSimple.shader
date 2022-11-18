@@ -28,8 +28,8 @@ Shader "Unlit/VertexTracerSimple"
                 uint   channel;
             };
             
-            StructuredBuffer<DynamicLight> lights;
-            uint lights_count;
+            StructuredBuffer<DynamicLight> dynamic_lights;
+            uint dynamic_lights_count;
 
             StructuredBuffer<uint> lightmap;
             uint lightmap_resolution;
@@ -83,10 +83,10 @@ Shader "Unlit/VertexTracerSimple"
 
                 // iterate over every light in the scene:
                 float3 light_final = float3(0, 0, 0);
-                for (uint k = 0; k < lights_count; k++)
+                for (uint k = 0; k < dynamic_lights_count; k++)
                 {
                     // get the current light from memory.
-                    DynamicLight light = lights[k];
+                    DynamicLight light = dynamic_lights[k];
 
                     // calculate the distance between the light source and the fragment.
                     float light_distance = distance(i.world, light.position);

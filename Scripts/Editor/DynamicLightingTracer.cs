@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
-    public static class VertexTracer
+    public static class DynamicLightingTracer
     {
         private static int traces = 0;
         private static float tracingTime = 0f;
@@ -135,16 +135,16 @@ namespace AlpacaIT.DynamicLighting
 
         private static Vector3 UvTo3d(Vector2 uv, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
-            // calculate triangle area - if zero, skip it
+            // calculate triangle area - if zero, skip it.
             var a = Area(t1, t2, t3); if (a == 0f) return Vector3.zero;
 
-            // calculate barycentric coordinates of u1, u2 and u3
-            // if anyone is negative, point is outside the triangle: skip it
+            // calculate barycentric coordinates of u1, u2 and u3.
+            // if anyone is negative, point is outside the triangle: skip it.
             var a1 = Area(t2, t3, uv) / a; if (a1 < 0f) return Vector3.zero;
             var a2 = Area(t3, t1, uv) / a; if (a2 < 0f) return Vector3.zero;
             var a3 = Area(t1, t2, uv) / a; if (a3 < 0f) return Vector3.zero;
 
-            // point inside the triangle - find mesh position by interpolation...
+            // point inside the triangle - find mesh position by interpolation.
             return a1 * v1 + a2 * v2 + a3 * v3;
         }
 
@@ -153,16 +153,6 @@ namespace AlpacaIT.DynamicLighting
             // skip degenerate triangles.
             Vector3 normal = new Plane(v1, v2, v3).normal;
             if (normal.Equals(Vector3.zero)) { return; };
-
-            //Vector3 center = (v1 + v2 + v3) / 3f;
-            //v1 -= (center - v1).normalized * ((1.0f / lightmapSizeMin1) * 4f);
-            //v2 -= (center - v2).normalized * ((1.0f / lightmapSizeMin1) * 4f);
-            //v3 -= (center - v3).normalized * ((1.0f / lightmapSizeMin1) * 4f);
-
-            //Vector2 center2 = (t1 + t2 + t3) / 3f;
-            //t1 -= (center2 - t1).normalized * ((1.0f / lightmapSizeMin1) * 4f);
-            //t2 -= (center2 - t2).normalized * ((1.0f / lightmapSizeMin1) * 4f);
-            //t3 -= (center2 - t3).normalized * ((1.0f / lightmapSizeMin1) * 4f);
 
             // calculate the bounding box of the polygon in UV space.
             // we only have to raycast these pixels and can skip the rest.
