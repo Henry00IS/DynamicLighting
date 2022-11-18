@@ -1,14 +1,14 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-namespace AlpacaIT.VertexTracer
+namespace AlpacaIT.DynamicLighting
 {
-    public class LightingEngine : MonoBehaviour
+    public class DynamicLightManager : MonoBehaviour
     {
-        private static LightingEngine s_Instance;
+        private static DynamicLightManager s_Instance;
 
-        /// <summary>Gets the singleton game manager instance or creates it.</summary>
-        public static LightingEngine Instance
+        /// <summary>Gets the singleton dynamic lighting manager instance or creates it.</summary>
+        public static DynamicLightManager Instance
         {
             get
             {
@@ -16,44 +16,34 @@ namespace AlpacaIT.VertexTracer
                 if (s_Instance) return s_Instance;
 
                 // C# hot reloading support: try finding an existing instance in the scene.
-                s_Instance = FindObjectOfType<LightingEngine>();
+                s_Instance = FindObjectOfType<DynamicLightManager>();
 
                 // otherwise create a new instance in scene.
                 if (!s_Instance)
-                    s_Instance = new GameObject("[LightingEngine]").AddComponent<LightingEngine>();
+                    s_Instance = new GameObject("[Dynamic Light Manager]").AddComponent<DynamicLightManager>();
 
                 return s_Instance;
             }
         }
 
-        /// <summary>A point light (this struct is mirrored in the shader and can not be modified).</summary>
-        private struct ShaderLight
-        {
-            public Vector3 position;
-            public Vector3 color;
-            public float intensity;
-            public float radius;
-            public uint channel;
-        };
-
-        private readonly int ShaderLightStride;
+        private readonly int dynamicLightStride;
         private List<Material> materials = new List<Material>();
         private List<Lightmap> lightmaps = new List<Lightmap>();
-        private VertexPointLight[] lights;
+        private DynamicPointLight[] lights;
 
-        private ShaderLight[] shaderLights;
+        private DynamicLight[] shaderLights;
         private ComputeBuffer lightsBuffer;
 
-        private LightingEngine()
+        private DynamicLightManager()
         {
-            ShaderLightStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(ShaderLight));
+            dynamicLightStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(DynamicLight));
         }
 
         private void OnEnable()
         {
-            lights = FindObjectsOfType<VertexPointLight>();
-            shaderLights = new ShaderLight[lights.Length];
-            lightsBuffer = new ComputeBuffer(lights.Length, ShaderLightStride, ComputeBufferType.Default);
+            lights = FindObjectsOfType<DynamicPointLight>();
+            shaderLights = new DynamicLight[lights.Length];
+            lightsBuffer = new ComputeBuffer(lights.Length, dynamicLightStride, ComputeBufferType.Default);
 
             var meshRenderers = FindObjectsOfType<MeshRenderer>();
             foreach (var meshRenderer in meshRenderers)

@@ -19,7 +19,7 @@ Shader "Unlit/VertexTracerSimple"
 
             #include "UnityCG.cginc"
             
-            struct Light
+            struct DynamicLight
             {
                 float3 position;
                 float3 color;
@@ -28,7 +28,7 @@ Shader "Unlit/VertexTracerSimple"
                 uint   channel;
             };
             
-            StructuredBuffer<Light> lights;
+            StructuredBuffer<DynamicLight> lights;
             uint lights_count;
 
             StructuredBuffer<uint> lightmap;
@@ -86,7 +86,7 @@ Shader "Unlit/VertexTracerSimple"
                 for (uint k = 0; k < lights_count; k++)
                 {
                     // get the current light from memory.
-                    Light light = lights[k];
+                    DynamicLight light = lights[k];
 
                     // calculate the distance between the light source and the fragment.
                     float light_distance = distance(i.world, light.position);

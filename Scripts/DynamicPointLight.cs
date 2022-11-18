@@ -1,8 +1,8 @@
 using UnityEngine;
 
-namespace AlpacaIT.VertexTracer
+namespace AlpacaIT.DynamicLighting
 {
-    public class VertexPointLight : MonoBehaviour
+    public class DynamicPointLight : MonoBehaviour
     {
         public Color lightColor = Color.white;
         public float lightIntensity = 10.0f;

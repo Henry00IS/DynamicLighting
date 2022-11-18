@@ -3,28 +3,28 @@
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace AlpacaIT.VertexTracer
+namespace AlpacaIT.DynamicLighting
 {
     public static class VertexTracer
     {
         private static int traces = 0;
         private static float tracingTime = 0f;
 
-        private static VertexPointLight[] pointLights;
+        private static DynamicPointLight[] pointLights;
 
         private const int lightmapSize = 2048;
         private const float lightmapSizeMin1 = lightmapSize - 1;
 
         private static int uniqueIdentifier = 0;
 
-        [UnityEditor.MenuItem("Vertex Tracer/Trace")]
+        [UnityEditor.MenuItem("Dynamic Lighting/Trace")]
         public static void Go()
         {
             tracingTime = 0f;
             traces = 0;
             uniqueIdentifier = 0;
 
-            pointLights = Object.FindObjectsOfType<VertexPointLight>();
+            pointLights = Object.FindObjectsOfType<DynamicPointLight>();
             AssignPointLightChannels();
 
             var meshFilters = Object.FindObjectsOfType<MeshFilter>();
@@ -203,7 +203,7 @@ namespace AlpacaIT.VertexTracer
             }
         }
 
-        private static uint Raycast(VertexPointLight pointLight, Vector3 world, Vector3 normal)
+        private static uint Raycast(DynamicPointLight pointLight, Vector3 world, Vector3 normal)
         {
             var radius = pointLight.lightRadius;
             if (radius == 0.0f) return 0; // early out by radius.

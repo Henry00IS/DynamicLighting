@@ -1,4 +1,4 @@
-﻿namespace AlpacaIT.VertexTracer
+﻿namespace AlpacaIT.DynamicLighting
 {
     /// <summary>The different effects that can be applied to a light.</summary>
     public enum LightType

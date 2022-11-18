@@ -3,12 +3,12 @@
     "name": "Henry de Jongh",
     "url": "https://github.com/Henry00IS"
   },
-  "description": "The Vertex Tracer.",
-  "displayName": "Vertex Tracer",
+  "description": "The Dynamic Lighting System for Unity.",
+  "displayName": "Dynamic Lighting",
   "documentationUrl": "https://github.com/Henry00IS/",
   "changelogUrl": "https://github.com/Henry00IS/",
   "licensesUrl": "https://github.com/Henry00IS/",
-  "name": "de.alpacait.vertextracer",
+  "name": "de.alpacait.dynamiclighting",
   "keywords": [
     "level design",
     "world building",
@@ -18,7 +18,7 @@
 	"vertices"
   ],
   "unity": "2018.3",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "dependencies": {
     "com.unity.mathematics": "1.1.0"
   }

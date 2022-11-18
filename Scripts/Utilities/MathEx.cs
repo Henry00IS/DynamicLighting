@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using UnityEngine;
 
-namespace AlpacaIT.VertexTracer
+namespace AlpacaIT.DynamicLighting
 {
     public class MathEx
     {

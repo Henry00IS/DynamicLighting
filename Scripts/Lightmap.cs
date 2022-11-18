@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace AlpacaIT.VertexTracer
+namespace AlpacaIT.DynamicLighting
 {
     public class Lightmap : MonoBehaviour
     {

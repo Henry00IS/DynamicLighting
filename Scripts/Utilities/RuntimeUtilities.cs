@@ -4,7 +4,7 @@ using System.IO.Compression;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace AlpacaIT.VertexTracer
+namespace AlpacaIT.DynamicLighting
 {
     public class RuntimeUtilities
     {

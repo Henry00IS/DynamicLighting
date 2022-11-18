@@ -1,5 +1,5 @@
 {
-    "name": "de.alpacait.vertextracer",
+    "name": "de.alpacait.dynamiclighting",
     "rootNamespace": "",
     "references": [
         "Unity.Mathematics"
