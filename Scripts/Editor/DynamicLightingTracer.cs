@@ -1,30 +1,43 @@
-#if UNITY_EDITOR
-
-using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
-    public static class DynamicLightingTracer
+    /// <summary>The raytracer that calculates shadows for all dynamic lights.</summary>
+    public class DynamicLightingTracer
     {
-        private static int traces = 0;
-        private static float tracingTime = 0f;
+        /// <summary>The size of the lightmap to be baked (defaults to 2048x2048).</summary>
+        public int lightmapSize { get; set; } = 2048;
 
-        private static DynamicLight[] pointLights;
+        private int traces = 0;
+        private float tracingTime = 0f;
+        private DynamicLight[] pointLights;
+        private float lightmapSizeMin1;
+        private int uniqueIdentifier = 0;
 
-        private const int lightmapSize = 2048;
-        private const float lightmapSizeMin1 = lightmapSize - 1;
-
-        private static int uniqueIdentifier = 0;
-
-        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene", false, 0)]
-        public static void Go()
+        /// <summary>Creates a new instance of the dynamic lighting tracer.</summary>
+        public DynamicLightingTracer()
         {
-            tracingTime = 0f;
-            traces = 0;
-            uniqueIdentifier = 0;
+            Prepare();
+        }
 
+        /// <summary>Resets the internal state so that it's ready for raytracing.</summary>
+        private void Prepare()
+        {
+            traces = 0;
+            tracingTime = 0f;
+            pointLights = null;
+            lightmapSizeMin1 = lightmapSize - 1;
+            uniqueIdentifier = 0;
+        }
+
+        /// <summary>Starts raytracing the world.</summary>
+        public void StartRaytracing()
+        {
+            // reset the internal state.
+            Prepare();
+
+            // find all of the dynamic lights in the scene and assign channels.
             pointLights = DynamicLightManager.FindDynamicLightsInScene();
             AssignPointLightChannels();
 
@@ -41,7 +54,43 @@ namespace AlpacaIT.DynamicLighting
             DynamicLightManager.Instance.Reload();
         }
 
-        private static void AssignPointLightChannels()
+#if UNITY_EDITOR
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 512", false, 0)]
+        private static void EditorRaytrace512()
+        {
+            var tracer = new DynamicLightingTracer();
+            tracer.lightmapSize = 512;
+            tracer.StartRaytracing();
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 1024", false, 1)]
+        private static void EditorRaytrace1024()
+        {
+            var tracer = new DynamicLightingTracer();
+            tracer.lightmapSize = 1024;
+            tracer.StartRaytracing();
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 2048 (Recommended)", false, 1)]
+        private static void EditorRaytrace2048()
+        {
+            var tracer = new DynamicLightingTracer();
+            tracer.lightmapSize = 2048;
+            tracer.StartRaytracing();
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 4096", false, 1)]
+        private static void EditorRaytrace4096()
+        {
+            var tracer = new DynamicLightingTracer();
+            tracer.lightmapSize = 4096;
+            tracer.StartRaytracing();
+        }
+
+#endif
+
+        private void AssignPointLightChannels()
         {
             // first reset all the channels to an invalid value.
             for (int i = 0; i < pointLights.Length; i++)
@@ -65,7 +114,7 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
-        private static bool TryFindFreeLightChannelAt(Vector3 position, float radius, out uint channel)
+        private bool TryFindFreeLightChannelAt(Vector3 position, float radius, out uint channel)
         {
             // find all used channels that intersect our radius.
             var channels = new bool[32];
@@ -86,7 +135,7 @@ namespace AlpacaIT.DynamicLighting
             return false;
         }
 
-        private static void Raytrace(MeshFilter meshFilter)
+        private void Raytrace(MeshFilter meshFilter)
         {
             MeshBuilder meshBuilder = new MeshBuilder(meshFilter.transform.localToWorldMatrix, meshFilter.sharedMesh);
 
@@ -129,7 +178,7 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
-        private static void SetPixel(ref uint[] pixels, int x, int y, uint color)
+        private void SetPixel(ref uint[] pixels, int x, int y, uint color)
         {
             if (x < 0 || y < 0 || x >= lightmapSize || y >= lightmapSize) return;
             pixels[y * lightmapSize + x] = color;
@@ -150,7 +199,7 @@ namespace AlpacaIT.DynamicLighting
             return a1 * v1 + a2 * v2 + a3 * v3;
         }
 
-        private static void RaycastTriangle(ref uint[] pixels, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        private void RaycastTriangle(ref uint[] pixels, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // skip degenerate triangles.
             Vector3 normal = new Plane(v1, v2, v3).normal;
@@ -195,7 +244,7 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
-        private static uint Raycast(DynamicLight pointLight, Vector3 world, Vector3 normal)
+        private uint Raycast(DynamicLight pointLight, Vector3 world, Vector3 normal)
         {
             var radius = pointLight.lightRadius;
             if (radius == 0.0f) return 0; // early out by radius.
@@ -217,14 +266,14 @@ namespace AlpacaIT.DynamicLighting
         }
 
         // calculate signed triangle area using a kind of "2D cross product":
-        public static float Area(Vector2 p1, Vector2 p2, Vector2 p3)
+        private static float Area(Vector2 p1, Vector2 p2, Vector2 p3)
         {
             var v1 = p1 - p3;
             var v2 = p2 - p3;
             return (v1.x * v2.y - v1.y * v2.x) / 2f;
         }
 
-        public static Rect ComputeTriangleBoundingBox(Vector2 a, Vector2 b, Vector2 c)
+        private static Rect ComputeTriangleBoundingBox(Vector2 a, Vector2 b, Vector2 c)
         {
             float sx1 = a.x;
             float sx2 = b.x;
@@ -242,5 +291,3 @@ namespace AlpacaIT.DynamicLighting
         }
     }
 }
-
-#endif

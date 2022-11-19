@@ -78,6 +78,12 @@ namespace AlpacaIT.DynamicLighting
                 Shader.EnableKeyword("DYNAMIC_LIGHTING_UNLIT");
         }
 
+        [UnityEditor.MenuItem("Dynamic Lighting/PayPal Donation", false, 23)]
+        public static void PayPalDonation()
+        {
+            Application.OpenURL("https://paypal.me/henrydejongh");
+        }
+
 #endif
 
         /// <summary>Finds all of the dynamic lights in the scene that are not realtime.</summary>
