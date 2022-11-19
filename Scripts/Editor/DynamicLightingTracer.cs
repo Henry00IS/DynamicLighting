@@ -11,6 +11,7 @@ namespace AlpacaIT.DynamicLighting
 
         private int traces = 0;
         private float tracingTime = 0f;
+        private float seamTime = 0f;
         private DynamicLight[] pointLights;
         private float lightmapSizeMin1;
         private int uniqueIdentifier = 0;
@@ -26,6 +27,7 @@ namespace AlpacaIT.DynamicLighting
         {
             traces = 0;
             tracingTime = 0f;
+            seamTime = 0f;
             pointLights = null;
             lightmapSizeMin1 = lightmapSize - 1;
             uniqueIdentifier = 0;
@@ -50,7 +52,7 @@ namespace AlpacaIT.DynamicLighting
                 }
             }
 
-            Debug.Log("Raytracing Finished: " + traces + " traces in " + tracingTime + "s!");
+            Debug.Log("Raytracing Finished: " + traces + " traces in " + tracingTime + "s! Seams padding in " + seamTime + "s!");
             DynamicLightManager.Instance.Reload();
         }
 
@@ -140,7 +142,8 @@ namespace AlpacaIT.DynamicLighting
             MeshBuilder meshBuilder = new MeshBuilder(meshFilter.transform.localToWorldMatrix, meshFilter.sharedMesh);
 
             var tt1 = Time.realtimeSinceStartup;
-            var pixels = new uint[lightmapSize * lightmapSize];
+            var pixels_lightmap = new uint[lightmapSize * lightmapSize];
+            var pixels_visited = new uint[lightmapSize * lightmapSize];
             {
                 var vertices = meshBuilder.worldVertices;
                 var uv1 = meshBuilder.meshUv1;
@@ -156,10 +159,82 @@ namespace AlpacaIT.DynamicLighting
                     var t2 = uv1[triangles[i + 1]];
                     var t3 = uv1[triangles[i + 2]];
 
-                    RaycastTriangle(ref pixels, v1, v2, v3, t1, t2, t3);
+                    RaycastTriangle(ref pixels_lightmap, ref pixels_visited, v1, v2, v3, t1, t2, t3);
                 }
             }
             tracingTime += Time.realtimeSinceStartup - tt1;
+
+            tt1 = Time.realtimeSinceStartup;
+            {
+                for (int x = 0; x < lightmapSize; x++)
+                {
+                    for (int y = 0; y < lightmapSize; y++)
+                    {
+                        // if we find an unvisited pixel it will appear as a black seam in the scene.
+                        var visited = GetPixel(ref pixels_visited, x, y);
+                        if (visited == 0)
+                        {
+                            uint res = 0;
+
+                            if (GetPixel(ref pixels_visited, x - 2, y - 2) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x - 2, y - 2);
+                            if (GetPixel(ref pixels_visited, x - 1, y - 2) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x - 1, y - 2);
+                            if (GetPixel(ref pixels_visited, x, y - 2) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x, y - 2);
+                            if (GetPixel(ref pixels_visited, x + 1, y - 2) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x + 1, y - 2);
+                            if (GetPixel(ref pixels_visited, x + 2, y - 2) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x + 2, y - 2);
+
+                            if (GetPixel(ref pixels_visited, x - 2, y - 1) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x - 2, y - 1);
+                            if (GetPixel(ref pixels_visited, x - 1, y - 1) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x - 1, y - 1);
+                            if (GetPixel(ref pixels_visited, x, y - 1) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x, y - 1);
+                            if (GetPixel(ref pixels_visited, x + 1, y - 1) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x + 1, y - 1);
+                            if (GetPixel(ref pixels_visited, x + 2, y - 1) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x + 2, y - 1);
+
+                            if (GetPixel(ref pixels_visited, x - 2, y) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x - 2, y);
+                            if (GetPixel(ref pixels_visited, x - 1, y) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x - 1, y);
+                            if (GetPixel(ref pixels_visited, x + 1, y) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x + 1, y);
+                            if (GetPixel(ref pixels_visited, x + 2, y) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x + 2, y);
+
+                            if (GetPixel(ref pixels_visited, x - 2, y + 1) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x - 2, y + 1);
+                            if (GetPixel(ref pixels_visited, x - 1, y + 1) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x - 1, y + 1);
+                            if (GetPixel(ref pixels_visited, x, y + 1) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x, y + 1);
+                            if (GetPixel(ref pixels_visited, x + 1, y + 1) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x + 1, y + 1);
+                            if (GetPixel(ref pixels_visited, x + 2, y + 1) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x + 2, y + 1);
+
+                            if (GetPixel(ref pixels_visited, x - 2, y + 2) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x - 2, y + 2);
+                            if (GetPixel(ref pixels_visited, x - 1, y + 2) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x - 1, y + 2);
+                            if (GetPixel(ref pixels_visited, x, y + 2) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x, y + 2);
+                            if (GetPixel(ref pixels_visited, x + 1, y + 2) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x + 1, y + 2);
+                            if (GetPixel(ref pixels_visited, x + 2, y + 2) == 1)
+                                res |= GetPixel(ref pixels_lightmap, x + 2, y + 2);
+
+                            SetPixel(ref pixels_lightmap, x, y, res);
+                        }
+                    }
+                }
+            }
+            seamTime += Time.realtimeSinceStartup - tt1;
 
             Lightmap lightmap;
             if (!meshFilter.TryGetComponent(out lightmap))
@@ -170,12 +245,18 @@ namespace AlpacaIT.DynamicLighting
             var sceneStorageDirectory = EditorUtilities.CreateAndGetActiveSceneStorageDirectory();
             if (sceneStorageDirectory != null)
             {
-                EditorUtilities.WriteLightmapData(lightmap.identifier, pixels);
+                EditorUtilities.WriteLightmapData(lightmap.identifier, pixels_lightmap);
             }
             else
             {
                 Debug.LogError("Unable to find or create the active scene storage directory or write the lightmap file!");
             }
+        }
+
+        private uint GetPixel(ref uint[] pixels, int x, int y)
+        {
+            if (x < 0 || y < 0 || x >= lightmapSize || y >= lightmapSize) return 0;
+            return pixels[y * lightmapSize + x];
         }
 
         private void SetPixel(ref uint[] pixels, int x, int y, uint color)
@@ -199,7 +280,7 @@ namespace AlpacaIT.DynamicLighting
             return a1 * v1 + a2 * v2 + a3 * v3;
         }
 
-        private void RaycastTriangle(ref uint[] pixels, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        private void RaycastTriangle(ref uint[] pixels_lightmap, ref uint[] pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // skip degenerate triangles.
             Vector3 normal = new Plane(v1, v2, v3).normal;
@@ -230,15 +311,18 @@ namespace AlpacaIT.DynamicLighting
                         px |= Raycast(pointLight, world, normal);
                     }
 
+                    // write this pixel into the visited map.
+                    SetPixel(ref pixels_visited, x, y, 1);
+
                     if (px > 0)
                     {
-                        SetPixel(ref pixels, x, y, px);
+                        SetPixel(ref pixels_lightmap, x, y, px);
                         // deal with seams using some padding.
                         // todo: only pad the exterior edges of every UV polygon.
-                        SetPixel(ref pixels, x - 1, y, px);
-                        SetPixel(ref pixels, x + 1, y, px);
-                        SetPixel(ref pixels, x, y - 1, px);
-                        SetPixel(ref pixels, x, y + 1, px);
+                        //SetPixel(ref pixels, x - 1, y, px);
+                        //SetPixel(ref pixels, x + 1, y, px);
+                        //SetPixel(ref pixels, x, y - 1, px);
+                        //SetPixel(ref pixels, x, y + 1, px);
                     }
                 }
             }
