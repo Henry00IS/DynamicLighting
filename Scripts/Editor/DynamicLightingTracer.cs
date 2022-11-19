@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 
+using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -10,7 +11,7 @@ namespace AlpacaIT.DynamicLighting
         private static int traces = 0;
         private static float tracingTime = 0f;
 
-        private static DynamicPointLight[] pointLights;
+        private static DynamicLight[] pointLights;
 
         private const int lightmapSize = 2048;
         private const float lightmapSizeMin1 = lightmapSize - 1;
@@ -24,7 +25,7 @@ namespace AlpacaIT.DynamicLighting
             traces = 0;
             uniqueIdentifier = 0;
 
-            pointLights = Object.FindObjectsOfType<DynamicPointLight>();
+            pointLights = DynamicLightManager.FindDynamicLightsInScene();
             AssignPointLightChannels();
 
             var meshFilters = Object.FindObjectsOfType<MeshFilter>();
@@ -193,7 +194,7 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
-        private static uint Raycast(DynamicPointLight pointLight, Vector3 world, Vector3 normal)
+        private static uint Raycast(DynamicLight pointLight, Vector3 world, Vector3 normal)
         {
             var radius = pointLight.lightRadius;
             if (radius == 0.0f) return 0; // early out by radius.

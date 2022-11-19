@@ -18,22 +18,7 @@ Shader "Dynamic Lighting/Simple"
             #pragma shader_feature DYNAMIC_LIGHTING_UNLIT
 
             #include "UnityCG.cginc"
-            
-            struct DynamicLight
-            {
-                float3 position;
-                float3 color;
-                float  intensity;
-                float  radius;
-                uint   channel;
-            };
-            
-            StructuredBuffer<DynamicLight> dynamic_lights;
-            uint dynamic_lights_count;
-            uint dynamic_lights_realtime_count;
-
-            StructuredBuffer<uint> lightmap;
-            uint lightmap_resolution;
+            #include "DynamicLighting.cginc"
 
             struct appdata
             {
@@ -71,11 +56,6 @@ Shader "Dynamic Lighting/Simple"
                 return o;
             }
 
-            float lightmap_pixel(uint2 uv, uint channel)
-            {
-                return (lightmap[uv.y * lightmap_resolution + uv.x] & (1 << channel)) > 0;
-            }
-
 #if DYNAMIC_LIGHTING_UNLIT
 
             fixed4 frag(v2f i) : SV_Target
@@ -111,60 +91,22 @@ Shader "Dynamic Lighting/Simple"
                     // a simple dot product with the normal gives us diffusion.
                     float diffusion = max(dot(i.normal, light_direction), 0);
 
-                    // important attenuation that actually creates the spot light with maximum radius.
+                    // important attenuation that actually creates the point light with maximum radius.
                     float attenuation = saturate(1.0 - light_distance * light_distance / (light.radius * light.radius)) * light.intensity;
 
                     // if this renderer has a lightmap we use shadow bits otherwise it's a dynamic object.
+                    // if this light is not on a valid lightmap channel we assume it's a realtime light.
                     float map = 1.0;
-                    if (lightmap_resolution > 0)
+                    if (lightmap_resolution > 0 && light.channel < 32)
                     {
-                        // x x x
-                        // x   x apply a simple 3x3 sampling with averaged results to the shadow bits.
-                        // x x x
-                        map  = lightmap_pixel(lightmap_uv, light.channel);
-                        map += lightmap_pixel(lightmap_uv + uint2(-1, -1), light.channel);
-                        map += lightmap_pixel(lightmap_uv + uint2(0, -1), light.channel);
-                        map += lightmap_pixel(lightmap_uv + uint2(1, -1), light.channel);
-
-                        map += lightmap_pixel(lightmap_uv + uint2(-1, 0), light.channel);
-                        map += lightmap_pixel(lightmap_uv + uint2(1, 0), light.channel);
-
-                        map += lightmap_pixel(lightmap_uv + uint2(-1, 1), light.channel);
-                        map += lightmap_pixel(lightmap_uv + uint2(0, 1), light.channel);
-                        map += lightmap_pixel(lightmap_uv + uint2(1, 1), light.channel);
-                        map /= 9.0;
+                        // apply a simple 3x3 sampling with averaged results to the shadow bits.
+                        map = lightmap_sample3x3(lightmap_uv, light.channel);
                     }
 
                     // add this light to the final color of the fragment.
                     light_final += light.color * attenuation * diffusion * map;
                 }
 
-                // iterate over every realtime light in the scene:
-                for (k = 0; k < dynamic_lights_realtime_count; k++)
-                {
-                    // get the current light from memory.
-                    DynamicLight light = dynamic_lights[dynamic_lights_count + k];
-
-                    // calculate the distance between the light source and the fragment.
-                    float light_distance = distance(i.world, light.position);
-
-                    // we can use the distance and guaranteed maximum light radius to early out.
-                    // confirmed with NVIDIA Quadro K1000M doubling the framerate.
-                    if (light_distance > light.radius) continue;
-
-                    // calculate the direction between the light source and the fragment.
-                    float3 light_direction = normalize(light.position - i.world);
-
-                    // a simple dot product with the normal gives us diffusion.
-                    float diffusion = max(dot(i.normal, light_direction), 0);
-
-                    // important attenuation that actually creates the spot light with maximum radius.
-                    float attenuation = saturate(1.0 - light_distance * light_distance / (light.radius * light.radius)) * light.intensity;
-
-                    // add this light to the final color of the fragment.
-                    light_final += light.color * attenuation * diffusion;
-                }
-                
                 // sample the main texture, multiply by the light and add vertex colors.
                 fixed4 col = tex2D(_MainTex, i.uv0) * half4(light_final, 1) * i.color;
 

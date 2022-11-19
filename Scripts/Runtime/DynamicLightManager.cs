@@ -1,10 +1,13 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
     [ExecuteInEditMode]
     public class DynamicLightManager : MonoBehaviour
     {
+        public const int realtimeLightChannel = 32;
+
         private static DynamicLightManager s_Instance;
 
         /// <summary>Gets the singleton dynamic lighting manager instance or creates it.</summary>
@@ -33,12 +36,13 @@ namespace AlpacaIT.DynamicLighting
         public int dynamicLightBudget = 64;
         public int realtimeLightBudget = 32;
 
-        /// <summary>The memory size in bytes of the <see cref="DynamicLight"/> struct.x</summary>
+        /// <summary>The memory size in bytes of the <see cref="ShaderDynamicLight"/> struct.x</summary>
         private int dynamicLightStride;
         private Lightmap[] lightmaps;
-        private DynamicPointLight[] dynamicPointLights;
-
         private DynamicLight[] dynamicLights;
+        private List<DynamicLight> realtimeLights;
+
+        private ShaderDynamicLight[] shaderDynamicLights;
         private ComputeBuffer dynamicLightsBuffer;
 
 #if UNITY_EDITOR
@@ -76,19 +80,36 @@ namespace AlpacaIT.DynamicLighting
 
 #endif
 
+        /// <summary>Finds all of the dynamic lights in the scene that are not realtime.</summary>
+        /// <returns>The collection of dynamic lights in the scene.</returns>
+        public static DynamicLight[] FindDynamicLightsInScene()
+        {
+            var dynamicPointLights = new List<DynamicLight>(FindObjectsOfType<DynamicLight>());
+
+            // remove all of the realtime lights from our collection.
+            var dynamicPointLightsCount = dynamicPointLights.Count;
+            for (int i = dynamicPointLightsCount; i-- > 0;)
+                if (dynamicPointLights[i].realtime)
+                    dynamicPointLights.RemoveAt(i);
+
+            return dynamicPointLights.ToArray();
+        }
+
         public void Awake()
         {
-            dynamicLightStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(DynamicLight));
+            dynamicLightStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(ShaderDynamicLight));
 
             // more dynamic point lights will never be instantiated during play so we fetch them here once.
-            dynamicPointLights = FindObjectsOfType<DynamicPointLight>();
+            dynamicLights = FindDynamicLightsInScene();
+
+            // prepare to store realtime lights that get created during gameplay.
+            realtimeLights = new List<DynamicLight>(realtimeLightBudget);
 
             // allocate the required arrays and buffers according to our budget.
-            dynamicLights = new DynamicLight[dynamicLightBudget + realtimeLightBudget];
-            dynamicLightsBuffer = new ComputeBuffer(dynamicLights.Length, dynamicLightStride, ComputeBufferType.Default);
+            shaderDynamicLights = new ShaderDynamicLight[dynamicLightBudget + realtimeLightBudget];
+            dynamicLightsBuffer = new ComputeBuffer(shaderDynamicLights.Length, dynamicLightStride, ComputeBufferType.Default);
             Shader.SetGlobalBuffer("dynamic_lights", dynamicLightsBuffer);
             Shader.SetGlobalInt("dynamic_lights_count", 0);
-            Shader.SetGlobalInt("dynamic_lights_realtime_count", 0);
 
             // prepare the scene for dynamic lighting.
             lightmaps = FindObjectsOfType<Lightmap>();
@@ -122,47 +143,54 @@ namespace AlpacaIT.DynamicLighting
                 lightmaps[i].buffer.Release();
         }
 
+        public void RegisterRealtimeLight(DynamicLight light)
+        {
+            realtimeLights.Add(light);
+        }
+
+        public void UnregisterRealtimeLight(DynamicLight light)
+        {
+            realtimeLights.Remove(light);
+        }
+
         /// <summary>This handles the CPU side lighting effects.</summary>
         private void Update()
         {
             var idx = 0;
 
-            // dynamic lights:
-            for (int i = 0; i < dynamicPointLights.Length; i++)
+            for (int i = 0; i < dynamicLights.Length; i++)
             {
-                var light = dynamicPointLights[i];
-                dynamicLights[idx].position = light.transform.position;
-                dynamicLights[idx].color = new Vector3(light.lightColor.r, light.lightColor.g, light.lightColor.b);
-                dynamicLights[idx].intensity = light.lightIntensity;
-                dynamicLights[idx].radius = light.lightRadius;
-                dynamicLights[idx].channel = light.lightChannel;
+                var light = dynamicLights[i];
+                shaderDynamicLights[idx].position = light.transform.position;
+                shaderDynamicLights[idx].color = new Vector3(light.lightColor.r, light.lightColor.g, light.lightColor.b);
+                shaderDynamicLights[idx].intensity = light.lightIntensity;
+                shaderDynamicLights[idx].radius = light.lightRadius;
+                shaderDynamicLights[idx].channel = light.lightChannel;
 
                 UpdateLightEffects(light, idx);
                 idx++;
             }
 
-            // realtime lights:
-            var realtimePointLights = FindObjectsOfType<RealtimePointLight>();
-            for (int i = 0; i < realtimePointLights.Length; i++)
+            var realtimeLightsCount = realtimeLights.Count;
+            for (int i = 0; i < realtimeLightsCount; i++)
             {
-                var light = realtimePointLights[i];
-                dynamicLights[idx].position = light.transform.position;
-                dynamicLights[idx].color = new Vector3(light.lightColor.r, light.lightColor.g, light.lightColor.b);
-                dynamicLights[idx].intensity = light.lightIntensity;
-                dynamicLights[idx].radius = light.lightRadius;
+                var light = realtimeLights[i];
+                shaderDynamicLights[idx].position = light.transform.position;
+                shaderDynamicLights[idx].color = new Vector3(light.lightColor.r, light.lightColor.g, light.lightColor.b);
+                shaderDynamicLights[idx].intensity = light.lightIntensity;
+                shaderDynamicLights[idx].radius = light.lightRadius;
+                shaderDynamicLights[idx].channel = light.lightChannel;
 
                 UpdateLightEffects(light, idx);
                 idx++;
             }
 
-            dynamicLightsBuffer.SetData(dynamicLights);
+            dynamicLightsBuffer.SetData(shaderDynamicLights);
 
-            Shader.SetGlobalInt("dynamic_lights_count", dynamicPointLights.Length);
-            Shader.SetGlobalInt("dynamic_lights_realtime_count", realtimePointLights.Length);
-
+            Shader.SetGlobalInt("dynamic_lights_count", dynamicLights.Length + realtimeLightsCount);
         }
 
-        private void UpdateLightEffects(IDynamicLight light, int shaderLightIndex)
+        private void UpdateLightEffects(DynamicLight light, int shaderLightIndex)
         {
             switch (light.lightType)
             {
@@ -170,11 +198,11 @@ namespace AlpacaIT.DynamicLighting
                     break;
 
                 case LightType.Pulse:
-                    dynamicLights[shaderLightIndex].intensity *= Mathf.Lerp(light.lightTypePulseModifier, 1.0f, (1f + Mathf.Sin(Time.time * light.lightTypePulseSpeed)) * 0.5f);
+                    shaderDynamicLights[shaderLightIndex].intensity *= Mathf.Lerp(light.lightTypePulseModifier, 1.0f, (1f + Mathf.Sin(Time.time * light.lightTypePulseSpeed)) * 0.5f);
                     break;
 
                 case LightType.Flicker:
-                    dynamicLights[shaderLightIndex].intensity *= Random.value;
+                    shaderDynamicLights[shaderLightIndex].intensity *= Random.value;
                     break;
 
                 case LightType.Strobe:

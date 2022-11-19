@@ -5,7 +5,7 @@ using UnityEngine;
 namespace AlpacaIT.DynamicLighting
 {
     /// <summary>A dynamic light (this struct is mirrored in the shader and can not be modified).</summary>
-    public struct DynamicLight
+    public struct ShaderDynamicLight
     {
         /// <summary>The position of the light in world space.</summary>
         public Vector3 position;
