@@ -40,6 +40,27 @@ float lightmap_sample3x3(uint2 uv, uint channel)
     return map / 9.0;
 }
 
+// x x x
+// x   x apply a simple 3x3 sampling with averaged results to the shadow bits.
+// x x x
+// 
+// this function skips reading the center pixel, pass that into the map parameter.
+float lightmap_sample3x3(uint2 uv, uint channel, float map)
+{
+    map += lightmap_pixel(uv + uint2(-1, -1), channel);
+    map += lightmap_pixel(uv + uint2(0, -1), channel);
+    map += lightmap_pixel(uv + uint2(1, -1), channel);
+
+    map += lightmap_pixel(uv + uint2(-1, 0), channel);
+    map += lightmap_pixel(uv + uint2(1, 0), channel);
+
+    map += lightmap_pixel(uv + uint2(-1, 1), channel);
+    map += lightmap_pixel(uv + uint2(0, 1), channel);
+    map += lightmap_pixel(uv + uint2 (1, 1), channel);
+
+    return map / 9.0;
+}
+
 // special thanks to https://learnopengl.com/PBR/Lighting
 
 float DistributionGGX(float3 N, float3 H, float3 roughness)
