@@ -63,13 +63,13 @@ namespace AlpacaIT.DynamicLighting
                 OnDestroy();
         }
 
-        [UnityEditor.MenuItem("Dynamic Lighting/Toggle Continuous Preview", false, 11)]
+        [UnityEditor.MenuItem("Dynamic Lighting/Toggle Continuous Preview", false, 21)]
         public static void EnableContinuousPreview()
         {
             Instance.useContinuousPreview = !Instance.useContinuousPreview;
         }
 
-        [UnityEditor.MenuItem("Dynamic Lighting/Toggle Unlit Surfaces", false, 12)]
+        [UnityEditor.MenuItem("Dynamic Lighting/Toggle Unlit Surfaces", false, 22)]
         public static void ToggleUnlitSurfaces()
         {
             if (Shader.IsKeywordEnabled("DYNAMIC_LIGHTING_UNLIT"))
@@ -78,7 +78,7 @@ namespace AlpacaIT.DynamicLighting
                 Shader.EnableKeyword("DYNAMIC_LIGHTING_UNLIT");
         }
 
-        [UnityEditor.MenuItem("Dynamic Lighting/PayPal Donation", false, 23)]
+        [UnityEditor.MenuItem("Dynamic Lighting/PayPal Donation", false, 41)]
         public static void PayPalDonation()
         {
             Application.OpenURL("https://paypal.me/henrydejongh");
