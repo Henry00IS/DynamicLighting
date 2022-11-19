@@ -1,4 +1,4 @@
-Shader "Unlit/VertexTracerSimple"
+Shader "Dynamic Lighting/Simple"
 {
     Properties
     {
@@ -65,7 +65,7 @@ Shader "Unlit/VertexTracerSimple"
                 o.uv0 = TRANSFORM_TEX(v.uv0, _MainTex);
                 o.uv1 = v.uv1;
                 o.color = v.color;
-                o.normal = v.normal;
+                o.normal = UnityObjectToWorldNormal(v.normal);
                 o.world = mul(unity_ObjectToWorld, v.vertex).xyz;
                 UNITY_TRANSFER_FOG(o,o.vertex);
                 return o;
