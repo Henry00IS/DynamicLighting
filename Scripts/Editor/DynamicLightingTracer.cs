@@ -38,6 +38,7 @@ namespace AlpacaIT.DynamicLighting
             }
 
             Debug.Log("Raytracing Finished: " + traces + " traces in " + tracingTime + "s!");
+            DynamicLightManager.Instance.Reload();
         }
 
         private static void AssignPointLightChannels()

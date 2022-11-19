@@ -36,7 +36,7 @@ namespace AlpacaIT.DynamicLighting
         public int dynamicLightBudget = 64;
         public int realtimeLightBudget = 32;
 
-        /// <summary>The memory size in bytes of the <see cref="ShaderDynamicLight"/> struct.x</summary>
+        /// <summary>The memory size in bytes of the <see cref="ShaderDynamicLight"/> struct.</summary>
         private int dynamicLightStride;
         private Lightmap[] lightmaps;
         private DynamicLight[] dynamicLights;
@@ -95,7 +95,14 @@ namespace AlpacaIT.DynamicLighting
             return dynamicPointLights.ToArray();
         }
 
-        public void Awake()
+        /// <summary>Immediately reloads the lighting.</summary>
+        public void Reload()
+        {
+            OnDestroy();
+            Awake();
+        }
+
+        private void Awake()
         {
             dynamicLightStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(ShaderDynamicLight));
 

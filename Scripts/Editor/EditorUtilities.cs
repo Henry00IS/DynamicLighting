@@ -47,6 +47,10 @@ namespace AlpacaIT.DynamicLighting
                     memory.CopyTo(gzip);
                     gzip.Close();
                     File.WriteAllBytes(path + "\\Resources\\" + scene + "-Lightmap" + identifier + ".bytes", compressed.ToArray());
+#if UNITY_EDITOR
+                    string path2 = SceneManager.GetActiveScene().path;
+                    UnityEditor.AssetDatabase.ImportAsset(Path.GetDirectoryName(path2) + "\\" + Path.GetFileNameWithoutExtension(path2) + "\\Resources\\" + scene + "-Lightmap" + identifier + ".bytes");
+#endif
                 }
 
                 return true;
