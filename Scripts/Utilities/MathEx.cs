@@ -19,19 +19,17 @@ namespace AlpacaIT.DynamicLighting
         }
 
         /// <summary>
-        /// Calculates an optimal texture size (in power of 2) that fits the specified surface area
-        /// (in meters squared) in the desired pixel density (e.g. 256 for 256x256 per meter squared).
+        /// Calculates an optimal texture size that fits the specified surface area (in meters
+        /// squared) in the desired pixel density (e.g. 256 for 256x256 per meter squared).
         /// </summary>
         /// <param name="surfaceAreaMeterSquared">The surface area in meters squared.</param>
         /// <param name="pixelDensity">The pixel density (e.g. 256 for 256x256 per meter squared).</param>
-        /// <returns>
-        /// The texture dimension in power of two (32, 64, 512, etc.) with no upper bound.
-        /// </returns>
+        /// <returns>The texture dimension with no upper bound.</returns>
         public static int SurfaceAreaToTextureSize(float surfaceAreaMeterSquared, float pixelDensity)
         {
             float pixelDensitySquared = pixelDensity * pixelDensity; // pixel density squared.
             float surfaceSquareRoot = Mathf.Sqrt(pixelDensitySquared * surfaceAreaMeterSquared);
-            return Mathf.NextPowerOfTwo(Mathf.CeilToInt(surfaceSquareRoot));
+            return Mathf.CeilToInt(surfaceSquareRoot);
         }
     }
 }
