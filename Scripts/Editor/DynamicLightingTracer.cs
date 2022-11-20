@@ -6,13 +6,14 @@ namespace AlpacaIT.DynamicLighting
     /// <summary>The raytracer that calculates shadows for all dynamic lights.</summary>
     public class DynamicLightingTracer
     {
-        /// <summary>The size of the lightmap to be baked (defaults to 2048x2048).</summary>
-        public int lightmapSize { get; set; } = 2048;
+        /// <summary>The maximum size of the lightmap to be baked (defaults to 2048x2048).</summary>
+        public int maximumLightmapSize { get; set; } = 2048;
 
         private int traces = 0;
         private float tracingTime = 0f;
         private float seamTime = 0f;
         private DynamicLight[] pointLights;
+        private int lightmapSize = 2048;
         private float lightmapSizeMin1;
         private int uniqueIdentifier = 0;
 
@@ -62,7 +63,7 @@ namespace AlpacaIT.DynamicLighting
         private static void EditorRaytrace512()
         {
             var tracer = new DynamicLightingTracer();
-            tracer.lightmapSize = 512;
+            tracer.maximumLightmapSize = 512;
             tracer.StartRaytracing();
         }
 
@@ -70,7 +71,7 @@ namespace AlpacaIT.DynamicLighting
         private static void EditorRaytrace1024()
         {
             var tracer = new DynamicLightingTracer();
-            tracer.lightmapSize = 1024;
+            tracer.maximumLightmapSize = 1024;
             tracer.StartRaytracing();
         }
 
@@ -78,7 +79,7 @@ namespace AlpacaIT.DynamicLighting
         private static void EditorRaytrace2048()
         {
             var tracer = new DynamicLightingTracer();
-            tracer.lightmapSize = 2048;
+            tracer.maximumLightmapSize = 2048;
             tracer.StartRaytracing();
         }
 
@@ -86,7 +87,7 @@ namespace AlpacaIT.DynamicLighting
         private static void EditorRaytrace4096()
         {
             var tracer = new DynamicLightingTracer();
-            tracer.lightmapSize = 4096;
+            tracer.maximumLightmapSize = 4096;
             tracer.StartRaytracing();
         }
 
@@ -139,7 +140,12 @@ namespace AlpacaIT.DynamicLighting
 
         private void Raytrace(MeshFilter meshFilter)
         {
-            MeshBuilder meshBuilder = new MeshBuilder(meshFilter.transform.localToWorldMatrix, meshFilter.sharedMesh);
+            var meshBuilder = new MeshBuilder(meshFilter.transform.localToWorldMatrix, meshFilter.sharedMesh);
+            lightmapSize = MathEx.SurfaceAreaToTextureSize(meshBuilder.surfaceArea, 128);
+            if (lightmapSize > maximumLightmapSize)
+                lightmapSize = maximumLightmapSize;
+            lightmapSizeMin1 = lightmapSize - 1;
+            Debug.Log(meshFilter.name + " surface area: " + meshBuilder.surfaceArea.ToString("0.00") + "m² lightmap size: " + lightmapSize + "x" + lightmapSize);
 
             var tt1 = Time.realtimeSinceStartup;
             var pixels_lightmap = new uint[lightmapSize * lightmapSize];
