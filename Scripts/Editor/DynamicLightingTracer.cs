@@ -40,7 +40,7 @@ namespace AlpacaIT.DynamicLighting
             Prepare();
 
             // find all of the dynamic lights in the scene and assign channels.
-            pointLights = DynamicLightManager.FindDynamicLightsInScene();
+            pointLights = DynamicLightManager.FindDynamicLightsInScene().ToArray();
             AssignPointLightChannels();
 
             var meshFilters = Object.FindObjectsOfType<MeshFilter>();

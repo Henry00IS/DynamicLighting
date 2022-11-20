@@ -33,17 +33,25 @@ namespace AlpacaIT.DynamicLighting
         // the NVIDIA GeForce GTX 1050 Ti (2016) can handle 125 lights between 53-68fps.
         // the NVIDIA GeForce RTX 3080 (2020) can handle 2000 lights at 70fps.
 
+        [Min(0)]
         public int dynamicLightBudget = 64;
+        [Min(0)]
         public int realtimeLightBudget = 32;
+        [Min(0f)]
+        public float budgetLightFadingTime = 10f;
 
         /// <summary>The memory size in bytes of the <see cref="ShaderDynamicLight"/> struct.</summary>
         private int dynamicLightStride;
         private Lightmap[] lightmaps;
-        private DynamicLight[] dynamicLights;
-        private List<DynamicLight> realtimeLights;
+        private List<DynamicLight> sceneDynamicLights;
+        private List<DynamicLight> sceneRealtimeLights;
 
+        private List<DynamicLight> activeDynamicLights;
+        private List<DynamicLight> activeRealtimeLights;
         private ShaderDynamicLight[] shaderDynamicLights;
         private ComputeBuffer dynamicLightsBuffer;
+
+        private Vector3 lastCameraMetricGridPosition = new Vector3(float.NegativeInfinity, float.NegativeInfinity, float.NegativeInfinity);
 
 #if UNITY_EDITOR
 
@@ -88,7 +96,7 @@ namespace AlpacaIT.DynamicLighting
 
         /// <summary>Finds all of the dynamic lights in the scene that are not realtime.</summary>
         /// <returns>The collection of dynamic lights in the scene.</returns>
-        public static DynamicLight[] FindDynamicLightsInScene()
+        public static List<DynamicLight> FindDynamicLightsInScene()
         {
             var dynamicPointLights = new List<DynamicLight>(FindObjectsOfType<DynamicLight>());
 
@@ -98,7 +106,7 @@ namespace AlpacaIT.DynamicLighting
                 if (dynamicPointLights[i].realtime)
                     dynamicPointLights.RemoveAt(i);
 
-            return dynamicPointLights.ToArray();
+            return dynamicPointLights;
         }
 
         /// <summary>Immediately reloads the lighting.</summary>
@@ -113,13 +121,15 @@ namespace AlpacaIT.DynamicLighting
             dynamicLightStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(ShaderDynamicLight));
 
             // more dynamic point lights will never be instantiated during play so we fetch them here once.
-            dynamicLights = FindDynamicLightsInScene();
+            sceneDynamicLights = FindDynamicLightsInScene();
 
             // prepare to store realtime lights that get created during gameplay.
-            realtimeLights = new List<DynamicLight>(realtimeLightBudget);
+            sceneRealtimeLights = new List<DynamicLight>(realtimeLightBudget);
 
             // allocate the required arrays and buffers according to our budget.
             shaderDynamicLights = new ShaderDynamicLight[dynamicLightBudget + realtimeLightBudget];
+            activeDynamicLights = new List<DynamicLight>(shaderDynamicLights.Length);
+            activeRealtimeLights = new List<DynamicLight>(shaderDynamicLights.Length);
             dynamicLightsBuffer = new ComputeBuffer(shaderDynamicLights.Length, dynamicLightStride, ComputeBufferType.Default);
             Shader.SetGlobalBuffer("dynamic_lights", dynamicLightsBuffer);
             Shader.SetGlobalInt("dynamic_lights_count", 0);
@@ -158,39 +168,189 @@ namespace AlpacaIT.DynamicLighting
 
         public void RegisterRealtimeLight(DynamicLight light)
         {
-            realtimeLights.Add(light);
+            sceneRealtimeLights.Add(light);
         }
 
         public void UnregisterRealtimeLight(DynamicLight light)
         {
-            realtimeLights.Remove(light);
+            sceneRealtimeLights.Remove(light);
+        }
+
+        /// <summary>
+        /// Whenever the dynamic or realtime light budgets change we must update the shader buffer.
+        /// </summary>
+        private void ReallocateShaderLightBuffer()
+        {
+            // properly release any old buffer.
+            if (dynamicLightsBuffer != null && dynamicLightsBuffer.IsValid())
+                dynamicLightsBuffer.Release();
+
+            var totalLightBudget = dynamicLightBudget + realtimeLightBudget;
+            shaderDynamicLights = new ShaderDynamicLight[totalLightBudget];
+            dynamicLightsBuffer = new ComputeBuffer(shaderDynamicLights.Length, dynamicLightStride, ComputeBufferType.Default);
+            Shader.SetGlobalBuffer("dynamic_lights", dynamicLightsBuffer);
         }
 
         /// <summary>This handles the CPU side lighting effects.</summary>
         private void Update()
         {
-            var idx = 0;
+            var camera = Camera.main;
 
-            for (int i = 0; i < dynamicLights.Length; i++)
+#if UNITY_EDITOR
+            // editor scene view support.
+            if (!Application.isPlaying)
+            {
+                var sceneView = UnityEditor.SceneView.lastActiveSceneView;
+                if (sceneView)
+                {
+                    camera = sceneView.camera;
+                }
+                else
+                {
+                    var current = Camera.current;
+                    if (current)
+                    {
+                        camera = current;
+                    }
+                }
+            }
+            else
+            {
+                Debug.Assert(camera != null, "Could not find a camera that is tagged \"MainCamera\" for lighting calculations.");
+            }
+#endif
+
+            // if the budget changed we must recreate the shader buffers.
+            var totalLightBudget = dynamicLightBudget + realtimeLightBudget;
+            if (totalLightBudget == 0) return; // sanity check.
+            if (shaderDynamicLights.Length != totalLightBudget)
+                ReallocateShaderLightBuffer();
+
+            // if we exceed the dynamic light budget then whenever the camera moves more than a
+            // meter in the scene we sort all dynamic lights by distance from the camera and the
+            // closest lights will appear first in the lists.
+            var cameraPosition = camera.transform.position;
+            if (sceneDynamicLights.Count > dynamicLightBudget && Vector3.Distance(lastCameraMetricGridPosition, cameraPosition) > 1f)
+            {
+                lastCameraMetricGridPosition = cameraPosition;
+                SortSceneDynamicLights(lastCameraMetricGridPosition);
+            }
+
+            // if we exceed the realtime light budget we sort the realtime lights by distance every
+            // frame, as we will assume they are moving around.
+            if (sceneRealtimeLights.Count > realtimeLightBudget)
+            {
+                SortSceneRealtimeLights(cameraPosition);
+            }
+
+            // clear as many active lights as possible.
+
+            var activeDynamicLightsCount = activeDynamicLights.Count;
+            for (int i = activeDynamicLightsCount; i-- > 0;)
+                activeDynamicLights.RemoveAt(i);
+
+            var activeRealtimeLightsCount = activeRealtimeLights.Count;
+            for (int i = activeRealtimeLightsCount; i-- > 0;)
+                activeRealtimeLights.RemoveAt(i);
+
+            // fill the active lights back up with the closest lights.
+
+            var sceneDynamicLightsCount = sceneDynamicLights.Count;
+            for (int i = 0; i < sceneDynamicLightsCount; i++)
+                if (activeDynamicLights.Count < dynamicLightBudget)
+                    activeDynamicLights.Add(sceneDynamicLights[i]);
+
+            var sceneRealtimeLightsCount = sceneRealtimeLights.Count;
+            for (int i = 0; i < sceneRealtimeLightsCount; i++)
+                if (activeRealtimeLights.Count < realtimeLightBudget)
+                    activeRealtimeLights.Add(sceneRealtimeLights[i]);
+
+            // write the active lights into the shader data.
+
+            var idx = 0;
+            activeDynamicLightsCount = activeDynamicLights.Count;
+            for (int i = 0; i < activeDynamicLightsCount; i++)
+            {
+                var light = activeDynamicLights[i];
+                SetShaderDynamicLight(idx, light);
+                UpdateLightEffects(idx, light);
+                idx++;
+            }
+
+            activeRealtimeLightsCount = activeRealtimeLights.Count;
+            for (int i = 0; i < activeRealtimeLightsCount; i++)
+            {
+                var light = activeRealtimeLights[i];
+                SetShaderDynamicLight(idx, light);
+                UpdateLightEffects(idx, light);
+                idx++;
+            }
+
+            /*
+            dynamicLights.Sort((a, b) => a.dlmBusy == b.dlmBusy ? (camera.transform.position - a.transform.position).sqrMagnitude
+                         .CompareTo((camera.transform.position - b.transform.position).sqrMagnitude) : (a.dlmBusy ? -1 : 1));
+
+            realtimeLights.Sort((a, b) => a.dlmBusy == b.dlmBusy ? (camera.transform.position - a.transform.position).sqrMagnitude
+                          .CompareTo((camera.transform.position - b.transform.position).sqrMagnitude) : (a.dlmBusy ? -1 : 1));
+
+            var dynamicLightsCount = dynamicLights.Count;
+            for (int i = 0; i < dynamicLightsCount; i++)
+            {
+                var light = dynamicLights[i];
+                if (i > dynamicLightBudget)
+                {
+                    UpdateLightOutsideBudget(i, light);
+                }
+                else
+                {
+                    UpdateLightWithinBudget(i, light);
+                }
+            }
+
+            dynamicLightsCount = dynamicLightBudget < dynamicLightsCount ? dynamicLightBudget : dynamicLightsCount;
+            for (int i = 0; i < dynamicLightsCount; i++)
             {
                 var light = dynamicLights[i];
                 SetShaderDynamicLight(idx, light);
                 UpdateLightEffects(idx, light);
                 idx++;
             }
-
+            /*
             var realtimeLightsCount = realtimeLights.Count;
+            realtimeLightsCount = realtimeLightBudget < realtimeLightsCount ? realtimeLightBudget : realtimeLightsCount;
             for (int i = 0; i < realtimeLightsCount; i++)
             {
                 var light = realtimeLights[i];
                 SetShaderDynamicLight(idx, light);
                 UpdateLightEffects(idx, light);
                 idx++;
-            }
+            }*/
 
+            // upload the active light data to the graphics card.
             dynamicLightsBuffer.SetData(shaderDynamicLights);
+            Shader.SetGlobalInt("dynamic_lights_count", activeDynamicLightsCount + activeRealtimeLightsCount);
+        }
 
-            Shader.SetGlobalInt("dynamic_lights_count", dynamicLights.Length + realtimeLightsCount);
+        /// <summary>
+        /// Sorts the scene dynamic light lists by the distance from the specified origin. The
+        /// closests lights will appear first in the list.
+        /// </summary>
+        /// <param name="origin">The origin (usually the camera world position).</param>
+        private void SortSceneDynamicLights(Vector3 origin)
+        {
+            sceneDynamicLights.Sort((a, b) => (origin - a.transform.position).sqrMagnitude
+            .CompareTo((origin - b.transform.position).sqrMagnitude));
+        }
+
+        /// <summary>
+        /// Sorts the scene realtime light lists by the distance from the specified origin. The
+        /// closests lights will appear first in the list.
+        /// </summary>
+        /// <param name="origin">The origin (usually the camera world position).</param>
+        private void SortSceneRealtimeLights(Vector3 origin)
+        {
+            sceneRealtimeLights.Sort((a, b) => (origin - a.transform.position).sqrMagnitude
+            .CompareTo((origin - b.transform.position).sqrMagnitude));
         }
 
         private void SetShaderDynamicLight(int idx, DynamicLight light)
@@ -235,6 +395,29 @@ namespace AlpacaIT.DynamicLighting
                 case DynamicLightEffect.Strobe:
                     break;
             }
+        }
+
+        /// <summary>Called before the light gets drawn. It's within the rendering budget.</summary>
+
+        private void UpdateLightWithinBudget(int idx, DynamicLight light)
+        {
+            light.dlmFadeoutTime = Time.time + budgetLightFadingTime;
+        }
+
+        /// <summary>Called before the light gets drawn. It's outside the rendering budget.</summary>
+        private void UpdateLightOutsideBudget(int idx, DynamicLight light)
+        {
+            var fadeoutInterpolant = Mathf.InverseLerp(1.0f, 0.0f, (light.dlmFadeoutTime - Time.time) / budgetLightFadingTime);
+            shaderDynamicLights[idx].intensity *= fadeoutInterpolant;
+        }
+
+        private bool LightBudgetBusy(DynamicLight light)
+        {
+            if ((light.dlmFadeoutTime - Time.time) / budgetLightFadingTime > 0f)
+            {
+                return true;
+            }
+            return false;
         }
 
         private void OnDrawGizmos()
