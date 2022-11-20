@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
@@ -15,7 +13,18 @@ namespace AlpacaIT.DynamicLighting
         public float intensity;
         /// <summary>The maximum cutoff radius where the light is guaranteed to end.</summary>
         public float radius;
-        /// <summary>The channel 0-31 bit in the lightmap that the light uses for raytraced shadows.</summary>
+        /// <summary>
+        /// The channel 0-31 representing the bit in the lightmap that the light uses for raytraced shadows.
+        /// <para>32 is used to indicate a realtime light without raytraced shadows.</para>
+        /// <para>All other bits are reserved for internal use.</para>
+        /// </summary>
         public uint channel;
+
+        /// <summary>The direction of the light.</summary>
+        public Vector3 forward;
+        /// <summary>The cutoff angle used by spot lights.</summary>
+        public float cutoff;
+        /// <summary>The outer cutoff angle used by spot lights.</summary>
+        public float outerCutoff;
     };
 }

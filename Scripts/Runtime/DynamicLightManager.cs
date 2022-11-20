@@ -174,13 +174,8 @@ namespace AlpacaIT.DynamicLighting
             for (int i = 0; i < dynamicLights.Length; i++)
             {
                 var light = dynamicLights[i];
-                shaderDynamicLights[idx].position = light.transform.position;
-                shaderDynamicLights[idx].color = new Vector3(light.lightColor.r, light.lightColor.g, light.lightColor.b);
-                shaderDynamicLights[idx].intensity = light.lightIntensity;
-                shaderDynamicLights[idx].radius = light.lightRadius;
-                shaderDynamicLights[idx].channel = light.lightChannel;
-
-                UpdateLightEffects(light, idx);
+                SetShaderDynamicLight(idx, light);
+                UpdateLightEffects(idx, light);
                 idx++;
             }
 
@@ -188,13 +183,8 @@ namespace AlpacaIT.DynamicLighting
             for (int i = 0; i < realtimeLightsCount; i++)
             {
                 var light = realtimeLights[i];
-                shaderDynamicLights[idx].position = light.transform.position;
-                shaderDynamicLights[idx].color = new Vector3(light.lightColor.r, light.lightColor.g, light.lightColor.b);
-                shaderDynamicLights[idx].intensity = light.lightIntensity;
-                shaderDynamicLights[idx].radius = light.lightRadius;
-                shaderDynamicLights[idx].channel = light.lightChannel;
-
-                UpdateLightEffects(light, idx);
+                SetShaderDynamicLight(idx, light);
+                UpdateLightEffects(idx, light);
                 idx++;
             }
 
@@ -203,22 +193,46 @@ namespace AlpacaIT.DynamicLighting
             Shader.SetGlobalInt("dynamic_lights_count", dynamicLights.Length + realtimeLightsCount);
         }
 
-        private void UpdateLightEffects(DynamicLight light, int shaderLightIndex)
+        private void SetShaderDynamicLight(int idx, DynamicLight light)
         {
+            shaderDynamicLights[idx].position = light.transform.position;
+            shaderDynamicLights[idx].color = new Vector3(light.lightColor.r, light.lightColor.g, light.lightColor.b);
+            shaderDynamicLights[idx].intensity = light.lightIntensity;
+            shaderDynamicLights[idx].radius = light.lightRadius;
+            shaderDynamicLights[idx].channel = light.lightChannel;
+
             switch (light.lightType)
             {
-                case LightType.Steady:
+                case DynamicLightType.Point:
+                    shaderDynamicLights[idx].channel &= ~((uint)1 << 6);
                     break;
 
-                case LightType.Pulse:
-                    shaderDynamicLights[shaderLightIndex].intensity *= Mathf.Lerp(light.lightTypePulseModifier, 1.0f, (1f + Mathf.Sin(Time.time * light.lightTypePulseSpeed)) * 0.5f);
+                case DynamicLightType.Spot:
+                    shaderDynamicLights[idx].channel |= (uint)1 << 6;
+                    break;
+            }
+
+            shaderDynamicLights[idx].forward = light.transform.forward;
+            shaderDynamicLights[idx].cutoff = Mathf.Cos(light.lightCutoff * Mathf.Deg2Rad);
+            shaderDynamicLights[idx].outerCutoff = Mathf.Cos(light.lightOuterCutoff * Mathf.Deg2Rad);
+        }
+
+        private void UpdateLightEffects(int idx, DynamicLight light)
+        {
+            switch (light.lightEffect)
+            {
+                case DynamicLightEffect.Steady:
                     break;
 
-                case LightType.Flicker:
-                    shaderDynamicLights[shaderLightIndex].intensity *= Random.value;
+                case DynamicLightEffect.Pulse:
+                    shaderDynamicLights[idx].intensity *= Mathf.Lerp(light.lightEffectPulseModifier, 1.0f, (1f + Mathf.Sin(Time.time * light.lightEffectPulseSpeed)) * 0.5f);
                     break;
 
-                case LightType.Strobe:
+                case DynamicLightEffect.Flicker:
+                    shaderDynamicLights[idx].intensity *= Random.value;
+                    break;
+
+                case DynamicLightEffect.Strobe:
                     break;
             }
         }

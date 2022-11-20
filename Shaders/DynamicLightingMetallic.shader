@@ -136,21 +136,37 @@ Shader "Dynamic Lighting/Metallic PBR"
                     if (light_distance > light.radius) continue;
 
                     // if this renderer has a lightmap we use shadow bits otherwise it's a dynamic object.
-                    // if this light is not on a valid lightmap channel we assume it's a realtime light.
+                    // if this light is realtime we will skip this step.
                     float map = 1.0;
-                    if (lightmap_resolution > 0 && light.channel < 32)
+                    if (lightmap_resolution > 0 && light_is_dynamic(light))
                     {
+                        uint shadow_channel = light_get_shadow_channel(light);
+
                         // fetch the shadow bit and if it's black we can skip the rest of the calculations.
                         // confirmed with NVIDIA Quadro K1000M that this check is cheaper.
-                        map = lightmap_pixel(lightmap_uv, light.channel);
+                        map = lightmap_pixel(lightmap_uv, shadow_channel);
                         if (map == 0.0) continue;
 
                         // apply a simple 3x3 sampling with averaged results to the shadow bits.
-                        map = lightmap_sample3x3(lightmap_uv, light.channel, map);
+                        map = lightmap_sample3x3(lightmap_uv, shadow_channel, map);
                     }
 
                     // calculate the direction between the light source and the fragment.
                     float3 light_direction = normalize(light.position - i.world);
+
+                    // spot lights determine whether we are in the light cone or outside.
+                    if (light_is_spotlight(light))
+                    {
+                        float theta = dot(light_direction, normalize(-light.forward));
+                        float epsilon = light.cutoff - light.outerCutoff;
+                        float intensity = saturate((theta - light.outerCutoff) / epsilon);
+
+                        // anything outside of the spot light can and must be skipped.
+                        if (theta <= light.outerCutoff)
+                            continue;
+                        else
+                            map *= intensity;
+                    }
 
                     // important attenuation that actually creates the point light with maximum radius.
                     float attenuation = saturate(1.0 - light_distance * light_distance / (light.radius * light.radius)) * light.intensity;

@@ -5,6 +5,10 @@ struct DynamicLight
     float  intensity;
     float  radius;
     uint   channel;
+
+    float3 forward;
+    float  cutoff;
+    float  outerCutoff;
 };
 
 StructuredBuffer<DynamicLight> dynamic_lights;
@@ -13,6 +17,7 @@ uint dynamic_lights_count;
 StructuredBuffer<uint> lightmap;
 uint lightmap_resolution;
 
+// fetches a shadow bit as the specified uv coordinates from the lightmap data.
 float lightmap_pixel(uint2 uv, uint channel)
 {
     return (lightmap[uv.y * lightmap_resolution + uv.x] & (1 << channel)) > 0;
@@ -59,6 +64,30 @@ float lightmap_sample3x3(uint2 uv, uint channel, float map)
     map += lightmap_pixel(uv + uint2 (1, 1), channel);
 
     return map / 9.0;
+}
+
+// the first 5 bits contain a valid channel index so mask by 31.
+uint light_get_shadow_channel(DynamicLight light)
+{
+    return light.channel & 31;
+}
+
+// bit 6 determines whether the light is realtime and does not have shadows.
+uint light_is_realtime(DynamicLight light)
+{
+    return light.channel & 32;
+}
+
+// bit 6 determines whether the light is realtime and does not have shadows.
+uint light_is_dynamic(DynamicLight light)
+{
+    return (light.channel & 32) == 0;
+}
+
+// bit 7 determines whether the light is a spotlight.
+uint light_is_spotlight(DynamicLight light)
+{
+    return light.channel & 64;
 }
 
 // special thanks to https://learnopengl.com/PBR/Lighting
