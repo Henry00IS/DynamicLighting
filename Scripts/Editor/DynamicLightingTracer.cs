@@ -17,6 +17,11 @@ namespace AlpacaIT.DynamicLighting
         private float lightmapSizeMin1;
         private int uniqueIdentifier = 0;
 
+#if UNITY_EDITOR
+        private float progressBarLastUpdate = 0f;
+        private bool progressBarCancel = false;
+#endif
+
         /// <summary>Creates a new instance of the dynamic lighting tracer.</summary>
         public DynamicLightingTracer()
         {
@@ -32,29 +37,54 @@ namespace AlpacaIT.DynamicLighting
             pointLights = null;
             lightmapSizeMin1 = lightmapSize - 1;
             uniqueIdentifier = 0;
+#if UNITY_EDITOR
+            progressBarLastUpdate = 0f;
+            progressBarCancel = false;
+#endif
         }
 
         /// <summary>Starts raytracing the world.</summary>
         public void StartRaytracing()
         {
-            // reset the internal state.
-            Prepare();
-
-            // find all of the dynamic lights in the scene and assign channels.
-            pointLights = DynamicLightManager.FindDynamicLightsInScene().ToArray();
-            AssignPointLightChannels();
-
-            var meshFilters = Object.FindObjectsOfType<MeshFilter>();
-            foreach (var meshFilter in meshFilters)
+            try
             {
-                if (meshFilter.gameObject.isStatic)
-                {
-                    Raytrace(meshFilter);
-                }
-            }
+                // reset the internal state.
+                Prepare();
 
-            Debug.Log("Raytracing Finished: " + traces + " traces in " + tracingTime + "s! Seams padding in " + seamTime + "s!");
-            DynamicLightManager.Instance.Reload();
+                // find all of the dynamic lights in the scene and assign channels.
+                pointLights = DynamicLightManager.FindDynamicLightsInScene().ToArray();
+                AssignPointLightChannels();
+
+                var meshFilters = Object.FindObjectsOfType<MeshFilter>();
+                for (int i = 0; i < meshFilters.Length; i++)
+                {
+                    var meshFilter = meshFilters[i];
+                    if (meshFilter.gameObject.isStatic)
+                    {
+                        float progressMin = i / (float)meshFilters.Length;
+                        float progressMax = (i + 1) / (float)meshFilters.Length;
+
+                        Raytrace(meshFilter, progressMin, progressMax);
+
+#if UNITY_EDITOR
+                        if (progressBarCancel) break;
+#endif
+                    }
+                }
+
+                Debug.Log("Raytracing Finished: " + traces + " traces in " + tracingTime + "s! Seams padding in " + seamTime + "s!");
+                DynamicLightManager.Instance.Reload();
+            }
+            catch
+            {
+                throw;
+            }
+            finally
+            {
+#if UNITY_EDITOR
+                UnityEditor.EditorUtility.ClearProgressBar();
+#endif
+            }
         }
 
 #if UNITY_EDITOR
@@ -138,14 +168,19 @@ namespace AlpacaIT.DynamicLighting
             return false;
         }
 
-        private void Raytrace(MeshFilter meshFilter)
+        private void Raytrace(MeshFilter meshFilter, float progressMin, float progressMax)
         {
             var meshBuilder = new MeshBuilder(meshFilter.transform.localToWorldMatrix, meshFilter.sharedMesh);
             lightmapSize = MathEx.SurfaceAreaToTextureSize(meshBuilder.surfaceArea, 128);
             if (lightmapSize > maximumLightmapSize)
                 lightmapSize = maximumLightmapSize;
             lightmapSizeMin1 = lightmapSize - 1;
+
+#if UNITY_EDITOR
+            var progressTitle = "Raytracing Scene " + meshBuilder.surfaceArea.ToString("0.00") + "m² (" + lightmapSize + "x" + lightmapSize + ")";
+            var progressDescription = "Raytracing " + meshFilter.name;
             Debug.Log(meshFilter.name + " surface area: " + meshBuilder.surfaceArea.ToString("0.00") + "m² lightmap size: " + lightmapSize + "x" + lightmapSize);
+#endif
 
             var tt1 = Time.realtimeSinceStartup;
             var pixels_lightmap = new uint[lightmapSize * lightmapSize];
@@ -157,6 +192,17 @@ namespace AlpacaIT.DynamicLighting
 
                 for (int i = 0; i < triangles.Length; i += 3)
                 {
+#if UNITY_EDITOR
+                    if (Time.realtimeSinceStartup - progressBarLastUpdate > 0.25f)
+                    {
+                        progressBarLastUpdate = Time.realtimeSinceStartup;
+                        if (UnityEditor.EditorUtility.DisplayCancelableProgressBar(progressTitle, progressDescription, Mathf.Lerp(progressMin, progressMax, i / (float)triangles.Length)))
+                        {
+                            progressBarCancel = true;
+                            break;
+                        }
+                    }
+#endif
                     var v1 = vertices[triangles[i]];
                     var v2 = vertices[triangles[i + 1]];
                     var v3 = vertices[triangles[i + 2]];
