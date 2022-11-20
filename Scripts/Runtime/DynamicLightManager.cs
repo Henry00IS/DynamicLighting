@@ -52,24 +52,12 @@ namespace AlpacaIT.DynamicLighting
         private ComputeBuffer dynamicLightsBuffer;
 
         private Vector3 lastCameraMetricGridPosition = new Vector3(float.NegativeInfinity, float.NegativeInfinity, float.NegativeInfinity);
+        [System.NonSerialized]
+        private bool isInitialized = false;
 
 #if UNITY_EDITOR
 
         private bool useContinuousPreview = false;
-
-        private void OnEnable()
-        {
-            // handle C# reloads in the editor.
-            if (!Application.isPlaying)
-                Awake();
-        }
-
-        private void OnDisable()
-        {
-            // handle C# reloads in the editor.
-            if (!Application.isPlaying)
-                OnDestroy();
-        }
 
         [UnityEditor.MenuItem("Dynamic Lighting/Toggle Continuous Preview", false, 21)]
         public static void EnableContinuousPreview()
@@ -94,6 +82,23 @@ namespace AlpacaIT.DynamicLighting
 
 #endif
 
+        private void OnEnable()
+        {
+            Initialize();
+        }
+
+        private void OnDisable()
+        {
+            Cleanup();
+        }
+
+        /// <summary>Immediately reloads the lighting.</summary>
+        public void Reload()
+        {
+            Cleanup();
+            Initialize();
+        }
+
         /// <summary>Finds all of the dynamic lights in the scene that are not realtime.</summary>
         /// <returns>The collection of dynamic lights in the scene.</returns>
         public static List<DynamicLight> FindDynamicLightsInScene()
@@ -109,15 +114,15 @@ namespace AlpacaIT.DynamicLighting
             return dynamicPointLights;
         }
 
-        /// <summary>Immediately reloads the lighting.</summary>
-        public void Reload()
+        private void Initialize()
         {
-            OnDestroy();
-            Awake();
-        }
+            // always immediately force an update in case we are budgeting.
+            lastCameraMetricGridPosition = new Vector3(float.NegativeInfinity, float.NegativeInfinity, float.NegativeInfinity);
 
-        private void Awake()
-        {
+            // only execute the rest if not initialized yet.
+            if (isInitialized) return;
+            isInitialized = true;
+
             dynamicLightStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(ShaderDynamicLight));
 
             // more dynamic point lights will never be instantiated during play so we fetch them here once.
@@ -158,12 +163,26 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
-        private void OnDestroy()
+        private void Cleanup()
         {
-            dynamicLightsBuffer.Release();
+            if (!isInitialized) return;
+            isInitialized = false;
+
+            if (dynamicLightsBuffer != null && dynamicLightsBuffer.IsValid())
+            {
+                dynamicLightsBuffer.Release();
+                dynamicLightsBuffer = null;
+            }
 
             for (int i = 0; i < lightmaps.Length; i++)
-                lightmaps[i].buffer.Release();
+            {
+                var lightmap = lightmaps[i];
+                if (lightmap.buffer != null && lightmap.buffer.IsValid())
+                {
+                    lightmap.buffer.Release();
+                    lightmap.buffer = null;
+                }
+            }
         }
 
         public void RegisterRealtimeLight(DynamicLight light)
@@ -181,6 +200,8 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         private void ReallocateShaderLightBuffer()
         {
+            Debug.Log("REALLOC");
+
             // properly release any old buffer.
             if (dynamicLightsBuffer != null && dynamicLightsBuffer.IsValid())
                 dynamicLightsBuffer.Release();
@@ -327,7 +348,8 @@ namespace AlpacaIT.DynamicLighting
             }*/
 
             // upload the active light data to the graphics card.
-            dynamicLightsBuffer.SetData(shaderDynamicLights);
+            if (dynamicLightsBuffer != null && dynamicLightsBuffer.IsValid())
+                dynamicLightsBuffer.SetData(shaderDynamicLights);
             Shader.SetGlobalInt("dynamic_lights_count", activeDynamicLightsCount + activeRealtimeLightsCount);
         }
 
@@ -395,29 +417,6 @@ namespace AlpacaIT.DynamicLighting
                 case DynamicLightEffect.Strobe:
                     break;
             }
-        }
-
-        /// <summary>Called before the light gets drawn. It's within the rendering budget.</summary>
-
-        private void UpdateLightWithinBudget(int idx, DynamicLight light)
-        {
-            light.dlmFadeoutTime = Time.time + budgetLightFadingTime;
-        }
-
-        /// <summary>Called before the light gets drawn. It's outside the rendering budget.</summary>
-        private void UpdateLightOutsideBudget(int idx, DynamicLight light)
-        {
-            var fadeoutInterpolant = Mathf.InverseLerp(1.0f, 0.0f, (light.dlmFadeoutTime - Time.time) / budgetLightFadingTime);
-            shaderDynamicLights[idx].intensity *= fadeoutInterpolant;
-        }
-
-        private bool LightBudgetBusy(DynamicLight light)
-        {
-            if ((light.dlmFadeoutTime - Time.time) / budgetLightFadingTime > 0f)
-            {
-                return true;
-            }
-            return false;
         }
 
         private void OnDrawGizmos()

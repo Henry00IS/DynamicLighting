@@ -2,6 +2,7 @@ using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
+    [ExecuteInEditMode]
     public class DynamicLight : MonoBehaviour
     {
         public DynamicLightType lightType = DynamicLightType.Point;
@@ -20,20 +21,6 @@ namespace AlpacaIT.DynamicLighting
         public float lightEffectPulseModifier = 0.25f;
 
         public bool realtime { get => lightChannel == 32; }
-
-        /// <summary>Internal variable for <see cref="DynamicLightManager"/> do not use.</summary>
-        internal float dlmTime;
-
-        /// <summary>
-        /// Internal variable for <see cref="DynamicLightManager"/> do not use.
-        /// <para>
-        /// The fadeout time until the light gets disabled due to budgeting. This is reset to a
-        /// future time whenever it's in budget.
-        /// </para>
-        /// </summary>
-        internal float dlmFadeoutTime;
-
-        internal bool dlmBusy => dlmFadeoutTime - Time.time > 0f;
 
         private void Start()
         {
