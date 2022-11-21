@@ -311,46 +311,6 @@ namespace AlpacaIT.DynamicLighting
                 idx++;
             }
 
-            /*
-            dynamicLights.Sort((a, b) => a.dlmBusy == b.dlmBusy ? (camera.transform.position - a.transform.position).sqrMagnitude
-                         .CompareTo((camera.transform.position - b.transform.position).sqrMagnitude) : (a.dlmBusy ? -1 : 1));
-
-            realtimeLights.Sort((a, b) => a.dlmBusy == b.dlmBusy ? (camera.transform.position - a.transform.position).sqrMagnitude
-                          .CompareTo((camera.transform.position - b.transform.position).sqrMagnitude) : (a.dlmBusy ? -1 : 1));
-
-            var dynamicLightsCount = dynamicLights.Count;
-            for (int i = 0; i < dynamicLightsCount; i++)
-            {
-                var light = dynamicLights[i];
-                if (i > dynamicLightBudget)
-                {
-                    UpdateLightOutsideBudget(i, light);
-                }
-                else
-                {
-                    UpdateLightWithinBudget(i, light);
-                }
-            }
-
-            dynamicLightsCount = dynamicLightBudget < dynamicLightsCount ? dynamicLightBudget : dynamicLightsCount;
-            for (int i = 0; i < dynamicLightsCount; i++)
-            {
-                var light = dynamicLights[i];
-                SetShaderDynamicLight(idx, light);
-                UpdateLightEffects(idx, light);
-                idx++;
-            }
-            /*
-            var realtimeLightsCount = realtimeLights.Count;
-            realtimeLightsCount = realtimeLightBudget < realtimeLightsCount ? realtimeLightBudget : realtimeLightsCount;
-            for (int i = 0; i < realtimeLightsCount; i++)
-            {
-                var light = realtimeLights[i];
-                SetShaderDynamicLight(idx, light);
-                UpdateLightEffects(idx, light);
-                idx++;
-            }*/
-
             // upload the active light data to the graphics card.
             if (dynamicLightsBuffer != null && dynamicLightsBuffer.IsValid())
                 dynamicLightsBuffer.SetData(shaderDynamicLights);
@@ -387,14 +347,17 @@ namespace AlpacaIT.DynamicLighting
             shaderDynamicLights[idx].radius = light.lightRadius;
             shaderDynamicLights[idx].channel = light.lightChannel;
 
+            shaderDynamicLights[idx].channel &= ~((uint)1 << 6); // spot light bit
+            shaderDynamicLights[idx].channel &= ~((uint)1 << 7); // discoball light bit
+
             switch (light.lightType)
             {
-                case DynamicLightType.Point:
-                    shaderDynamicLights[idx].channel &= ~((uint)1 << 6);
+                case DynamicLightType.Spot:
+                    shaderDynamicLights[idx].channel |= (uint)1 << 6; // spot light bit
                     break;
 
-                case DynamicLightType.Spot:
-                    shaderDynamicLights[idx].channel |= (uint)1 << 6;
+                case DynamicLightType.Discoball:
+                    shaderDynamicLights[idx].channel |= (uint)1 << 7; // discoball light bit
                     break;
             }
 

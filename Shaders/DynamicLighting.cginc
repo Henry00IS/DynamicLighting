@@ -90,6 +90,115 @@ uint light_is_spotlight(DynamicLight light)
     return light.channel & 64;
 }
 
+// bit 8 determines whether the light is a discoball.
+uint light_is_discoball(DynamicLight light)
+{
+    return light.channel & 128;
+}
+
+// calculates the spotlight effect.
+//
+// returns:
+// x: the cutoff angle theta.
+// y: the intensity for a smooth transition.
+// 
+// example:
+// 
+//    // anything outside of the spot light can and must be skipped.
+//    float2 spotlight = light_calculate_spotlight(light, light_direction);
+//    if (spotlight.x <= light.outerCutoff)
+//        continue;
+//    map *= spotlight.y;
+//
+float2 light_calculate_spotlight(DynamicLight light, float3 light_direction)
+{
+    float theta = dot(light_direction, -light.forward);
+    float epsilon = light.cutoff - light.outerCutoff;
+    float intensity = saturate((theta - light.outerCutoff) / epsilon);
+    return float2(theta, intensity);
+}
+
+// Rotation with angle (in radians) and axis
+float3x3 AngleAxis3x3(float angle, float3 axis)
+{
+    float c, s;
+    sincos(angle, s, c);
+
+    float t = 1 - c;
+    float x = axis.x;
+    float y = axis.y;
+    float z = axis.z;
+
+    return float3x3(
+        t * x * x + c, t * x * y - s * z, t * x * z + s * y,
+        t * x * y + s * z, t * y * y + c, t * y * z - s * x,
+        t * x * z - s * y, t * y * z + s * x, t * z * z + c
+        );
+}
+
+float4x4 axis_matrix(float3 right, float3 up, float3 forward)
+{
+    float3 xaxis = right;
+    float3 yaxis = up;
+    float3 zaxis = forward;
+    return float4x4(
+        xaxis.x, yaxis.x, zaxis.x, 0,
+        xaxis.y, yaxis.y, zaxis.y, 0,
+        xaxis.z, yaxis.z, zaxis.z, 0,
+        0, 0, 0, 1
+        );
+}
+
+float4x4 look_at_matrix(float3 forward, float3 up)
+{
+    float3 xaxis = normalize(cross(forward, up));
+    float3 yaxis = up;
+    float3 zaxis = forward;
+    return axis_matrix(xaxis, yaxis, zaxis);
+}
+
+float4x4 look_at_matrix(float3 at, float3 eye, float3 up)
+{
+    float3 zaxis = normalize(at - eye);
+    float3 xaxis = normalize(cross(up, zaxis));
+    float3 yaxis = cross(zaxis, xaxis);
+    return axis_matrix(xaxis, yaxis, zaxis);
+}
+
+// snaps the input direction to 45 degree increments.
+float3 snap_direction(float3 input)
+{
+    float3 angle = acos(input);
+    float3 rounded = round(angle / radians(45.0)) * radians(45.0);
+    float3 cosine = cos(rounded);
+    return normalize(cosine);
+}
+
+// calculates the discoball spotlights effect.
+//
+// returns:
+// x: the cutoff angle theta.
+// y: the intensity for a smooth transition.
+// 
+// example:
+// 
+//    // anything outside of the spot lights can and must be skipped.
+//    float2 spotlight = light_calculate_spotlight(light, light_direction);
+//    if (spotlight.x <= light.outerCutoff)
+//        continue;
+//    map *= spotlight.y;
+//
+float2 light_calculate_discoball(DynamicLight light, float3 light_direction)
+{
+    // FIXME: this is not accurate and flies all over the place!
+    float3x3 rot = look_at_matrix(light.position - light.forward, light.position, float3(0, 1, 0));
+
+    float theta = dot(snap_direction(mul(light_direction, rot)), mul(light_direction, rot));
+    float epsilon = light.cutoff - light.outerCutoff;
+    float intensity = saturate((theta - light.outerCutoff) / epsilon);
+    return float2(theta, intensity);
+}
+
 // special thanks to https://learnopengl.com/PBR/Lighting
 
 float DistributionGGX(float3 N, float3 H, float3 roughness)

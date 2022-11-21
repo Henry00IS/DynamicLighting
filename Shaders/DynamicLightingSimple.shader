@@ -103,15 +103,19 @@ Shader "Dynamic Lighting/Simple"
                     // spot lights determine whether we are in the light cone or outside.
                     if (light_is_spotlight(light))
                     {
-                        float theta = dot(light_direction, -light.forward);
-                        float epsilon = light.cutoff - light.outerCutoff;
-                        float intensity = saturate((theta - light.outerCutoff) / epsilon);
-
                         // anything outside of the spot light can and must be skipped.
-                        if (theta <= light.outerCutoff)
+                        float2 spotlight = light_calculate_spotlight(light, light_direction);
+                        if (spotlight.x <= light.outerCutoff)
                             continue;
-                        else
-                            map *= intensity;
+                        map *= spotlight.y;
+                    }
+                    else if (light_is_discoball(light))
+                    {
+                        // anything outside of the spot lights can and must be skipped.
+                        float2 spotlight = light_calculate_discoball(light, light_direction);
+                        if (spotlight.x <= light.outerCutoff)
+                            continue;
+                        map *= spotlight.y;
                     }
 
                     // a simple dot product with the normal gives us diffusion.

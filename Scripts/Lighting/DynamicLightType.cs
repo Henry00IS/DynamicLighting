@@ -5,5 +5,6 @@
     {
         Point,
         Spot,
+        Discoball
     }
 }
