@@ -29,6 +29,9 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
+        /// <summary>Whether an instance of the dynamic lighting manager has been created.</summary>
+        public static bool hasInstance => s_Instance;
+
         // the NVIDIA Quadro K1000M (2012) can handle 25 lights at 30fps.
         // the NVIDIA GeForce GTX 1050 Ti (2016) can handle 125 lights between 53-68fps.
         // the NVIDIA GeForce RTX 3080 (2020) can handle 2000 lights at 70fps.
@@ -45,6 +48,7 @@ namespace AlpacaIT.DynamicLighting
         private Lightmap[] lightmaps;
         private List<DynamicLight> sceneDynamicLights;
         private List<DynamicLight> sceneRealtimeLights;
+        private bool sceneDynamicLightsAddedDirty = false;
 
         private List<DynamicLight> activeDynamicLights;
         private List<DynamicLight> activeRealtimeLights;
@@ -96,7 +100,7 @@ namespace AlpacaIT.DynamicLighting
         public void Reload()
         {
             Cleanup();
-            Initialize();
+            Initialize(true);
         }
 
         /// <summary>Finds all of the dynamic lights in the scene that are not realtime.</summary>
@@ -114,7 +118,7 @@ namespace AlpacaIT.DynamicLighting
             return dynamicPointLights;
         }
 
-        private void Initialize()
+        private void Initialize(bool reload = false)
         {
             // always immediately force an update in case we are budgeting.
             lastCameraMetricGridPosition = new Vector3(float.NegativeInfinity, float.NegativeInfinity, float.NegativeInfinity);
@@ -125,16 +129,21 @@ namespace AlpacaIT.DynamicLighting
 
             dynamicLightStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(ShaderDynamicLight));
 
-            // more dynamic point lights will never be instantiated during play so we fetch them here once.
-            sceneDynamicLights = FindDynamicLightsInScene();
-
-            // prepare to store realtime lights that get created during gameplay.
+            // prepare to store dynamic lights that will register themselves to us.
+            sceneDynamicLights = new List<DynamicLight>(dynamicLightBudget);
             sceneRealtimeLights = new List<DynamicLight>(realtimeLightBudget);
 
+            if (reload)
+            {
+                // manually register all lights - this is used after raytracing.
+                sceneDynamicLights = new List<DynamicLight>(FindObjectsOfType<DynamicLight>());
+                sceneDynamicLightsAddedDirty = true;
+            }
+
             // allocate the required arrays and buffers according to our budget.
+            activeDynamicLights = new List<DynamicLight>(dynamicLightBudget);
+            activeRealtimeLights = new List<DynamicLight>(realtimeLightBudget);
             shaderDynamicLights = new ShaderDynamicLight[dynamicLightBudget + realtimeLightBudget];
-            activeDynamicLights = new List<DynamicLight>(shaderDynamicLights.Length);
-            activeRealtimeLights = new List<DynamicLight>(shaderDynamicLights.Length);
             dynamicLightsBuffer = new ComputeBuffer(shaderDynamicLights.Length, dynamicLightStride, ComputeBufferType.Default);
             Shader.SetGlobalBuffer("dynamic_lights", dynamicLightsBuffer);
             Shader.SetGlobalInt("dynamic_lights_count", 0);
@@ -187,16 +196,29 @@ namespace AlpacaIT.DynamicLighting
                     lightmap.buffer = null;
                 }
             }
+
+            sceneDynamicLights = null;
+            sceneRealtimeLights = null;
+            activeDynamicLights = null;
+            activeRealtimeLights = null;
         }
 
-        public void RegisterRealtimeLight(DynamicLight light)
+        public void RegisterDynamicLight(DynamicLight light)
         {
-            sceneRealtimeLights.Add(light);
+            Initialize();
+            sceneDynamicLights.Add(light);
+            sceneDynamicLightsAddedDirty = true;
         }
 
-        public void UnregisterRealtimeLight(DynamicLight light)
+        public void UnregisterDynamicLight(DynamicLight light)
         {
-            sceneRealtimeLights.Remove(light);
+            if (sceneDynamicLights != null)
+            {
+                sceneDynamicLights.Remove(light);
+                sceneRealtimeLights.Remove(light);
+                activeDynamicLights.Remove(light);
+                activeDynamicLights.Remove(light);
+            }
         }
 
         /// <summary>
@@ -251,6 +273,24 @@ namespace AlpacaIT.DynamicLighting
             if (shaderDynamicLights.Length != totalLightBudget)
                 ReallocateShaderLightBuffer();
 
+            // if a dynamic light got added to the scene:
+            if (sceneDynamicLightsAddedDirty)
+            {
+                sceneDynamicLightsAddedDirty = false;
+
+                // move all of the realtime lights into a separate list.
+                var sceneDynamicLightsCount1 = sceneDynamicLights.Count;
+                for (int i = sceneDynamicLightsCount1; i --> 0;)
+                {
+                    var light = sceneDynamicLights[i];
+                    if (light.realtime)
+                    {
+                        sceneDynamicLights.RemoveAt(i);
+                        sceneRealtimeLights.Add(light);
+                    }
+                }
+            }
+
             // if we exceed the dynamic light budget then whenever the camera moves more than a
             // meter in the scene we sort all dynamic lights by distance from the camera and the
             // closest lights will appear first in the lists.
@@ -268,6 +308,9 @@ namespace AlpacaIT.DynamicLighting
                 SortSceneRealtimeLights(cameraPosition);
             }
 
+            /*
+
+
             // clear as many active lights as possible.
 
             var activeDynamicLightsCount = activeDynamicLights.Count;
@@ -277,8 +320,11 @@ namespace AlpacaIT.DynamicLighting
             var activeRealtimeLightsCount = activeRealtimeLights.Count;
             for (int i = activeRealtimeLightsCount; i-- > 0;)
                 activeRealtimeLights.RemoveAt(i);
-
+            */
             // fill the active lights back up with the closest lights.
+
+            activeDynamicLights.Clear();
+            activeRealtimeLights.Clear();
 
             var sceneDynamicLightsCount = sceneDynamicLights.Count;
             for (int i = 0; i < sceneDynamicLightsCount; i++)
@@ -293,7 +339,7 @@ namespace AlpacaIT.DynamicLighting
             // write the active lights into the shader data.
 
             var idx = 0;
-            activeDynamicLightsCount = activeDynamicLights.Count;
+            var activeDynamicLightsCount = activeDynamicLights.Count;
             for (int i = 0; i < activeDynamicLightsCount; i++)
             {
                 var light = activeDynamicLights[i];
@@ -302,7 +348,7 @@ namespace AlpacaIT.DynamicLighting
                 idx++;
             }
 
-            activeRealtimeLightsCount = activeRealtimeLights.Count;
+            var activeRealtimeLightsCount = activeRealtimeLights.Count;
             for (int i = 0; i < activeRealtimeLightsCount; i++)
             {
                 var light = activeRealtimeLights[i];

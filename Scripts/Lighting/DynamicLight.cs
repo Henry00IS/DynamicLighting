@@ -22,20 +22,15 @@ namespace AlpacaIT.DynamicLighting
 
         public bool realtime { get => lightChannel == 32; }
 
-        private void Start()
+        private void OnEnable()
         {
-            if (realtime)
-            {
-                DynamicLightManager.Instance.RegisterRealtimeLight(this);
-            }
+            DynamicLightManager.Instance.RegisterDynamicLight(this);
         }
 
-        private void OnDestroy()
+        private void OnDisable()
         {
-            if (realtime)
-            {
-                DynamicLightManager.Instance.UnregisterRealtimeLight(this);
-            }
+            if (DynamicLightManager.hasInstance)
+                DynamicLightManager.Instance.UnregisterDynamicLight(this);
         }
 
 #if UNITY_EDITOR
