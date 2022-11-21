@@ -157,7 +157,7 @@ Shader "Dynamic Lighting/Metallic PBR"
                     // spot lights determine whether we are in the light cone or outside.
                     if (light_is_spotlight(light))
                     {
-                        float theta = dot(light_direction, normalize(-light.forward));
+                        float theta = dot(light_direction, -light.forward);
                         float epsilon = light.cutoff - light.outerCutoff;
                         float intensity = saturate((theta - light.outerCutoff) / epsilon);
 
