@@ -150,6 +150,10 @@ namespace AlpacaIT.DynamicLighting
                 var meshRenderer = lightmap.GetComponent<MeshRenderer>();
                 var materialPropertyBlock = new MaterialPropertyBlock();
 
+                // play nice with other scripts.
+                if (meshRenderer.HasPropertyBlock())
+                    meshRenderer.GetPropertyBlock(materialPropertyBlock);
+
                 // assign the lightmap data to the material property block.
                 if (RuntimeUtilities.ReadLightmapData(lightmap.identifier, out uint[] pixels))
                 {
