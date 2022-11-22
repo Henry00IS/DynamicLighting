@@ -229,6 +229,7 @@ float light_calculate_watershimmer(DynamicLight light, float3 world)
     world = round(world * pixel_scale) / pixel_scale;
     float stablerng = gold_noise(world.xy, world.z);
 
+    // use a sine wave to change the brightness of the stable random blocks.
     return lerp(0.8, 1, -abs(sin(stablerng * _Time.w)));
 }
 
