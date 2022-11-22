@@ -31,5 +31,22 @@ namespace AlpacaIT.DynamicLighting
             float surfaceSquareRoot = Mathf.Sqrt(pixelDensitySquared * surfaceAreaMeterSquared);
             return Mathf.CeilToInt(surfaceSquareRoot);
         }
+
+        /// <summary>
+        /// Given a set of camera frustum planes, checks if the sphere (as a position and radius)
+        /// intersects with it.
+        /// </summary>
+        /// <param name="planes">The 6 camera frustum planes.</param>
+        /// <param name="center">The center position of the sphere.</param>
+        /// <param name="radius">The radius of the sphere.</param>
+        /// <returns>True when the planes intersect the sphere else false.</returns>
+        public static bool CheckSphereIntersectsFrustum(Plane[] planes, Vector3 center, float radius)
+        {
+            for (int i = 0; i < planes.Length; i++)
+                if (planes[i].normal.x * center.x + planes[i].normal.y * center.y + planes[i].normal.z * center.z + planes[i].distance < -radius)
+                    // ^ is the same as: if (planes[i].GetDistanceToPoint(center) < -radius)
+                    return false;
+            return true;
+        }
     }
 }

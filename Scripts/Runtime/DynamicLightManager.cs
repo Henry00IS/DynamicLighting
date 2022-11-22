@@ -280,7 +280,7 @@ namespace AlpacaIT.DynamicLighting
 
                 // move all of the realtime lights into a separate list.
                 var sceneDynamicLightsCount1 = sceneDynamicLights.Count;
-                for (int i = sceneDynamicLightsCount1; i --> 0;)
+                for (int i = sceneDynamicLightsCount1; i-- > 0;)
                 {
                     var light = sceneDynamicLights[i];
                     if (light.realtime)
@@ -290,6 +290,9 @@ namespace AlpacaIT.DynamicLighting
                     }
                 }
             }
+
+            // calculate the camera frustum planes.
+            Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(camera);
 
             // if we exceed the dynamic light budget then whenever the camera moves more than a
             // meter in the scene we sort all dynamic lights by distance from the camera and the
@@ -310,7 +313,6 @@ namespace AlpacaIT.DynamicLighting
 
             /*
 
-
             // clear as many active lights as possible.
 
             var activeDynamicLightsCount = activeDynamicLights.Count;
@@ -328,13 +330,35 @@ namespace AlpacaIT.DynamicLighting
 
             var sceneDynamicLightsCount = sceneDynamicLights.Count;
             for (int i = 0; i < sceneDynamicLightsCount; i++)
+            {
                 if (activeDynamicLights.Count < dynamicLightBudget)
-                    activeDynamicLights.Add(sceneDynamicLights[i]);
+                {
+#if UNITY_EDITOR    // optimization: only add lights that are within the camera frustum.
+                    if (!Application.isPlaying || MathEx.CheckSphereIntersectsFrustum(frustumPlanes, sceneDynamicLights[i].transform.position, sceneDynamicLights[i].lightRadius))
+#else
+                    if (MathEx.CheckSphereIntersectsFrustum(frustumPlanes, sceneDynamicLights[i].transform.position, sceneDynamicLights[i].lightRadius))
+#endif
+                    {
+                        activeDynamicLights.Add(sceneDynamicLights[i]);
+                    }
+                }
+            }
 
             var sceneRealtimeLightsCount = sceneRealtimeLights.Count;
             for (int i = 0; i < sceneRealtimeLightsCount; i++)
+            {
                 if (activeRealtimeLights.Count < realtimeLightBudget)
-                    activeRealtimeLights.Add(sceneRealtimeLights[i]);
+                {
+#if UNITY_EDITOR    // optimization: only add lights that are within the camera frustum.
+                    if (!Application.isPlaying || MathEx.CheckSphereIntersectsFrustum(frustumPlanes, sceneRealtimeLights[i].transform.position, sceneRealtimeLights[i].lightRadius))
+#else
+                    if (MathEx.CheckSphereIntersectsFrustum(frustumPlanes, sceneRealtimeLights[i].transform.position, sceneRealtimeLights[i].lightRadius))
+#endif
+                    {
+                        activeRealtimeLights.Add(sceneRealtimeLights[i]);
+                    }
+                }
+            }
 
             // write the active lights into the shader data.
 
