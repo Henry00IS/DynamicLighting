@@ -171,6 +171,10 @@ Shader "Dynamic Lighting/Metallic PBR"
                             continue;
                         map *= spotlight.y;
                     }
+                    else if (light_is_watershimmer(light))
+                    {
+                        map *= light_calculate_watershimmer(light, i.world);
+                    }
 
                     // important attenuation that actually creates the point light with maximum radius.
                     float attenuation = saturate(1.0 - light_distance * light_distance / (light.radius * light.radius)) * light.intensity;

@@ -96,6 +96,12 @@ uint light_is_discoball(DynamicLight light)
     return light.channel & 128;
 }
 
+// bit 9 determines whether the light has water shimmer.
+uint light_is_watershimmer(DynamicLight light)
+{
+    return light.channel & 256;
+}
+
 // calculates the spotlight effect.
 //
 // returns:
@@ -197,6 +203,33 @@ float2 light_calculate_discoball(DynamicLight light, float3 light_direction)
     float epsilon = light.cutoff - light.outerCutoff;
     float intensity = saturate((theta - light.outerCutoff) / epsilon);
     return float2(theta, intensity);
+}
+
+// Gold Noise © 2015 dcerisano@standard3d.com
+// - based on the Golden Ratio
+// - uniform normalized distribution
+// - fastest static noise generator function (also runs at low precision)
+// - use with indicated fractional seeding method
+
+const float PHI = 1.61803398874989484820459; // = Golden Ratio 
+
+float gold_noise(in float2 xy, in float seed)
+{
+    return frac(tan(distance(xy * PHI, xy) * seed) * xy.x);
+}
+
+// calculates the water shimmer effect.
+//
+// returns: the multiplier for the shadow map.
+//
+float light_calculate_watershimmer(DynamicLight light, float3 world)
+{
+    // overlay the entire world with random blocks that never change between 0.0 and 1.0.
+    float pixel_scale = 12.5;
+    world = round(world * pixel_scale) / pixel_scale;
+    float stablerng = gold_noise(world.xy, world.z);
+
+    return lerp(0.8, 1, -abs(sin(stablerng * _Time.w)));
 }
 
 // special thanks to https://learnopengl.com/PBR/Lighting

@@ -121,6 +121,10 @@ Shader "Dynamic Lighting/Simple"
                             continue;
                         map *= spotlight.y;
                     }
+                    else if (light_is_watershimmer(light))
+                    {
+                        map *= light_calculate_watershimmer(light, i.world);
+                    }
 
                     // a simple dot product with the normal gives us diffusion.
                     float diffusion = max(dot(i.normal, light_direction), 0);

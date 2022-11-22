@@ -429,6 +429,10 @@ namespace AlpacaIT.DynamicLighting
                 case DynamicLightType.Discoball:
                     shaderDynamicLights[idx].channel |= (uint)1 << 7; // discoball light bit
                     break;
+
+                case DynamicLightType.WaterShimmer:
+                    shaderDynamicLights[idx].channel |= (uint)1 << 8; // water shimmer light bit
+                    break;
             }
 
             shaderDynamicLights[idx].forward = light.transform.forward;

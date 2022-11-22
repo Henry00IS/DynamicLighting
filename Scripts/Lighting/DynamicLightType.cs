@@ -5,6 +5,7 @@
     {
         Point,
         Spot,
-        Discoball
+        Discoball,
+        WaterShimmer,
     }
 }
