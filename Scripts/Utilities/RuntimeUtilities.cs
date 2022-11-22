@@ -16,7 +16,11 @@ namespace AlpacaIT.DynamicLighting
 
                 var lightmap = Resources.Load<TextAsset>(scene + "-Lightmap" + identifier);
                 if (lightmap == null)
+                {
                     Debug.LogError("Cannot find '" + scene + "-Lightmap" + identifier + ".bytes" + "'!");
+                    pixels = null;
+                    return false;
+                }
                 var byteArray = lightmap.bytes;
 
                 using (var memory = new MemoryStream(byteArray))

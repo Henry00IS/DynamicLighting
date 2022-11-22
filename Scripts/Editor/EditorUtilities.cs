@@ -25,8 +25,9 @@ namespace AlpacaIT.DynamicLighting
                     Directory.CreateDirectory(path + "\\Resources");
                 return path;
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.LogError("Error attempting to get or create the resources directory for the scene: " + ex.Message);
                 return null;
             }
         }
@@ -47,10 +48,11 @@ namespace AlpacaIT.DynamicLighting
                 {
                     memory.CopyTo(gzip);
                     gzip.Close();
-                    File.WriteAllBytes(path + "\\Resources\\" + scene + "-Lightmap" + identifier + ".bytes", compressed.ToArray());
+
+                    var lightmapFilePath = path + Path.DirectorySeparatorChar + "Resources" + Path.DirectorySeparatorChar + scene + "-Lightmap" + identifier + ".bytes";
+                    File.WriteAllBytes(lightmapFilePath, compressed.ToArray());
 #if UNITY_EDITOR
-                    string path2 = SceneManager.GetActiveScene().path;
-                    UnityEditor.AssetDatabase.ImportAsset(Path.GetDirectoryName(path2) + "\\" + Path.GetFileNameWithoutExtension(path2) + "\\Resources\\" + scene + "-Lightmap" + identifier + ".bytes");
+                    UnityEditor.AssetDatabase.ImportAsset(lightmapFilePath);
 #endif
                 }
 
@@ -58,7 +60,7 @@ namespace AlpacaIT.DynamicLighting
             }
             catch (Exception ex)
             {
-                Debug.LogError(ex.Message);
+                Debug.LogError("Error writing lightmap " + identifier + " data file: " + ex.Message);
                 return false;
             }
         }
