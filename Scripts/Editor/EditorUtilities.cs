@@ -16,8 +16,9 @@ namespace AlpacaIT.DynamicLighting
         {
             try
             {
-                string path = SceneManager.GetActiveScene().path;
-                path = Application.dataPath + "\\..\\" + Path.GetDirectoryName(path) + "\\" + Path.GetFileNameWithoutExtension(path);
+                Scene scene = SceneManager.GetActiveScene();
+                var path = Path.GetDirectoryName(scene.path) + Path.DirectorySeparatorChar + scene.name;
+
                 if (!Directory.Exists(path))
                     Directory.CreateDirectory(path);
                 if (!Directory.Exists(path + "\\Resources"))
