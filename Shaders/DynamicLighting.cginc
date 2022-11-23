@@ -17,6 +17,8 @@ uint dynamic_lights_count;
 StructuredBuffer<uint> lightmap;
 uint lightmap_resolution;
 
+sampler2D lightmap_texture;
+
 // fetches a shadow bit as the specified uv coordinates from the lightmap data.
 float lightmap_pixel(uint2 uv, uint channel)
 {

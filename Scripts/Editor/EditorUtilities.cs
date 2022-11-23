@@ -32,28 +32,63 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
-        public static bool WriteLightmapData(int identifier, uint[] pixels)
+        public static bool WriteLightmapData(int identifier, uint[] pixels, Vector3[] pixels_world)
         {
             try
             {
                 string scene = Path.GetFileNameWithoutExtension(SceneManager.GetActiveScene().path);
                 string path = CreateAndGetActiveSceneStorageDirectory();
-
-                byte[] byteArray = new byte[pixels.Length * 4];
-                Buffer.BlockCopy(pixels, 0, byteArray, 0, pixels.Length * 4);
-
-                using (var memory = new MemoryStream(byteArray))
-                using (var compressed = new MemoryStream())
-                using (var gzip = new GZipStream(compressed, System.IO.Compression.CompressionLevel.Optimal))
+                
                 {
-                    memory.CopyTo(gzip);
-                    gzip.Close();
+                    byte[] byteArray = new byte[pixels.Length * 4];
+                    Buffer.BlockCopy(pixels, 0, byteArray, 0, pixels.Length * 4);
 
-                    var lightmapFilePath = path + Path.DirectorySeparatorChar + "Resources" + Path.DirectorySeparatorChar + scene + "-Lightmap" + identifier + ".bytes";
-                    File.WriteAllBytes(lightmapFilePath, compressed.ToArray());
+                    using (var memory = new MemoryStream(byteArray))
+                    using (var compressed = new MemoryStream())
+                    using (var gzip = new GZipStream(compressed, System.IO.Compression.CompressionLevel.Optimal))
+                    {
+                        memory.CopyTo(gzip);
+                        gzip.Close();
+
+                        var lightmapFilePath = path + Path.DirectorySeparatorChar + "Resources" + Path.DirectorySeparatorChar + scene + "-Lightmap" + identifier + ".bytes";
+                        File.WriteAllBytes(lightmapFilePath, compressed.ToArray());
 #if UNITY_EDITOR
-                    UnityEditor.AssetDatabase.ImportAsset(lightmapFilePath);
+                        UnityEditor.AssetDatabase.ImportAsset(lightmapFilePath);
 #endif
+                    }
+                }
+
+                {
+                    // todo: optimize this
+
+                    byte[] byteArray;
+                    using (var memory = new MemoryStream())
+                    {
+                        for (int i = 0; i < pixels_world.Length; i++)
+                        {
+                            var x = BitConverter.GetBytes(pixels_world[i].x);
+                            var y = BitConverter.GetBytes(pixels_world[i].y);
+                            var z = BitConverter.GetBytes(pixels_world[i].z);
+                            memory.Write(x, 0, 4);
+                            memory.Write(y, 0, 4);
+                            memory.Write(z, 0, 4);
+                        }
+                        byteArray = memory.ToArray();
+                    }
+
+                    using (var memory = new MemoryStream(byteArray))
+                    using (var compressed = new MemoryStream())
+                    using (var gzip = new GZipStream(compressed, System.IO.Compression.CompressionLevel.Optimal))
+                    {
+                        memory.CopyTo(gzip);
+                        gzip.Close();
+
+                        var lightmapFilePath = path + Path.DirectorySeparatorChar + "Resources" + Path.DirectorySeparatorChar + scene + "-World" + identifier + ".bytes";
+                        File.WriteAllBytes(lightmapFilePath, compressed.ToArray());
+#if UNITY_EDITOR
+                        UnityEditor.AssetDatabase.ImportAsset(lightmapFilePath);
+#endif
+                    }
                 }
 
                 return true;

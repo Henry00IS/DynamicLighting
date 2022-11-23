@@ -42,6 +42,7 @@ namespace AlpacaIT.DynamicLighting
         }
 
         public Texture2D dynamicPointLightIcon;
+        public ComputeShader dynamicLightingComputeShader;
     }
 }
 

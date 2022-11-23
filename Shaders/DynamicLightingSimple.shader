@@ -65,8 +65,9 @@ Shader "Dynamic Lighting/Simple"
 
 #else
 
-            fixed4 frag (v2f i) : SV_Target
+            fixed4 frag(v2f i) : SV_Target
             {
+                /*
                 // calculate the lightmap pixel coordinates in advance.
                 // clamp uv to 0-1 and multiply by resolution cast to uint.
                 uint2 lightmap_uv = saturate(i.uv1) * lightmap_resolution;
@@ -138,6 +139,9 @@ Shader "Dynamic Lighting/Simple"
 
                 // sample the main texture, multiply by the light and add vertex colors.
                 fixed4 col = tex2D(_MainTex, i.uv0) * half4(light_final, 1) * i.color;
+                */
+
+                fixed4 col = tex2D(_MainTex, i.uv0) * tex2D(lightmap_texture, i.uv1) * i.color;
 
                 // apply fog.
                 UNITY_APPLY_FOG(i.fogCoord, col);

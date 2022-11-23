@@ -186,6 +186,7 @@ namespace AlpacaIT.DynamicLighting
 
             var tt1 = Time.realtimeSinceStartup;
             var pixels_lightmap = new uint[lightmapSize * lightmapSize];
+            var pixels_world = new Vector3[lightmapSize * lightmapSize];
             var pixels_visited = new uint[lightmapSize * lightmapSize];
             {
                 var vertices = meshBuilder.worldVertices;
@@ -213,7 +214,7 @@ namespace AlpacaIT.DynamicLighting
                     var t2 = uv1[triangles[i + 1]];
                     var t3 = uv1[triangles[i + 2]];
 
-                    RaycastTriangle(ref pixels_lightmap, ref pixels_visited, v1, v2, v3, t1, t2, t3);
+                    RaycastTriangle(ref pixels_lightmap, ref pixels_visited, ref pixels_world, v1, v2, v3, t1, t2, t3);
                 }
             }
             tracingTime += Time.realtimeSinceStartup - tt1;
@@ -299,7 +300,7 @@ namespace AlpacaIT.DynamicLighting
             var sceneStorageDirectory = EditorUtilities.CreateAndGetActiveSceneStorageDirectory();
             if (sceneStorageDirectory != null)
             {
-                EditorUtilities.WriteLightmapData(lightmap.identifier, pixels_lightmap);
+                EditorUtilities.WriteLightmapData(lightmap.identifier, pixels_lightmap, pixels_world);
             }
             else
             {
@@ -319,6 +320,18 @@ namespace AlpacaIT.DynamicLighting
             pixels[y * lightmapSize + x] = color;
         }
 
+        private Vector3 GetPixelVector3(ref Vector3[] pixels, int x, int y)
+        {
+            if (x < 0 || y < 0 || x >= lightmapSize || y >= lightmapSize) return Vector3.zero;
+            return pixels[y * lightmapSize + x];
+        }
+
+        private void SetPixelVector3(ref Vector3[] pixels, int x, int y, Vector3 vector)
+        {
+            if (x < 0 || y < 0 || x >= lightmapSize || y >= lightmapSize) return;
+            pixels[y * lightmapSize + x] = vector;
+        }
+
         private static Vector3 UvTo3d(Vector2 uv, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // calculate triangle area - if zero, skip it.
@@ -334,7 +347,7 @@ namespace AlpacaIT.DynamicLighting
             return a1 * v1 + a2 * v2 + a3 * v3;
         }
 
-        private void RaycastTriangle(ref uint[] pixels_lightmap, ref uint[] pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        private void RaycastTriangle(ref uint[] pixels_lightmap, ref uint[] pixels_visited, ref Vector3[] pixels_world, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // skip degenerate triangles.
             Vector3 normal = new Plane(v1, v2, v3).normal;
@@ -367,6 +380,9 @@ namespace AlpacaIT.DynamicLighting
 
                     // write this pixel into the visited map.
                     SetPixel(ref pixels_visited, x, y, 1);
+
+                    // write the world coordinates into the world map.
+                    SetPixelVector3(ref pixels_world, x, y, world);
 
                     if (px > 0)
                     {

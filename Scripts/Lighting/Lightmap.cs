@@ -14,5 +14,11 @@ namespace AlpacaIT.DynamicLighting
 
         [HideInInspector]
         public ComputeBuffer buffer;
+
+        [HideInInspector]
+        public ComputeBuffer buffer_world;
+
+        //[HideInInspector]
+        public RenderTexture texture;
     }
 }

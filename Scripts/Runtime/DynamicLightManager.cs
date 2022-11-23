@@ -164,12 +164,17 @@ namespace AlpacaIT.DynamicLighting
                     meshRenderer.GetPropertyBlock(materialPropertyBlock);
 
                 // assign the lightmap data to the material property block.
-                if (RuntimeUtilities.ReadLightmapData(lightmap.identifier, out uint[] pixels))
+                if (RuntimeUtilities.ReadLightmapData(lightmap.identifier, out uint[] pixels, out Vector3[] pixels_world))
                 {
                     lightmap.buffer = new ComputeBuffer(pixels.Length, 4);
                     lightmap.buffer.SetData(pixels);
+                    lightmap.buffer_world = new ComputeBuffer(pixels_world.Length, 12);
+                    lightmap.buffer_world.SetData(pixels_world);
+                    lightmap.texture = new RenderTexture(lightmap.resolution, lightmap.resolution, 0, RenderTextureFormat.ARGBHalf);
+                    lightmap.texture.enableRandomWrite = true;
                     materialPropertyBlock.SetBuffer("lightmap", lightmap.buffer);
                     materialPropertyBlock.SetInt("lightmap_resolution", lightmap.resolution);
+                    materialPropertyBlock.SetTexture("lightmap_texture", lightmap.texture);
                     meshRenderer.SetPropertyBlock(materialPropertyBlock);
                 }
                 else Debug.LogError("Unable to read the lightmap " + lightmap.identifier + " data file!");
@@ -194,6 +199,16 @@ namespace AlpacaIT.DynamicLighting
                 {
                     lightmap.buffer.Release();
                     lightmap.buffer = null;
+                }
+                if (lightmap.buffer_world != null && lightmap.buffer_world.IsValid())
+                {
+                    lightmap.buffer_world.Release();
+                    lightmap.buffer_world = null;
+                }
+                if (lightmap.texture != null && lightmap.texture.IsCreated())
+                {
+                    lightmap.texture.Release();
+                    lightmap.texture = null;
                 }
             }
 
@@ -385,6 +400,22 @@ namespace AlpacaIT.DynamicLighting
             if (dynamicLightsBuffer != null && dynamicLightsBuffer.IsValid())
                 dynamicLightsBuffer.SetData(shaderDynamicLights);
             Shader.SetGlobalInt("dynamic_lights_count", activeDynamicLightsCount + activeRealtimeLightsCount);
+
+
+            // compute shader.
+            var compute = DynamicLightingResources.Instance.dynamicLightingComputeShader;
+
+            for (int i = 0; i < lightmaps.Length; i++)
+            {
+                var lightmap = lightmaps[i];
+                compute.SetTexture(0, "Result", lightmap.texture);
+                compute.SetBuffer(0, "lightmap", lightmap.buffer);
+                compute.SetBuffer(0, "lightmap_world", lightmap.buffer_world);
+                compute.SetInt("lightmap_resolution", lightmap.resolution);
+                compute.SetInt("dynamic_lights_count", activeDynamicLightsCount + activeRealtimeLightsCount);
+                compute.SetTexture(0, "lightmap_texture", lightmap.texture);
+                compute.Dispatch(0, lightmap.resolution / 8, lightmap.resolution / 8, 1);
+            }
         }
 
         /// <summary>

@@ -13,3 +13,4 @@ MonoBehaviour:
   m_Name: DynamicLightingResources
   m_EditorClassIdentifier: 
   dynamicPointLightIcon: {fileID: 2800000, guid: 1646eb50de3a9b14f90eef653beeca4b, type: 3}
+  dynamicLightingComputeShader: {fileID: 7200000, guid: 42b5331af0ad21a45a732caf3bd13773, type: 3}
