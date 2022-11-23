@@ -65,7 +65,6 @@ namespace AlpacaIT.DynamicLighting
                         float progressMax = (i + 1) / (float)meshFilters.Length;
 
                         Raytrace(meshFilter, progressMin, progressMax);
-
 #if UNITY_EDITOR
                         if (progressBarCancel) break;
 #endif
@@ -74,6 +73,9 @@ namespace AlpacaIT.DynamicLighting
 
                 Debug.Log("Raytracing Finished: " + traces + " traces in " + tracingTime + "s! Seams padding in " + seamTime + "s!");
                 DynamicLightManager.Instance.Reload();
+#if UNITY_EDITOR
+                UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
+#endif
             }
             catch
             {
