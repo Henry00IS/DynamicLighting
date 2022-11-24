@@ -142,8 +142,8 @@ Shader "Dynamic Lighting/Metallic PBR"
                     {
                         uint shadow_channel = light_get_shadow_channel(light);
 
-                        // apply a simple 3x3 sampling with averaged results to the shadow bits.
-                        map = lightmap_sample3x3(lightmap_uv, shadow_channel);
+                        // retrieve the shadow bit at this position with bilinear filtering.
+                        map = lightmap_sample_bilinear(i.uv1, shadow_channel);
                     }
 
                     // calculate the direction between the light source and the fragment.

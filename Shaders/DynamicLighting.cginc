@@ -40,9 +40,30 @@ float lightmap_sample3x3(uint2 uv, uint channel)
 
     map += lightmap_pixel(uv + uint2(-1,  1), channel);
     map += lightmap_pixel(uv + uint2( 0,  1), channel);
-    map += lightmap_pixel(uv + uint2 (1,  1), channel);
+    map += lightmap_pixel(uv + uint2( 1,  1), channel);
 
     return map / 9.0;
+}
+
+// x x x
+// x   x apply 4x 3x3 sampling with interpolation to get bilinear filtered shadow bits.
+// x x x
+float lightmap_sample_bilinear(float2 uv, uint channel)
+{
+    // huge shoutout to neu_graphic for their software bilinear filter shader.
+    // https://www.shadertoy.com/view/4sBSRK
+
+    float2 pos = uv * lightmap_resolution - 0.5;
+    float2 f = frac(pos);
+    float2 pos_top_left = floor(pos);
+
+    // we are sample center, so it's the same as point sample.
+    float tl = lightmap_sample3x3(pos_top_left + float2(0.5, 0.5), channel);
+    float tr = lightmap_sample3x3(pos_top_left + float2(1.5, 0.5), channel);
+    float bl = lightmap_sample3x3(pos_top_left + float2(0.5, 1.5), channel);
+    float br = lightmap_sample3x3(pos_top_left + float2(1.5, 1.5), channel);
+
+    return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y);
 }
 
 // the first 5 bits contain a valid channel index so mask by 31.
