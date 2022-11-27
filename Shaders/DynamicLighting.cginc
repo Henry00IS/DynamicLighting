@@ -18,7 +18,7 @@ StructuredBuffer<uint> lightmap;
 uint lightmap_resolution;
 
 // fetches a shadow bit as the specified uv coordinates from the lightmap data.
-float lightmap_pixel(uint2 uv, uint channel)
+float lightmap_sample(uint2 uv, uint channel)
 {
     return (lightmap[uv.y * lightmap_resolution + uv.x] & (1 << channel)) > 0;
 }
@@ -30,17 +30,17 @@ float lightmap_sample3x3(uint2 uv, uint channel)
 {
     float map;
 
-    map  = lightmap_pixel(uv, channel);
-    map += lightmap_pixel(uv + uint2(-1, -1), channel);
-    map += lightmap_pixel(uv + uint2( 0, -1), channel);
-    map += lightmap_pixel(uv + uint2( 1, -1), channel);
+    map  = lightmap_sample(uv, channel);
+    map += lightmap_sample(uv + uint2(-1, -1), channel);
+    map += lightmap_sample(uv + uint2( 0, -1), channel);
+    map += lightmap_sample(uv + uint2( 1, -1), channel);
 
-    map += lightmap_pixel(uv + uint2(-1,  0), channel);
-    map += lightmap_pixel(uv + uint2( 1,  0), channel);
+    map += lightmap_sample(uv + uint2(-1,  0), channel);
+    map += lightmap_sample(uv + uint2( 1,  0), channel);
 
-    map += lightmap_pixel(uv + uint2(-1,  1), channel);
-    map += lightmap_pixel(uv + uint2( 0,  1), channel);
-    map += lightmap_pixel(uv + uint2( 1,  1), channel);
+    map += lightmap_sample(uv + uint2(-1,  1), channel);
+    map += lightmap_sample(uv + uint2( 0,  1), channel);
+    map += lightmap_sample(uv + uint2( 1,  1), channel);
 
     return map / 9.0;
 }
@@ -62,7 +62,6 @@ float lightmap_sample_bilinear(float2 uv, uint channel)
     float tr = lightmap_sample3x3(pos_top_left + uint2(1, 0), channel);
     float bl = lightmap_sample3x3(pos_top_left + uint2(0, 1), channel);
     float br = lightmap_sample3x3(pos_top_left + uint2(1, 1), channel);
-
 
     return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y);
 }
