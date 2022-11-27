@@ -91,12 +91,6 @@ Shader "Dynamic Lighting/Metallic PBR"
 
             fixed4 frag (v2f i) : SV_Target
             {
-                // calculate the lightmap pixel coordinates in advance.
-                // clamp uv to 0-1 and multiply by resolution cast to uint.
-                uint2 lightmap_uv = saturate(i.uv1) * lightmap_resolution;
-
-
-
                 // material parameters
                 float3 albedo = tex2D(_MainTex, i.uv0).rgb;
                 float4 metallicmap = tex2D(_MetallicGlossMap, i.uv0);

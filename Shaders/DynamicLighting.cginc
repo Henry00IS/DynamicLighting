@@ -55,13 +55,14 @@ float lightmap_sample_bilinear(float2 uv, uint channel)
 
     float2 pos = uv * lightmap_resolution - 0.5;
     float2 f = frac(pos);
-    float2 pos_top_left = floor(pos);
+    uint2 pos_top_left = floor(pos);
 
     // we are sample center, so it's the same as point sample.
-    float tl = lightmap_sample3x3(pos_top_left + float2(0.5, 0.5), channel);
-    float tr = lightmap_sample3x3(pos_top_left + float2(1.5, 0.5), channel);
-    float bl = lightmap_sample3x3(pos_top_left + float2(0.5, 1.5), channel);
-    float br = lightmap_sample3x3(pos_top_left + float2(1.5, 1.5), channel);
+    float tl = lightmap_sample3x3(pos_top_left, channel);
+    float tr = lightmap_sample3x3(pos_top_left + uint2(1, 0), channel);
+    float bl = lightmap_sample3x3(pos_top_left + uint2(0, 1), channel);
+    float br = lightmap_sample3x3(pos_top_left + uint2(1, 1), channel);
+
 
     return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y);
 }

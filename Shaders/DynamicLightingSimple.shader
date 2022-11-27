@@ -67,10 +67,6 @@ Shader "Dynamic Lighting/Simple"
 
             fixed4 frag (v2f i) : SV_Target
             {
-                // calculate the lightmap pixel coordinates in advance.
-                // clamp uv to 0-1 and multiply by resolution cast to uint.
-                uint2 lightmap_uv = saturate(i.uv1) * lightmap_resolution;
-
                 // iterate over every dynamic light in the scene:
                 float3 light_final = float3(0, 0, 0);
                 for (uint k = 0; k < dynamic_lights_count; k++)
