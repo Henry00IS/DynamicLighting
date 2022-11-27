@@ -4,6 +4,7 @@ Shader "Dynamic Lighting/Metallic PBR"
     {
         _MainTex("Albedo", 2D) = "white" {}
         _MetallicGlossMap("Metallic", 2D) = "black" {}
+        _GlossMapScale("Smoothness", Range(0,1)) = 1
         _BumpMap("Normal map", 2D) = "bump" {}
         _BumpScale("Normal scale", Range(0,1)) = 0.2
         _OcclusionMap("Occlusion", 2D) = "white" {}
@@ -52,6 +53,7 @@ Shader "Dynamic Lighting/Metallic PBR"
             sampler2D _MainTex;
             float4 _MainTex_ST;
             sampler2D _MetallicGlossMap;
+            float _GlossMapScale;
             sampler2D _BumpMap;
             sampler2D _OcclusionMap;
             float _BumpScale;
@@ -95,7 +97,7 @@ Shader "Dynamic Lighting/Metallic PBR"
                 float3 albedo = tex2D(_MainTex, i.uv0).rgb;
                 float4 metallicmap = tex2D(_MetallicGlossMap, i.uv0);
                 float metallic = metallicmap.r;
-                float roughness = 1.0 - metallicmap.a;
+                float roughness = 1.0 - metallicmap.a * _GlossMapScale;
                 float ao = tex2D(_OcclusionMap, i.uv0).r;
 
                 half3 bumpmap = UnpackNormal(tex2D(_BumpMap, i.uv0));
