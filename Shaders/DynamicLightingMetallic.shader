@@ -6,7 +6,7 @@ Shader "Dynamic Lighting/Metallic PBR"
         _MetallicGlossMap("Metallic", 2D) = "black" {}
         _GlossMapScale("Smoothness", Range(0,1)) = 1
         _BumpMap("Normal map", 2D) = "bump" {}
-        _BumpScale("Normal scale", Range(0,1)) = 0.2
+        _BumpScale("Normal scale", Range(0,1)) = 1
         _OcclusionMap("Occlusion", 2D) = "white" {}
         _OcclusionStrength("Occlusion strength", Range(0,1)) = 0.75
     }
@@ -110,7 +110,7 @@ Shader "Dynamic Lighting/Metallic PBR"
 
 
 
-                float3 N = normalize(i.normal + (worldNormal * _BumpScale));
+                float3 N = normalize(worldNormal);
                 float3 V = normalize(_WorldSpaceCameraPos - i.world);
 
                 float3 F0 = float3(0.04, 0.04, 0.04);
