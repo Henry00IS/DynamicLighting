@@ -230,59 +230,118 @@ namespace AlpacaIT.DynamicLighting
                         {
                             uint res = 0;
 
-                            if (GetPixel(ref pixels_visited, x - 2, y - 2) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x - 2, y - 2);
-                            if (GetPixel(ref pixels_visited, x - 1, y - 2) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x - 1, y - 2);
-                            if (GetPixel(ref pixels_visited, x, y - 2) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x, y - 2);
-                            if (GetPixel(ref pixels_visited, x + 1, y - 2) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x + 1, y - 2);
-                            if (GetPixel(ref pixels_visited, x + 2, y - 2) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x + 2, y - 2);
+                            // fetch 5x5 "visited" pixels (where p22 is the center).
 
-                            if (GetPixel(ref pixels_visited, x - 2, y - 1) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x - 2, y - 1);
-                            if (GetPixel(ref pixels_visited, x - 1, y - 1) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x - 1, y - 1);
-                            if (GetPixel(ref pixels_visited, x, y - 1) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x, y - 1);
-                            if (GetPixel(ref pixels_visited, x + 1, y - 1) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x + 1, y - 1);
-                            if (GetPixel(ref pixels_visited, x + 2, y - 1) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x + 2, y - 1);
+                            // bool p00 = GetPixel(ref pixels_visited, x - 2, y - 2) == 1;
+                            // bool p10 = GetPixel(ref pixels_visited, x - 1, y - 2) == 1;
+                            bool p20 = GetPixel(ref pixels_visited, x, y - 2) == 1;
+                            // bool p30 = GetPixel(ref pixels_visited, x + 1, y - 2) == 1;
+                            // bool p40 = GetPixel(ref pixels_visited, x + 2, y - 2) == 1;
 
-                            if (GetPixel(ref pixels_visited, x - 2, y) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x - 2, y);
-                            if (GetPixel(ref pixels_visited, x - 1, y) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x - 1, y);
-                            if (GetPixel(ref pixels_visited, x + 1, y) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x + 1, y);
-                            if (GetPixel(ref pixels_visited, x + 2, y) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x + 2, y);
+                            // bool p01 = GetPixel(ref pixels_visited, x - 2, y - 1) == 1;
+                            // bool p11 = GetPixel(ref pixels_visited, x - 1, y - 1) == 1;
+                            bool p21 = GetPixel(ref pixels_visited, x, y - 1) == 1;
+                            // bool p31 = GetPixel(ref pixels_visited, x + 1, y - 1) == 1;
+                            // bool p41 = GetPixel(ref pixels_visited, x + 2, y - 1) == 1;
+                            
+                            bool p02 = GetPixel(ref pixels_visited, x - 2, y) == 1;
+                            bool p12 = GetPixel(ref pixels_visited, x - 1, y) == 1;
+                            bool p32 = GetPixel(ref pixels_visited, x + 1, y) == 1;
+                            bool p42 = GetPixel(ref pixels_visited, x + 2, y) == 1;
+                            
+                            // bool p03 = GetPixel(ref pixels_visited, x - 2, y + 1) == 1;
+                            // bool p13 = GetPixel(ref pixels_visited, x - 1, y + 1) == 1;
+                            bool p23 = GetPixel(ref pixels_visited, x, y + 1) == 1;
+                            // bool p33 = GetPixel(ref pixels_visited, x + 1, y + 1) == 1;
+                            // bool p43 = GetPixel(ref pixels_visited, x + 2, y + 1) == 1;
+                            
+                            // bool p04 = GetPixel(ref pixels_visited, x - 2, y + 2) == 1;
+                            // bool p14 = GetPixel(ref pixels_visited, x - 1, y + 2) == 1;
+                            bool p24 = GetPixel(ref pixels_visited, x, y + 2) == 1;
+                            // bool p34 = GetPixel(ref pixels_visited, x + 1, y + 2) == 1;
+                            // bool p44 = GetPixel(ref pixels_visited, x + 2, y + 2) == 1;
 
-                            if (GetPixel(ref pixels_visited, x - 2, y + 1) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x - 2, y + 1);
-                            if (GetPixel(ref pixels_visited, x - 1, y + 1) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x - 1, y + 1);
-                            if (GetPixel(ref pixels_visited, x, y + 1) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x, y + 1);
-                            if (GetPixel(ref pixels_visited, x + 1, y + 1) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x + 1, y + 1);
-                            if (GetPixel(ref pixels_visited, x + 2, y + 1) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x + 2, y + 1);
+                            // fetch 5x5 "lightmap" pixels (where p22 is the center).
 
-                            if (GetPixel(ref pixels_visited, x - 2, y + 2) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x - 2, y + 2);
-                            if (GetPixel(ref pixels_visited, x - 1, y + 2) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x - 1, y + 2);
-                            if (GetPixel(ref pixels_visited, x, y + 2) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x, y + 2);
-                            if (GetPixel(ref pixels_visited, x + 1, y + 2) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x + 1, y + 2);
-                            if (GetPixel(ref pixels_visited, x + 2, y + 2) == 1)
-                                res |= GetPixel(ref pixels_lightmap, x + 2, y + 2);
+                            // uint l00 = GetPixel(ref pixels_lightmap, x - 2, y - 2);
+                            // uint l10 = GetPixel(ref pixels_lightmap, x - 1, y - 2);
+                            uint l20 = GetPixel(ref pixels_lightmap, x, y - 2);
+                            // uint l30 = GetPixel(ref pixels_lightmap, x + 1, y - 2);
+                            // uint l40 = GetPixel(ref pixels_lightmap, x + 2, y - 2);
+                            
+                            // uint l01 = GetPixel(ref pixels_lightmap, x - 2, y - 1);
+                            // uint l11 = GetPixel(ref pixels_lightmap, x - 1, y - 1);
+                            uint l21 = GetPixel(ref pixels_lightmap, x, y - 1);
+                            // uint l31 = GetPixel(ref pixels_lightmap, x + 1, y - 1);
+                            // uint l41 = GetPixel(ref pixels_lightmap, x + 2, y - 1);
+                            
+                            uint l02 = GetPixel(ref pixels_lightmap, x - 2, y);
+                            uint l12 = GetPixel(ref pixels_lightmap, x - 1, y);
+                            uint l32 = GetPixel(ref pixels_lightmap, x + 1, y);
+                            uint l42 = GetPixel(ref pixels_lightmap, x + 2, y);
+                            
+                            // uint l03 = GetPixel(ref pixels_lightmap, x - 2, y + 1);
+                            // uint l13 = GetPixel(ref pixels_lightmap, x - 1, y + 1);
+                            uint l23 = GetPixel(ref pixels_lightmap, x, y + 1);
+                            // uint l33 = GetPixel(ref pixels_lightmap, x + 1, y + 1);
+                            // uint l43 = GetPixel(ref pixels_lightmap, x + 2, y + 1);
+                            
+                            // uint l04 = GetPixel(ref pixels_lightmap, x - 2, y + 2);
+                            // uint l14 = GetPixel(ref pixels_lightmap, x - 1, y + 2);
+                            uint l24 = GetPixel(ref pixels_lightmap, x, y + 2);
+                            // uint l34 = GetPixel(ref pixels_lightmap, x + 1, y + 2);
+                            // uint l44 = GetPixel(ref pixels_lightmap, x + 2, y + 2);
 
+                            // x x x x x
+                            // x x x x x
+                            // x x C x x
+                            // x x x x x
+                            // x x x x x
+
+                            // p00 p10 p20 p30 p40
+                            // p01 p11 p21 p31 p41
+                            // p02 p12 p22 p32 p42
+                            // p03 p13 p23 p33 p43
+                            // p04 p14 p24 p34 p44
+
+                            //
+                            //     x
+                            //   x C x
+                            //     x
+                            //
+
+                            // left 1x
+                            if (p12)
+                                res |= l12;
+                            // right 1x
+                            if (p32)
+                                res |= l32;
+                            // up 1x
+                            if (p21)
+                                res |= l21;
+                            // down 1x
+                            if (p23)
+                                res |= l23;
+
+                            //     x
+                            //
+                            // x   C   x
+                            //
+                            //     x
+
+                            // left 2x
+                            if (!p12 && p02)
+                                res |= l02;
+                            // right 2x
+                            if (!p32 && p42)
+                                res |= l42;
+                            // up 2x
+                            if (!p21 && p20)
+                                res |= l20;
+                            // down 2x
+                            if (!p23 && p24)
+                                res |= l24;
+                            
                             SetPixel(ref pixels_lightmap, x, y, res);
                         }
                     }

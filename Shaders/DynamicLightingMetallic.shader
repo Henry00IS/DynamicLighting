@@ -107,9 +107,6 @@ Shader "Dynamic Lighting/Metallic PBR"
                 worldNormal.y = dot(i.tspace1, bumpmap);
                 worldNormal.z = dot(i.tspace2, bumpmap);
 
-
-
-
                 float3 N = normalize(worldNormal);
                 float3 V = normalize(_WorldSpaceCameraPos - i.world);
 
@@ -189,7 +186,7 @@ Shader "Dynamic Lighting/Metallic PBR"
 
                     // add to outgoing radiance Lo
                     float NdotL = max(dot(N, light_direction), 0.0);
-                    Lo += (kD * albedo / 3.14159265359 + specular) * radiance * NdotL * map;
+                    Lo += (kD * albedo / UNITY_PI + specular) * radiance * NdotL * map;
                 }
 
                 float3 color = Lo * lerp(1.0, ao, _OcclusionStrength);

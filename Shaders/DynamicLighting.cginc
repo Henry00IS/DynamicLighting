@@ -244,7 +244,7 @@ float DistributionGGX(float3 N, float3 H, float3 roughness)
 
     float num = a2;
     float denom = (NdotH2 * (a2 - 1.0) + 1.0);
-    denom = 3.14159265359 * denom * denom;
+    denom = UNITY_PI * denom * denom;
 
     return num / denom;
 }
