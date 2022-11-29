@@ -423,6 +423,7 @@ namespace AlpacaIT.DynamicLighting
 
             shaderDynamicLights[idx].channel &= ~((uint)1 << 6); // spot light bit
             shaderDynamicLights[idx].channel &= ~((uint)1 << 7); // discoball light bit
+            shaderDynamicLights[idx].channel &= ~((uint)1 << 8); // water shimmer light bit
 
             switch (light.lightType)
             {
@@ -433,11 +434,10 @@ namespace AlpacaIT.DynamicLighting
                 case DynamicLightType.Discoball:
                     shaderDynamicLights[idx].channel |= (uint)1 << 7; // discoball light bit
                     break;
-
-                case DynamicLightType.WaterShimmer:
-                    shaderDynamicLights[idx].channel |= (uint)1 << 8; // water shimmer light bit
-                    break;
             }
+
+            if (light.lightWaterShimmer)
+                shaderDynamicLights[idx].channel |= (uint)1 << 8; // water shimmer light bit
 
             shaderDynamicLights[idx].forward = light.transform.forward;
             shaderDynamicLights[idx].cutoff = Mathf.Cos(light.lightCutoff * Mathf.Deg2Rad);

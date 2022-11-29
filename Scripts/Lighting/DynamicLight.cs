@@ -16,6 +16,8 @@ namespace AlpacaIT.DynamicLighting
         [Range(0f, 180f)]
         public float lightOuterCutoff = 30.0f;
 
+        public bool lightWaterShimmer = false;
+
         public DynamicLightEffect lightEffect = DynamicLightEffect.Steady;
         public float lightEffectPulseSpeed = 10.0f;
         public float lightEffectPulseModifier = 0.25f;

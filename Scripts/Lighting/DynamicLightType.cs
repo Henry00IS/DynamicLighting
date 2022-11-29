@@ -6,6 +6,5 @@
         Point,
         Spot,
         Discoball,
-        WaterShimmer,
     }
 }

@@ -112,7 +112,7 @@ Shader "Dynamic Lighting/Simple"
                             continue;
                         map *= spotlight.y;
                     }
-                    else if (light_is_watershimmer(light))
+                    if (light_is_watershimmer(light))
                     {
                         map *= light_calculate_watershimmer(light, i.world);
                     }
