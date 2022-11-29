@@ -140,4 +140,5 @@ Shader "Dynamic Lighting/Simple"
             ENDCG
         }
     }
+    Fallback "Diffuse"
 }

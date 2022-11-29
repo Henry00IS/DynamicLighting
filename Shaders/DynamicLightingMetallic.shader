@@ -201,4 +201,5 @@ Shader "Dynamic Lighting/Metallic PBR"
             ENDCG
         }
     }
+    Fallback "Diffuse"
 }
