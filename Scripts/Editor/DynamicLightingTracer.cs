@@ -17,6 +17,7 @@ namespace AlpacaIT.DynamicLighting
         private float lightmapSizeMin1;
         private int uniqueIdentifier = 0;
         private LayerMask raycastLayermask = ~0;
+        private int pixelDensityPerSquareMeter = 128;
 
 #if UNITY_EDITOR
         private float progressBarLastUpdate = 0f;
@@ -39,6 +40,7 @@ namespace AlpacaIT.DynamicLighting
             lightmapSizeMin1 = lightmapSize - 1;
             uniqueIdentifier = 0;
             raycastLayermask = DynamicLightManager.Instance.raytraceLayers;
+            pixelDensityPerSquareMeter = DynamicLightManager.Instance.pixelDensityPerSquareMeter;
 #if UNITY_EDITOR
             progressBarLastUpdate = 0f;
             progressBarCancel = false;
@@ -184,7 +186,7 @@ namespace AlpacaIT.DynamicLighting
         private void Raytrace(MeshFilter meshFilter, float progressMin, float progressMax)
         {
             var meshBuilder = new MeshBuilder(meshFilter.transform.localToWorldMatrix, meshFilter.sharedMesh);
-            lightmapSize = MathEx.SurfaceAreaToTextureSize(meshBuilder.surfaceArea, 128);
+            lightmapSize = MathEx.SurfaceAreaToTextureSize(meshBuilder.surfaceArea, pixelDensityPerSquareMeter);
             if (lightmapSize > maximumLightmapSize)
                 lightmapSize = maximumLightmapSize;
             lightmapSizeMin1 = lightmapSize - 1;

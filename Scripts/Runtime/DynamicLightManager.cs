@@ -47,6 +47,10 @@ namespace AlpacaIT.DynamicLighting
         [Tooltip("The layer mask used while raytracing to determine which hits to ignore.")]
         public LayerMask raytraceLayers = ~0;
 
+        /// <summary>The desired pixel density (e.g. 128 for 128x128 per meter squared).</summary>
+        [Tooltip("The desired pixel density (e.g. 128 for 128x128 per meter squared).")]
+        public int pixelDensityPerSquareMeter = 128;
+
         /// <summary>The memory size in bytes of the <see cref="ShaderDynamicLight"/> struct.</summary>
         private int dynamicLightStride;
         private Lightmap[] lightmaps;
