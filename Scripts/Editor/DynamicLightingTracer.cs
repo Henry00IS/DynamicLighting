@@ -1,5 +1,4 @@
 using Unity.Mathematics;
-using UnityEditor;
 using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
@@ -141,12 +140,16 @@ namespace AlpacaIT.DynamicLighting
 
                 if (TryFindFreeLightChannelAt(light.transform.position, light.lightRadius, out var channel))
                 {
+#if UNITY_EDITOR
                     // required to use serialized object to override fields in prefabs:
                     // this does: light.lightChannel = channel;
-                    SerializedObject serializedObject = new SerializedObject(light);
+                    var serializedObject = new UnityEditor.SerializedObject(light);
                     var lightChannelProperty = serializedObject.FindProperty(nameof(DynamicLight.lightChannel));
                     lightChannelProperty.intValue = (int)channel;
                     serializedObject.ApplyModifiedProperties();
+#else
+                    light.lightChannel = channel;
+#endif
                 }
                 else
                 {
