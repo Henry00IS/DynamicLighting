@@ -438,12 +438,6 @@ namespace AlpacaIT.DynamicLighting
                     if (px > 0)
                     {
                         SetPixel(ref pixels_lightmap, x, y, px);
-                        // deal with seams using some padding.
-                        // todo: only pad the exterior edges of every UV polygon.
-                        //SetPixel(ref pixels, x - 1, y, px);
-                        //SetPixel(ref pixels, x + 1, y, px);
-                        //SetPixel(ref pixels, x, y - 1, px);
-                        //SetPixel(ref pixels, x, y + 1, px);
                     }
                 }
             }
@@ -463,7 +457,7 @@ namespace AlpacaIT.DynamicLighting
 
             // trace from the light to the world position and check whether we hit close to it.
             traces++;
-            if (Physics.Raycast(position, -direction, out var hit, radius))
+            if (Physics.Raycast(position, -direction, out var hit, radius, ~0, QueryTriggerInteraction.Ignore))
                 if (Vector3.Distance(hit.point, world) < 0.01f)
                     return (uint)1 << ((int)pointLight.lightChannel);
 
