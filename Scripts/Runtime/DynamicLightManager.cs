@@ -43,6 +43,10 @@ namespace AlpacaIT.DynamicLighting
         [Min(0f)]
         public float budgetLightFadingTime = 10f;
 
+        /// <summary>The layer mask used while raytracing to determine which hits to ignore.</summary>
+        [Tooltip("The layer mask used while raytracing to determine which hits to ignore.")]
+        public LayerMask raytraceLayers = ~0;
+
         /// <summary>The memory size in bytes of the <see cref="ShaderDynamicLight"/> struct.</summary>
         private int dynamicLightStride;
         private Lightmap[] lightmaps;

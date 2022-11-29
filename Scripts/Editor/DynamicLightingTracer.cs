@@ -16,6 +16,7 @@ namespace AlpacaIT.DynamicLighting
         private int lightmapSize = 2048;
         private float lightmapSizeMin1;
         private int uniqueIdentifier = 0;
+        private LayerMask raycastLayermask = ~0;
 
 #if UNITY_EDITOR
         private float progressBarLastUpdate = 0f;
@@ -37,6 +38,7 @@ namespace AlpacaIT.DynamicLighting
             pointLights = null;
             lightmapSizeMin1 = lightmapSize - 1;
             uniqueIdentifier = 0;
+            raycastLayermask = DynamicLightManager.Instance.raytraceLayers;
 #if UNITY_EDITOR
             progressBarLastUpdate = 0f;
             progressBarCancel = false;
@@ -466,7 +468,7 @@ namespace AlpacaIT.DynamicLighting
 
             // trace from the light to the world position and check whether we hit close to it.
             traces++;
-            if (Physics.Raycast(position, -direction, out var hit, radius, ~0, QueryTriggerInteraction.Ignore))
+            if (Physics.Raycast(position, -direction, out var hit, radius, raycastLayermask, QueryTriggerInteraction.Ignore))
                 if (Vector3.Distance(hit.point, world) < 0.01f)
                     return (uint)1 << ((int)pointLight.lightChannel);
 
