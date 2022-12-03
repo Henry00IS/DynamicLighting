@@ -81,6 +81,17 @@ Shader "Dynamic Lighting/Simple"
                     // confirmed with NVIDIA Quadro K1000M doubling the framerate.
                     if (light_distance > light.radius) continue;
 
+                    // calculate the direction between the light source and the fragment.
+                    float3 light_direction = normalize(light.position - i.world);
+
+                    // a simple dot product with the normal gives us diffusion.
+                    float diffusion = max(dot(i.normal, light_direction), 0);
+
+                    // this also tells us whether the fragment is facing away from the light.
+                    // as the fragment will then be black we can early out here.
+                    // confirmed with NVIDIA Quadro K1000M improving the framerate.
+                    if (diffusion == 0.0) continue;
+
                     // if this renderer has a lightmap we use shadow bits otherwise it's a dynamic object.
                     // if this light is realtime we will skip this step.
                     float map = 1.0;
@@ -95,9 +106,6 @@ Shader "Dynamic Lighting/Simple"
                         // confirmed with NVIDIA Quadro K1000M improving the framerate.
                         if (map == 0.0) continue;
                     }
-
-                    // calculate the direction between the light source and the fragment.
-                    float3 light_direction = normalize(light.position - i.world);
 
                     // spot lights determine whether we are in the light cone or outside.
                     if (light_is_spotlight(light))
@@ -120,9 +128,6 @@ Shader "Dynamic Lighting/Simple"
                     {
                         map *= light_calculate_watershimmer(light, i.world);
                     }
-
-                    // a simple dot product with the normal gives us diffusion.
-                    float diffusion = max(dot(i.normal, light_direction), 0);
 
                     // important attenuation that actually creates the point light with maximum radius.
                     float attenuation = saturate(1.0 - light_distance * light_distance / (light.radius * light.radius)) * light.intensity;

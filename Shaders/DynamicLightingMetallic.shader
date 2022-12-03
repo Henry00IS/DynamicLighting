@@ -128,6 +128,17 @@ Shader "Dynamic Lighting/Metallic PBR"
                     // confirmed with NVIDIA Quadro K1000M doubling the framerate.
                     if (light_distance > light.radius) continue;
 
+                    // calculate the direction between the light source and the fragment.
+                    float3 light_direction = normalize(light.position - i.world);
+
+                    // a simple dot product with the normal gives us diffusion.
+                    float NdotL = max(dot(N, light_direction), 0.0);
+
+                    // this also tells us whether the fragment is facing away from the light.
+                    // as the fragment will then be black we can early out here.
+                    // confirmed with NVIDIA Quadro K1000M improving the framerate.
+                    if (NdotL == 0.0) continue;
+
                     // if this renderer has a lightmap we use shadow bits otherwise it's a dynamic object.
                     // if this light is realtime we will skip this step.
                     float map = 1.0;
@@ -142,9 +153,6 @@ Shader "Dynamic Lighting/Metallic PBR"
                         // confirmed with NVIDIA Quadro K1000M improving the framerate.
                         if (map == 0.0) continue;
                     }
-
-                    // calculate the direction between the light source and the fragment.
-                    float3 light_direction = normalize(light.position - i.world);
 
                     // spot lights determine whether we are in the light cone or outside.
                     if (light_is_spotlight(light))
@@ -185,11 +193,10 @@ Shader "Dynamic Lighting/Metallic PBR"
                     kD *= 1.0 - metallic;
 
                     float3 numerator = NDF * G * F;
-                    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, light_direction), 0.0) + 0.0001;
+                    float denominator = 4.0 * max(dot(N, V), 0.0) * NdotL + 0.0001;
                     float3 specular = numerator / denominator;
-
+                    
                     // add to outgoing radiance Lo
-                    float NdotL = max(dot(N, light_direction), 0.0);
                     Lo += (kD * albedo / UNITY_PI + specular) * radiance * NdotL * map;
                 }
 
