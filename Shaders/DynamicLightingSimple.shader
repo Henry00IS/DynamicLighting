@@ -90,6 +90,10 @@ Shader "Dynamic Lighting/Simple"
 
                         // retrieve the shadow bit at this position with bilinear filtering.
                         map = lightmap_sample_bilinear(i.uv1, shadow_channel);
+
+                        // whenever the fragment is fully in shadow we can early out.
+                        // confirmed with NVIDIA Quadro K1000M improving the framerate.
+                        if (map == 0.0) continue;
                     }
 
                     // calculate the direction between the light source and the fragment.
