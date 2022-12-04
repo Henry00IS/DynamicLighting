@@ -3,7 +3,7 @@ struct DynamicLight
     float3 position;
     float3 color;
     float  intensity;
-    float  radius;
+    float  radiusSqr;
     uint   channel;
 
     float3 forward;

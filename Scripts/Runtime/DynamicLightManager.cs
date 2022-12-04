@@ -422,9 +422,9 @@ namespace AlpacaIT.DynamicLighting
             shaderDynamicLights[idx].position = light.transform.position;
             shaderDynamicLights[idx].color = new Vector3(light.lightColor.r, light.lightColor.g, light.lightColor.b);
             shaderDynamicLights[idx].intensity = light.lightIntensity;
-            shaderDynamicLights[idx].radius = light.lightRadius;
+            shaderDynamicLights[idx].radiusSqr = light.lightRadius * light.lightRadius;
             shaderDynamicLights[idx].channel = light.lightChannel;
-
+            
             shaderDynamicLights[idx].channel &= ~((uint)1 << 6); // spot light bit
             shaderDynamicLights[idx].channel &= ~((uint)1 << 7); // discoball light bit
             shaderDynamicLights[idx].channel &= ~((uint)1 << 8); // water shimmer light bit

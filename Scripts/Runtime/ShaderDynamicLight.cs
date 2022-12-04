@@ -12,7 +12,7 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>The intensity (or brightness) of the light.</summary>
         public float intensity;
         /// <summary>The maximum cutoff radius where the light is guaranteed to end.</summary>
-        public float radius;
+        public float radiusSqr;
         /// <summary>
         /// The channel 0-31 representing the bit in the lightmap that the light uses for raytraced shadows.
         /// <para>32 is used to indicate a realtime light without raytraced shadows.</para>

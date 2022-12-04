@@ -74,15 +74,20 @@ Shader "Dynamic Lighting/Simple"
                     // get the current light from memory.
                     DynamicLight light = dynamic_lights[k];
 
-                    // calculate the distance between the light source and the fragment.
-                    float light_distance = distance(i.world, light.position);
+                    // calculate the unnormalized direction between the light source and the fragment.
+                    float3 light_direction = light.position - i.world;
+
+                    // calculate the square distance between the light source and the fragment.
+                    // distance(i.world, light.position); but squared to prevent a square root.
+                    // confirmed with NVIDIA Quadro K1000M slightly improving the framerate.
+                    float light_distanceSqr = dot(light_direction, light_direction);
 
                     // we can use the distance and guaranteed maximum light radius to early out.
                     // confirmed with NVIDIA Quadro K1000M doubling the framerate.
-                    if (light_distance > light.radius) continue;
+                    if (light_distanceSqr > light.radiusSqr) continue;
 
-                    // calculate the direction between the light source and the fragment.
-                    float3 light_direction = normalize(light.position - i.world);
+                    // properly normalize the direction between the light source and the fragment.
+                    light_direction = normalize(light_direction);
 
                     // a simple dot product with the normal gives us diffusion.
                     float diffusion = max(dot(i.normal, light_direction), 0);
@@ -130,7 +135,7 @@ Shader "Dynamic Lighting/Simple"
                     }
 
                     // important attenuation that actually creates the point light with maximum radius.
-                    float attenuation = saturate(1.0 - light_distance * light_distance / (light.radius * light.radius)) * light.intensity;
+                    float attenuation = saturate(1.0 - light_distanceSqr / light.radiusSqr) * light.intensity;
 
                     // add this light to the final color of the fragment.
                     light_final += light.color * attenuation * diffusion * map;
