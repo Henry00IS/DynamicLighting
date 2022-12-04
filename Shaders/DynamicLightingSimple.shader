@@ -48,7 +48,9 @@ Shader "Dynamic Lighting/Simple"
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.uv0 = TRANSFORM_TEX(v.uv0, _MainTex);
-                o.uv1 = v.uv1;
+                // as we need pixel coordinates doing the multiplication here saves time.
+                // confirmed with NVIDIA Quadro K1000M improving the framerate.
+                o.uv1 = v.uv1 * lightmap_resolution;
                 o.color = v.color;
                 o.normal = UnityObjectToWorldNormal(v.normal);
                 o.world = mul(unity_ObjectToWorld, v.vertex).xyz;

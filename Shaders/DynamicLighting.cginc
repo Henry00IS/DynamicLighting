@@ -53,7 +53,7 @@ float lightmap_sample_bilinear(float2 uv, uint channel)
     // huge shoutout to neu_graphic for their software bilinear filter shader.
     // https://www.shadertoy.com/view/4sBSRK
 
-    float2 pos = uv * lightmap_resolution - 0.5;
+    float2 pos = uv - 0.5;
     float2 f = frac(pos);
     uint2 pos_top_left = floor(pos);
 
