@@ -426,6 +426,7 @@ namespace AlpacaIT.DynamicLighting
             for (int i = 0; i < sceneDynamicLightsCount; i++)
             {
                 // we must always update the fixed timestep calculator as it relies on Time.deltaTime.
+                sceneDynamicLights[i].cache.fixedTimestep.timePerStep = sceneDynamicLights[i].lightEffectTimestepFrequency;
                 sceneDynamicLights[i].cache.fixedTimestep.Update();
 
                 if (activeDynamicLights.Count < dynamicLightBudget)
@@ -445,6 +446,7 @@ namespace AlpacaIT.DynamicLighting
             for (int i = 0; i < sceneRealtimeLightsCount; i++)
             {
                 // we must always update the fixed timestep calculator as it relies on Time.deltaTime.
+                sceneRealtimeLights[i].cache.fixedTimestep.timePerStep = sceneRealtimeLights[i].lightEffectTimestepFrequency;
                 sceneRealtimeLights[i].cache.fixedTimestep.Update();
 
                 if (activeRealtimeLights.Count < realtimeLightBudget)
