@@ -6,7 +6,7 @@ using UnityEngine;
 namespace AlpacaIT.DynamicLighting
 {
     [CreateAssetMenu(fileName = "DynamicLightingResources", menuName = "ScriptableObjects/DynamicLightingResources", order = 1)]
-    public class DynamicLightingResources : ScriptableObject
+    internal class DynamicLightingResources : ScriptableObject
     {
         private static DynamicLightingResources s_Instance;
 

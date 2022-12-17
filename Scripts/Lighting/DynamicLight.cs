@@ -5,24 +5,118 @@ namespace AlpacaIT.DynamicLighting
     [ExecuteInEditMode]
     public class DynamicLight : MonoBehaviour
     {
+        /// <summary>
+        /// The color of the light. It would be best to keep this number within the RGB range (i.e.
+        /// not HDR with super bright colors) so that both current and future shader math
+        /// calculations are correct.
+        /// </summary>
+        [Tooltip("The color of the light. It would be best to keep this number within the RGB range (i.e. not HDR with super bright colors) so that both current and future shader math calculations are correct.")]
+        public Color lightColor = Color.white;
+
+        /// <summary>
+        /// The intensity of the light, which does not affect the range of the light, only how
+        /// bright it is.
+        /// </summary>
+        [Tooltip("The intensity of the light, which does not affect the range of the light, only how bright it is.")]
+        public float lightIntensity = 2.0f;
+
+        /// <summary>
+        /// The spherical radius that the light will occupy. The light cannot exceed this radius and
+        /// is guaranteed to be completely gone when it reaches the end. Each light type (e.g. spot
+        /// lights) will always use this entire radius for their calculations. There must never be
+        /// more than 32 lights all overlapping each other (i.e. some pixel in the level getting
+        /// illuminated by 32 lights- quite a lot), otherwise an error will occur.
+        /// </summary>
+        [Tooltip("The spherical radius that the light will occupy. The light cannot exceed this radius and is guaranteed to be completely gone when it reaches the end. Each light type (e.g. spot lights) will always use this entire radius for their calculations.\n\nThere must never be more than 32 lights all overlapping each other (i.e. some pixel in the level getting illuminated by 32 lights- quite a lot), otherwise an error will occur.")]
+        public float lightRadius = 4.0f;
+
+        /// <summary>
+        /// This is the channel that the light occupies. This value is automatically assigned to the
+        /// light during ray tracing. Dynamic realtime lights must always use channel 32 (they can
+        /// move around the scene without shadows). This value is a crucial part of the inner
+        /// workings of the lighting system. You should not touch this field unless you know what
+        /// you are doing or to simply set it to 32 to make it a realtime light. The raytracer will
+        /// ignore lights that are on channel 32 (i.e. it will not reset this channel to something
+        /// else). It can be useful to temporarily set the channel to 32 to adjust the light in an
+        /// already raytraced scene. As a realtime light, it will be easier to see what it will look
+        /// like. Then select any value between 0-31 and raytrace the scene again. This will then
+        /// assign a proper channel. This channel is assigned a number that no other overlapping
+        /// light uses so that each light has its own unique space in memory to store shadows in.
+        /// </summary>
+        [Tooltip("This is the channel that the light occupies. This value is automatically assigned to the light during ray tracing. Dynamic realtime lights must always use channel 32 (they can move around the scene without shadows). This value is a crucial part of the inner workings of the lighting system. You should not touch this field unless you know what you are doing or to simply set it to 32 to make it a realtime light. The raytracer will ignore lights that are on channel 32 (i.e. it will not reset this channel to something else).\n\nIt can be useful to temporarily set the channel to 32 to adjust the light in an already raytraced scene. As a realtime light, it will be easier to see what it will look like. Then select any value between 0-31 and raytrace the scene again. This will then assign a proper channel.\n\nThis channel is assigned a number that no other overlapping light uses so that each light has its own unique space in memory to store shadows in.")]
+        public uint lightChannel = 0;
+
+        /// <summary>The type of dynamic light (e.g. point light or a spot light etc.).</summary>
+        [Tooltip("The type of dynamic light (e.g. point light or a spot light etc.).")]
         public DynamicLightType lightType = DynamicLightType.Point;
 
-        public Color lightColor = Color.white;
-        public float lightIntensity = 2.0f;
-        public float lightRadius = 4.0f;
-        public uint lightChannel = 0;
-        [Range(0f, 180f)]
-        public float lightCutoff = 26.0f;
+        /// <summary>
+        /// When using the 'Spot' light type, this specifies the outer cutoff angle in degrees where
+        /// the light is darkest. There is a smooth transition between the inner and outer cutoff
+        /// angle. The outer cutoff angle must be larger or equal to the inner cutoff angle
+        /// otherwise the light will appear to turn off.
+        /// </summary>
+        [Tooltip("When using the 'Spot' light type, this specifies the outer cutoff angle in degrees where the light is darkest. There is a smooth transition between the inner and outer cutoff angle. The outer cutoff angle must be larger or equal to the inner cutoff angle otherwise the light will appear to turn off.")]
         [Range(0f, 180f)]
         public float lightOuterCutoff = 30.0f;
 
+        /// <summary>
+        /// When using the 'Spot' light type, this specifies the inner cutoff angle in degrees where
+        /// the light is brightest. There is a smooth transition between the inner and outer cutoff
+        /// angle. The outer cutoff angle must be larger or equal to the inner cutoff angle
+        /// otherwise the light will appear to turn off.
+        /// </summary>
+        [Tooltip("When using the 'Spot' light type, this specifies the inner cutoff angle in degrees where the light is brightest. There is a smooth transition between the inner and outer cutoff angle. The outer cutoff angle must be larger or equal to the inner cutoff angle otherwise the light will appear to turn off.")]
+        [Range(0f, 180f)]
+        public float lightCutoff = 26.0f;
+
+        /// <summary>
+        /// The water shimmer effect overlays the world with random blocks that smoothly change
+        /// between dark and bright. It is meant to look like shimmering water, but can also be
+        /// useful for other scenarios like fire.
+        /// </summary>
+        [Tooltip("The water shimmer effect overlays the world with random blocks that smoothly change between dark and bright. It is meant to look like shimmering water, but can also be useful for other scenarios like fire.")]
         public bool lightWaterShimmer = false;
 
+        /// <summary>The effect applied to this dynamic light.</summary>
+        [Tooltip("The effect applied to this dynamic light.")]
         public DynamicLightEffect lightEffect = DynamicLightEffect.Steady;
-        public float lightEffectPulseSpeed = 10.0f;
+
+        /// <summary>
+        /// When using the 'Pulse' light effect, this specifies how many times per second the light
+        /// should pulse (as a multiplier), where 1 means once per second.
+        /// </summary>
+        [Tooltip("When using the 'Pulse' light effect, this specifies how many times per second the light should pulse (as a multiplier), where 1 means once per second.")]
+        public float lightEffectPulseSpeed = 1.0f;
+
+        /// <summary>
+        /// When using the 'Pulse' light effect, this specifies how dim the light will become per
+        /// pulse, where 0 is completely off and 1 does nothing.
+        /// </summary>
+        [Tooltip("When using the 'Pulse' light effect, this specifies how dim the light will become per pulse, where 0 is completely off and 1 does nothing.")]
+        [Range(0f, 1f)]
         public float lightEffectPulseModifier = 0.25f;
 
+        /// <summary>
+        /// The framerate independent fixed timestep frequency for lighting effects in seconds. For
+        /// example a frequency of 30Hz would be achieved using the formula 1f / 30f.
+        /// <para>
+        /// Used to decouple the lighting calculations from the framerate. If you have a flickering
+        /// light or strobe light, the light may be on over several frames. If you are playing VR at
+        /// 144Hz then the light may only turn on and off 30 times per second, giving you that sense
+        /// of reality, opposed to having a light flicker at 144 times per second causing visual
+        /// noise but no distinct on/off period.
+        /// </para>
+        /// </summary>
+        [Min(0.00001f)]
+        [Tooltip("The framerate independent fixed timestep frequency for lighting effects in seconds. For example a frequency of 30Hz would be achieved using the formula 1f / 30f.\n\nUsed to decouple the lighting calculations from the framerate. If you have a flickering light or strobe light, the light may be on over several frames. If you are playing VR at 144Hz then the light may only turn on and off 30 times per second, giving you that sense of reality, opposed to having a light flicker at 144 times per second causing visual noise but no distinct on/off period.")]
+        public float lightEffectTimestepFrequency = 1f / 30f;
+
+        /// <summary>Gets whether this dynamic light is realtime (no shadows, channel 32).</summary>
         public bool realtime { get => lightChannel == 32; }
+
+        /// <summary>Stores dynamic light runtime effect values that change at irregular intervals.</summary>
+        internal DynamicLightCache cache = new DynamicLightCache();
 
         private void OnEnable()
         {

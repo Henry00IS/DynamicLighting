@@ -2,7 +2,7 @@
 
 namespace AlpacaIT.DynamicLighting
 {
-    public class MeshBuilder
+    internal class MeshBuilder
     {
         // the original mesh data:
         private readonly Vector3[] meshVertices;

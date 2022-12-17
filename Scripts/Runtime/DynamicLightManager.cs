@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using static AlpacaIT.DynamicLighting.MathEx;
 
 namespace AlpacaIT.DynamicLighting
 {
@@ -32,23 +33,65 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Whether an instance of the dynamic lighting manager has been created.</summary>
         public static bool hasInstance => s_Instance;
 
-        // the NVIDIA Quadro K1000M (2012) can handle 25 lights at 30fps.
-        // the NVIDIA GeForce GTX 1050 Ti (2016) can handle 125 lights between 53-68fps.
-        // the NVIDIA GeForce RTX 3080 (2020) can handle 2000 lights at 70fps.
-
+        /// <summary>
+        /// The number of dynamic lights that can be active at the same time. If this budget is
+        /// exceeded, lights that are out of view or furthest away from the camera will
+        /// automatically fade out in a way that the player will hopefully not notice. A
+        /// conservative budget as required by the level design will help older graphics hardware
+        /// when there are hundreds of lights in the scene. Budgeting does not begin until the
+        /// number of active dynamic lights actually exceeds this number.
+        /// <para>The NVIDIA Quadro K1000M (2012) can handle 25 lights at 30fps.</para>
+        /// <para>The NVIDIA GeForce GTX 1050 Ti (2016) can handle 125 lights between 53-68fps.</para>
+        /// <para>The NVIDIA GeForce RTX 3080 (2020) can handle 2000 lights at 70fps.</para>
+        /// </summary>
+        [Tooltip("The number of dynamic lights that can be active at the same time. If this budget is exceeded, lights that are out of view or furthest away from the camera will automatically fade out in a way that the player will hopefully not notice. A conservative budget as required by the level design will help older graphics hardware when there are hundreds of lights in the scene. Budgeting does not begin until the number of active dynamic lights actually exceeds this number.\n\nThe NVIDIA Quadro K1000M (2012) can handle 25 lights at 30fps.\n\nThe NVIDIA GeForce GTX 1050 Ti (2016) can handle 125 lights between 53-68fps.\n\nThe NVIDIA GeForce RTX 3080 (2020) can handle 2000 lights at 70fps.")]
         [Min(0)]
         public int dynamicLightBudget = 64;
+
+        /// <summary>
+        /// The number of realtime dynamic lights that can be active at the same time. Realtime
+        /// lights have no shadows and can move around the scene. They are useful for glowing
+        /// particles, car headlights, etc. If this budget is exceeded, lights that are out of view
+        /// or furthest away from the camera will automatically fade out in a way that the player
+        /// will hopefully not notice. A conservative budget as per the game requirements will help
+        /// older graphics hardware when there are many realtime lights in the scene. Budgeting does
+        /// not begin until the number of active realtime dynamic lights actually exceeds this number.
+        /// </summary>
+        [Tooltip("The number of realtime dynamic lights that can be active at the same time. Realtime lights have no shadows and can move around the scene. They are useful for glowing particles, car headlights, etc. If this budget is exceeded, lights that are out of view or furthest away from the camera will automatically fade out in a way that the player will hopefully not notice. A conservative budget as per the game requirements will help older graphics hardware when there are many realtime lights in the scene. Budgeting does not begin until the number of active realtime dynamic lights actually exceeds this number.")]
         [Min(0)]
         public int realtimeLightBudget = 32;
-        [Min(0f)]
-        public float budgetLightFadingTime = 10f;
 
-        /// <summary>The layer mask used while raytracing to determine which hits to ignore.</summary>
-        [Tooltip("The layer mask used while raytracing to determine which hits to ignore.")]
+        /// <summary>
+        /// The layer mask used while raytracing to determine which hits to ignore. There are many
+        /// scenarios where you have objects that should collide with everything in the scene, but
+        /// not cause shadows. You should consider creating a physics layer (click on 'Layer:
+        /// Default' at the top of the Game Object Inspector -&gt; Add Layer...) and naming it
+        /// 'Collision'. You can then remove this layer from the list so it will be ignored by the
+        /// raytracer. The rest of the scene will still have regular collisions with it. You can
+        /// also do the opposite by creating a physics layer called 'Lighting' and disabling regular
+        /// collisions with other colliders (in Edit -&gt; Project Settings -&gt; Physics), but
+        /// leaving the layer checked in this list. Now you have a special shadow casting collision
+        /// that nothing else can touch or interact with. These were just two example names, you can
+        /// freely choose the names of the physics layers.
+        /// </summary>
+        [Tooltip("The layer mask used while raytracing to determine which hits to ignore. There are many scenarios where you have objects that should collide with everything in the scene, but not cause shadows. You should consider creating a physics layer (click on 'Layer: Default' at the top of the Game Object Inspector -> Add Layer...) and naming it 'Collision'. You can then remove this layer from the list so it will be ignored by the raytracer. The rest of the scene will still have regular collisions with it. You can also do the opposite by creating a physics layer called 'Lighting' and disabling regular collisions with other colliders (in Edit -> Project Settings -> Physics), but leaving the layer checked in this list. Now you have a special shadow casting collision that nothing else can touch or interact with. These were just two example names, you can freely choose the names of the physics layers.")]
         public LayerMask raytraceLayers = ~0;
 
-        /// <summary>The desired pixel density (e.g. 128 for 128x128 per meter squared).</summary>
-        [Tooltip("The desired pixel density (e.g. 128 for 128x128 per meter squared).")]
+        /// <summary>
+        /// The desired pixel density (e.g. 128 for 128x128 per meter squared). This lighting system
+        /// does not require "power of two" textures. You may have heard this term before because
+        /// graphics cards can render textures in such sizes much faster. This system relies on
+        /// binary data on the GPU using compute buffers and it's quite different. Without going
+        /// into too much detail, this simply means that we can choose any texture size. An
+        /// intelligent algorithm calculates the surface area of the meshes and determines exactly
+        /// how many pixels are needed to cover them evenly with shadow pixels, regardless of the
+        /// ray tracing resolution (unless it exceeds that maximum ray tracing resolution, of
+        /// course, then those shadow pixels will start to increase in size). Here you can set how
+        /// many pixels should cover a square meter. It can result in a 47x47 texture or 328x328,
+        /// exactly the amount needed to cover all polygons with the same amount of shadow pixels.
+        /// Higher details require more VRAM (exponentially)!
+        /// </summary>
+        [Tooltip("The desired pixel density (e.g. 128 for 128x128 per meter squared). This lighting system does not require \"power of two\" textures. You may have heard this term before because graphics cards can render textures in such sizes much faster. This system relies on binary data on the GPU using compute buffers and it's quite different. Without going into too much detail, this simply means that we can choose any texture size. An intelligent algorithm calculates the surface area of the meshes and determines exactly how many pixels are needed to cover them evenly with shadow pixels, regardless of the ray tracing resolution (unless it exceeds that maximum ray tracing resolution, of course, then those shadow pixels will start to increase in size). Here you can set how many pixels should cover a square meter. It can result in a 47x47 texture or 328x328, exactly the amount needed to cover all polygons with the same amount of shadow pixels. Higher details require more VRAM (exponentially)!")]
         public int pixelDensityPerSquareMeter = 128;
 
         /// <summary>The memory size in bytes of the <see cref="ShaderDynamicLight"/> struct.</summary>
@@ -266,14 +309,14 @@ namespace AlpacaIT.DynamicLighting
             activeRealtimeLights = null;
         }
 
-        public void RegisterDynamicLight(DynamicLight light)
+        internal void RegisterDynamicLight(DynamicLight light)
         {
             Initialize();
             sceneDynamicLights.Add(light);
             sceneDynamicLightsAddedDirty = true;
         }
 
-        public void UnregisterDynamicLight(DynamicLight light)
+        internal void UnregisterDynamicLight(DynamicLight light)
         {
             if (sceneDynamicLights != null)
             {
@@ -382,6 +425,9 @@ namespace AlpacaIT.DynamicLighting
             var sceneDynamicLightsCount = sceneDynamicLights.Count;
             for (int i = 0; i < sceneDynamicLightsCount; i++)
             {
+                // we must always update the fixed timestep calculator as it relies on Time.deltaTime.
+                sceneDynamicLights[i].cache.fixedTimestep.Update();
+
                 if (activeDynamicLights.Count < dynamicLightBudget)
                 {
 #if UNITY_EDITOR    // optimization: only add lights that are within the camera frustum.
@@ -398,6 +444,9 @@ namespace AlpacaIT.DynamicLighting
             var sceneRealtimeLightsCount = sceneRealtimeLights.Count;
             for (int i = 0; i < sceneRealtimeLightsCount; i++)
             {
+                // we must always update the fixed timestep calculator as it relies on Time.deltaTime.
+                sceneRealtimeLights[i].cache.fixedTimestep.Update();
+
                 if (activeRealtimeLights.Count < realtimeLightBudget)
                 {
 #if UNITY_EDITOR    // optimization: only add lights that are within the camera frustum.
@@ -464,7 +513,7 @@ namespace AlpacaIT.DynamicLighting
         {
             shaderDynamicLights[idx].position = light.transform.position;
             shaderDynamicLights[idx].color = new Vector3(light.lightColor.r, light.lightColor.g, light.lightColor.b);
-            shaderDynamicLights[idx].intensity = light.lightIntensity;
+            // shaderDynamicLights[idx].intensity = light.lightIntensity;
             shaderDynamicLights[idx].radiusSqr = light.lightRadius * light.lightRadius;
             shaderDynamicLights[idx].channel = light.lightChannel;
 
@@ -493,22 +542,41 @@ namespace AlpacaIT.DynamicLighting
 
         private void UpdateLightEffects(int idx, DynamicLight light)
         {
+            // continuous light effects:
+
             switch (light.lightEffect)
             {
                 case DynamicLightEffect.Steady:
+                    light.cache.intensity = light.lightIntensity;
                     break;
 
                 case DynamicLightEffect.Pulse:
-                    shaderDynamicLights[idx].intensity *= Mathf.Lerp(light.lightEffectPulseModifier, 1.0f, (1f + Mathf.Sin(Time.time * light.lightEffectPulseSpeed)) * 0.5f);
-                    break;
-
-                case DynamicLightEffect.Flicker:
-                    shaderDynamicLights[idx].intensity *= Random.value;
-                    break;
-
-                case DynamicLightEffect.Strobe:
+                    light.cache.intensity = light.lightIntensity * Mathf.Lerp(light.lightEffectPulseModifier, 1.0f, (1f + Mathf.Sin(Time.time * Mathf.PI * 2f * light.lightEffectPulseSpeed)) * 0.5f);
                     break;
             }
+
+            // fixed timestep light effects:
+
+            if (light.cache.fixedTimestep.pendingSteps > 0 || !light.cache.initialized)
+            {
+                light.cache.initialized = true;
+
+                switch (light.lightEffect)
+                {
+                    case DynamicLightEffect.Flicker:
+                        light.cache.intensity = light.lightIntensity * Random.value;
+                        break;
+
+                    case DynamicLightEffect.Strobe:
+                        light.cache.strobeActive = !light.cache.strobeActive;
+                        light.cache.intensity = light.cache.strobeActive ? light.lightIntensity : 0f;
+                        break;
+                }
+            }
+
+            // assign the cached values to the shader lights.
+
+            shaderDynamicLights[idx].intensity = light.cache.intensity;
         }
 
         private void OnDrawGizmos()

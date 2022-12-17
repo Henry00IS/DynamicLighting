@@ -2,7 +2,7 @@
 
 namespace AlpacaIT.DynamicLighting
 {
-    public static class Extensions
+    public static class DynamicLightingExtensions
     {
         /// <summary>Adds a realtime dynamic light component to the object.</summary>
         /// <returns>The realtime light source.</returns>

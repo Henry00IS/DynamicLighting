@@ -2,7 +2,7 @@
 
 namespace AlpacaIT.DynamicLighting
 {
-    public static class MathEx
+    internal static class MathEx
     {
         public static bool SpheresIntersect(Vector3 spherePosition1, float sphereRadius1, Vector3 spherePosition2, float sphereRadius2)
         {
@@ -47,6 +47,65 @@ namespace AlpacaIT.DynamicLighting
                     // ^ is the same as: if (planes[i].GetDistanceToPoint(center) < -radius)
                     return false;
             return true;
+        }
+
+        /// <summary>
+        /// Calculates a framerate independent fixed timestep.
+        /// </summary>
+        public class FixedTimestep
+        {
+            /// <summary>The amount of time in seconds between each fixed timestep.</summary>
+            public float timePerStep;
+            private float timeAccumulator;
+
+            /// <summary>
+            /// The amount of steps that have to be executed since the last call to <see cref="Update"/>.
+            /// </summary>
+            public int pendingSteps;
+
+            /// <summary>Creates a new framerate independent fixed timestep calculator.</summary>
+            /// <param name="timePerStep">The amount of time in seconds between each fixed timestep.</param>
+            public FixedTimestep(float timePerStep)
+            {
+                this.timePerStep = timePerStep;
+            }
+
+            /// <summary>
+            /// Updates the framerate independent fixed timestep and returns how many steps to execute
+            /// this frame. This is to be called once every Unity Update and relies on scaled <see
+            /// cref="Time.deltaTime"/> so that it can be adjusted or even paused by the user. This will
+            /// become inaccurate when the current <see cref="Time.deltaTime"/> exceeds <see cref="Time.maximumDeltaTime"/>.
+            /// </summary>
+            public void Update()
+            {
+                pendingSteps = 0;
+                timeAccumulator += Time.deltaTime;
+
+                if (timeAccumulator >= timePerStep)
+                {
+                    pendingSteps = Mathf.FloorToInt(timeAccumulator / timePerStep);
+                    timeAccumulator -= pendingSteps * timePerStep;
+                }
+            }
+
+            /// <summary>
+            /// Updates the framerate independent fixed timestep and returns how many steps to execute
+            /// this frame.
+            /// </summary>
+            /// <param name="deltaTime">
+            /// The interval in seconds from the last frame to the current one.
+            /// </param>
+            public void Update(float deltaTime)
+            {
+                pendingSteps = 0;
+                timeAccumulator += deltaTime;
+
+                if (timeAccumulator >= timePerStep)
+                {
+                    pendingSteps = Mathf.FloorToInt(timeAccumulator / timePerStep);
+                    timeAccumulator -= pendingSteps * timePerStep;
+                }
+            }
         }
     }
 }

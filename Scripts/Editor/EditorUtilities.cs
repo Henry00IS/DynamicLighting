@@ -6,7 +6,7 @@ using UnityEngine.SceneManagement;
 
 namespace AlpacaIT.DynamicLighting
 {
-    public static class EditorUtilities
+    internal static class EditorUtilities
     {
         /// <summary>
         /// Gets the active scene storage directory (where Unity would place lightmaps and such).

@@ -1,6 +1,6 @@
 ﻿namespace AlpacaIT.DynamicLighting
 {
-    /// <summary>The type of dynamic light (point light, spot light).</summary>
+    /// <summary>The type of dynamic light (e.g. point light or a spot light etc.).</summary>
     public enum DynamicLightType
     {
         Point,
