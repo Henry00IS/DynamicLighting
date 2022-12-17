@@ -225,7 +225,7 @@ float gold_noise(in float2 xy, in float seed)
 float light_calculate_watershimmer(DynamicLight light, float3 world)
 {
     // overlay the entire world with random blocks that never change between 0.0 and 1.0.
-    float pixel_scale = 12.5;
+    float pixel_scale = 12.25;
     world = round(world * pixel_scale) / pixel_scale;
 
     // the random function cannot work when there is a zero component.
