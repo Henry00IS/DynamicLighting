@@ -72,13 +72,13 @@ namespace AlpacaIT.DynamicLighting
         private bool useContinuousPreview = false;
 
         [UnityEditor.MenuItem("Dynamic Lighting/Toggle Continuous Preview", false, 21)]
-        public static void EnableContinuousPreview()
+        private static void EditorToggleContinuousPreview()
         {
             Instance.useContinuousPreview = !Instance.useContinuousPreview;
         }
 
         [UnityEditor.MenuItem("Dynamic Lighting/Toggle Unlit Surfaces", false, 22)]
-        public static void ToggleUnlitSurfaces()
+        private static void EditorToggleUnlitSurfaces()
         {
             if (Shader.IsKeywordEnabled("DYNAMIC_LIGHTING_UNLIT"))
                 Shader.DisableKeyword("DYNAMIC_LIGHTING_UNLIT");
@@ -87,9 +87,64 @@ namespace AlpacaIT.DynamicLighting
         }
 
         [UnityEditor.MenuItem("Dynamic Lighting/PayPal Donation", false, 41)]
-        public static void PayPalDonation()
+        private static void EditorPayPalDonation()
         {
             Application.OpenURL("https://paypal.me/henrydejongh");
+        }
+
+        [UnityEditor.MenuItem("GameObject/Light/Dynamic Point Light", false, 40)]
+        private static void EditorCreateDynamicPointLight()
+        {
+            EditorCreateDynamicLight("Dynamic Light");
+        }
+
+        [UnityEditor.MenuItem("GameObject/Light/Dynamic Spot Light", false, 40)]
+        private static void EditorCreateDynamicSpotLight()
+        {
+            var light = EditorCreateDynamicLight("Dynamic Spot Light");
+            light.lightType = DynamicLightType.Spot;
+        }
+
+        [UnityEditor.MenuItem("GameObject/Light/Dynamic Discoball Light", false, 40)]
+        private static void EditorCreateDynamicDiscoballLight()
+        {
+            var light = EditorCreateDynamicLight("Dynamic Discoball Light");
+            light.lightType = DynamicLightType.Discoball;
+            light.lightCutoff = 12.5f;
+            light.lightOuterCutoff = 14.0f;
+        }
+
+        /// <summary>Adds a new dynamic light game object to the scene.</summary>
+        /// <param name="name">The name of the game object that will be created.</param>
+        /// <returns>The dynamic light component.</returns>
+        private static DynamicLight EditorCreateDynamicLight(string name)
+        {
+            GameObject go = new GameObject(name);
+            UnityEditor.Undo.RegisterCreatedObjectUndo(go, "Create " + name);
+
+            // place the new game object as a child of the current selection in the editor.
+            var parent = UnityEditor.Selection.activeTransform;
+            if (parent)
+            {
+                // keep the game object transform identity.
+                go.transform.SetParent(parent, false);
+            }
+            else
+            {
+                // move it in front of the current camera.
+                var camera = EditorUtilities.GetSceneViewCamera();
+                if (camera)
+                {
+                    go.transform.position = camera.transform.TransformPoint(Vector3.forward * 2f);
+                }
+            }
+
+            // add the dynamic light component.
+            var light = go.AddComponent<DynamicLight>();
+
+            // make sure it's selected and unity editor will let the user rename the game object.
+            UnityEditor.Selection.activeGameObject = go;
+            return light;
         }
 
 #endif
@@ -255,19 +310,7 @@ namespace AlpacaIT.DynamicLighting
             // editor scene view support.
             if (!Application.isPlaying)
             {
-                var sceneView = UnityEditor.SceneView.lastActiveSceneView;
-                if (sceneView)
-                {
-                    camera = sceneView.camera;
-                }
-                else
-                {
-                    var current = Camera.current;
-                    if (current)
-                    {
-                        camera = current;
-                    }
-                }
+                camera = EditorUtilities.GetSceneViewCamera();
             }
             else
             {
@@ -424,7 +467,7 @@ namespace AlpacaIT.DynamicLighting
             shaderDynamicLights[idx].intensity = light.lightIntensity;
             shaderDynamicLights[idx].radiusSqr = light.lightRadius * light.lightRadius;
             shaderDynamicLights[idx].channel = light.lightChannel;
-            
+
             shaderDynamicLights[idx].channel &= ~((uint)1 << 6); // spot light bit
             shaderDynamicLights[idx].channel &= ~((uint)1 << 7); // discoball light bit
             shaderDynamicLights[idx].channel &= ~((uint)1 << 8); // water shimmer light bit

@@ -64,5 +64,29 @@ namespace AlpacaIT.DynamicLighting
                 return false;
             }
         }
+
+#if UNITY_EDITOR
+
+        /// <summary>Attempts to find the most likely scene view camera.</summary>
+        /// <returns>The camera if found else null.</returns>
+        public static Camera GetSceneViewCamera()
+        {
+            var sceneView = UnityEditor.SceneView.lastActiveSceneView;
+            if (sceneView)
+            {
+                return sceneView.camera;
+            }
+            else
+            {
+                var current = Camera.current;
+                if (current)
+                {
+                    return current;
+                }
+            }
+            return null;
+        }
+
+#endif
     }
 }
