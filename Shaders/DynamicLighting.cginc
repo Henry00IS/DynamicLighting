@@ -227,6 +227,12 @@ float light_calculate_watershimmer(DynamicLight light, float3 world)
     // overlay the entire world with random blocks that never change between 0.0 and 1.0.
     float pixel_scale = 12.5;
     world = round(world * pixel_scale) / pixel_scale;
+
+    // the random function cannot work when there is a zero component.
+    if (world.x == 0.0) world.x = 1.0;
+    if (world.y == 0.0) world.y = 1.0;
+    if (world.z == 0.0) world.z = 1.0;
+
     float stablerng = gold_noise(world.xy, world.z);
 
     // use a sine wave to change the brightness of the stable random blocks.
