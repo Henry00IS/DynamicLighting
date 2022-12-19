@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
-using static AlpacaIT.DynamicLighting.MathEx;
 
 namespace AlpacaIT.DynamicLighting
 {
@@ -566,8 +565,16 @@ namespace AlpacaIT.DynamicLighting
 
                 switch (light.lightEffect)
                 {
-                    case DynamicLightEffect.Flicker:
+                    case DynamicLightEffect.Random:
                         light.cache.intensity = light.lightIntensity * Random.value;
+                        break;
+
+                    case DynamicLightEffect.Flicker:
+                        var random = Random.value;
+                        if (random < 0.5f)
+                            light.cache.intensity = 0.0f;
+                        else
+                            light.cache.intensity = light.lightIntensity * random;
                         break;
 
                     case DynamicLightEffect.Strobe:
