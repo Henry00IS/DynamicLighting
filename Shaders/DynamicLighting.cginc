@@ -10,6 +10,7 @@ struct DynamicLight
     float3 forward;
     float  cutoff;
     float  outerCutoff;
+    float  waterShimmerScale;
 };
 
 StructuredBuffer<DynamicLight> dynamic_lights;
@@ -238,12 +239,10 @@ float gold_noise(in float2 xy, in float seed)
 //
 // returns: the multiplier for the shadow map.
 //
-float light_calculate_watershimmer(DynamicLight light, float3 world)
+float light_calculate_watershimmer(float3 world)
 {
     // overlay the entire world with random blocks that never change between 0.0 and 1.0.
-    float pixel_scale = 12.25;
-    world = round(world * pixel_scale) / pixel_scale;
-
+    
     // the random function cannot work when there is a zero component.
     if (world.x == 0.0) world.x = 1.0;
     if (world.y == 0.0) world.y = 1.0;
@@ -251,8 +250,52 @@ float light_calculate_watershimmer(DynamicLight light, float3 world)
 
     float stablerng = gold_noise(world.xy, world.z);
 
+    // fixme: why is this necessary?
+    // without this check in place there are occasional black blocks.
+    // could it be we are dealing with a NaN?
+    if (stablerng == 0.0)
+        stablerng = 1.0;
+
     // use a sine wave to change the brightness of the stable random blocks.
-    return lerp(0.8, 1, -abs(sin(stablerng * _Time.w)));
+    return lerp(0.8, 1.0, -abs(sin(stablerng * _Time.w + _Time.x)));
+}
+
+// shoutouts to https://chat.openai.com/ for actually figuring out bilinear filtering in 3 dimensions.
+float light_calculate_watershimmer_bilinear(float3 world, float scale)
+{
+    world *= scale;
+
+    // calculate the weights for the bilinear interpolation.
+    float3 weight = frac(world);
+
+    // calculate the integer part of the texture coordinates.
+    world = floor(world);
+
+    // sample the texture at the neighboring cells.
+    float topLeftFront = light_calculate_watershimmer(world);
+    float topRightFront = light_calculate_watershimmer(world + float3(1, 0, 0));
+    float bottomLeftFront = light_calculate_watershimmer(world + float3(0, 1, 0));
+    float bottomRightFront = light_calculate_watershimmer(world + float3(1, 1, 0));
+    float topLeftBack = light_calculate_watershimmer(world + float3(0, 0, 1));
+    float topRightBack = light_calculate_watershimmer(world + float3(1, 0, 1));
+    float bottomLeftBack = light_calculate_watershimmer(world + float3(0, 1, 1));
+    float bottomRightBack = light_calculate_watershimmer(world + float3(1, 1, 1));
+
+    // perform bilinear interpolation in the x direction.
+    float topFront = lerp(topLeftFront, topRightFront, weight.x);
+    float bottomFront = lerp(bottomLeftFront, bottomRightFront, weight.x);
+    float topBack = lerp(topLeftBack, topRightBack, weight.x);
+    float bottomBack = lerp(bottomLeftBack, bottomRightBack, weight.x);
+
+    // perform bilinear interpolation in the y direction.
+    float front = lerp(topFront, bottomFront, weight.y);
+    float back = lerp(topBack, bottomBack, weight.y);
+
+    // perform bilinear interpolation in the z direction.
+    float result = lerp(front, back, weight.z);
+
+    // return the final interpolated value.
+    return result;
 }
 
 // special thanks to https://learnopengl.com/PBR/Lighting

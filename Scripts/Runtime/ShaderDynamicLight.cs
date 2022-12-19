@@ -28,5 +28,7 @@ namespace AlpacaIT.DynamicLighting
         public float cutoff;
         /// <summary>The outer cutoff angle used by spot lights.</summary>
         public float outerCutoff;
+        /// <summary>The water shimmer scale.</summary>
+        public float waterShimmerScale;
     };
 }

@@ -180,7 +180,7 @@ Shader "Dynamic Lighting/Metallic PBR"
                     }
                     if (light_is_watershimmer(light))
                     {
-                        map *= light_calculate_watershimmer(light, i.world);
+                        map *= light_calculate_watershimmer_bilinear(i.world, light.waterShimmerScale);
                     }
 
                     // important attenuation that actually creates the point light with maximum radius.

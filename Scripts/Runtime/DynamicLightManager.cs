@@ -540,6 +540,7 @@ namespace AlpacaIT.DynamicLighting
             shaderDynamicLights[idx].forward = light.transform.forward;
             shaderDynamicLights[idx].cutoff = Mathf.Cos(light.lightCutoff * Mathf.Deg2Rad);
             shaderDynamicLights[idx].outerCutoff = Mathf.Cos(light.lightOuterCutoff * Mathf.Deg2Rad);
+            shaderDynamicLights[idx].waterShimmerScale = light.lightWaterShimmerScale;
         }
 
         private void UpdateLightEffects(int idx, DynamicLight light)
