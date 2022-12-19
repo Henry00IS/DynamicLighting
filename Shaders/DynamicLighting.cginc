@@ -172,15 +172,29 @@ float4x4 look_at_matrix(float3 at, float3 eye, float3 up)
     return axis_matrix(xaxis, yaxis, zaxis);
 }
 
+// returns the largest component of a float3.
+float max3(float3 v)
+{
+    return max(max(v.x, v.y), v.z);
+}
+
+// https://forum.unity.com/threads/snap-round-3d-direction-vector-based-on-angle.905168/
 // snaps the input direction to 45 degree increments.
-// shoutouts to JoNax97!
+// shoutouts to JoNax97 and Cannist!
+float snap_direction_round(float f)
+{
+    if (abs(f) < tan(UNITY_PI / 8.0))
+        return 0.0;
+    return sign(f);
+}
 float3 snap_direction(float3 input)
 {
-    float rad = radians(45.0);
-    float3 angle = acos(input);
-    float3 rounded = round(angle / rad) * rad;
-    float3 cosine = cos(rounded);
-    return normalize(cosine);
+    // scale vector to unit cube.
+    float scaleDivisor = max3(abs(input));
+    input /= scaleDivisor;
+
+    float3 rounded = float3(snap_direction_round(input.x), snap_direction_round(input.y), snap_direction_round(input.z));
+    return normalize(rounded);
 }
 
 // calculates the discoball spotlights effect.
