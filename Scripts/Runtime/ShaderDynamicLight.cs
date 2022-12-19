@@ -20,7 +20,9 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         public uint channel;
 
-        /// <summary>The direction of the light.</summary>
+        /// <summary>The up direction of the light.</summary>
+        public Vector3 up;
+        /// <summary>The forward direction of the light.</summary>
         public Vector3 forward;
         /// <summary>The cutoff angle used by spot lights.</summary>
         public float cutoff;

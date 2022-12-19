@@ -6,6 +6,7 @@ struct DynamicLight
     float  radiusSqr;
     uint   channel;
 
+    float3 up;
     float3 forward;
     float  cutoff;
     float  outerCutoff;
@@ -172,10 +173,12 @@ float4x4 look_at_matrix(float3 at, float3 eye, float3 up)
 }
 
 // snaps the input direction to 45 degree increments.
+// shoutouts to JoNax97!
 float3 snap_direction(float3 input)
 {
+    float rad = radians(45.0);
     float3 angle = acos(input);
-    float3 rounded = round(angle / radians(45.0)) * radians(45.0);
+    float3 rounded = round(angle / rad) * rad;
     float3 cosine = cos(rounded);
     return normalize(cosine);
 }
@@ -196,8 +199,7 @@ float3 snap_direction(float3 input)
 //
 float2 light_calculate_discoball(DynamicLight light, float3 light_direction)
 {
-    // FIXME: this is not accurate and flies all over the place!
-    float3x3 rot = look_at_matrix(light.position - light.forward, light.position, float3(0, 1, 0));
+    float3x3 rot = look_at_matrix(light.forward, light.up);
 
     float theta = dot(snap_direction(mul(light_direction, rot)), mul(light_direction, rot));
     float epsilon = light.cutoff - light.outerCutoff;

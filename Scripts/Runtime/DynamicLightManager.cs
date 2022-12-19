@@ -537,6 +537,7 @@ namespace AlpacaIT.DynamicLighting
             if (light.lightWaterShimmer)
                 shaderDynamicLights[idx].channel |= (uint)1 << 8; // water shimmer light bit
 
+            shaderDynamicLights[idx].up = light.transform.up;
             shaderDynamicLights[idx].forward = light.transform.forward;
             shaderDynamicLights[idx].cutoff = Mathf.Cos(light.lightCutoff * Mathf.Deg2Rad);
             shaderDynamicLights[idx].outerCutoff = Mathf.Cos(light.lightOuterCutoff * Mathf.Deg2Rad);
