@@ -76,75 +76,22 @@ Shader "Dynamic Lighting/Simple"
                     // get the current light from memory.
                     DynamicLight light = dynamic_lights[k];
 
-                    // calculate the unnormalized direction between the light source and the fragment.
-                    float3 light_direction = light.position - i.world;
-
-                    // calculate the square distance between the light source and the fragment.
-                    // distance(i.world, light.position); but squared to prevent a square root.
-                    // confirmed with NVIDIA Quadro K1000M slightly improving the framerate.
-                    float light_distanceSqr = dot(light_direction, light_direction);
-
-                    // we can use the distance and guaranteed maximum light radius to early out.
-                    // confirmed with NVIDIA Quadro K1000M doubling the framerate.
-                    if (light_distanceSqr > light.radiusSqr) continue;
-
-                    // properly normalize the direction between the light source and the fragment.
-                    light_direction = normalize(light_direction);
-
-                    // a simple dot product with the normal gives us diffusion.
-                    float diffusion = max(dot(i.normal, light_direction), 0);
-
-                    // this also tells us whether the fragment is facing away from the light.
-                    // as the fragment will then be black we can early out here.
-                    // confirmed with NVIDIA Quadro K1000M improving the framerate.
-                    if (diffusion == 0.0) continue;
-
-                    // if this renderer has a lightmap we use shadow bits otherwise it's a dynamic object.
-                    // if this light is realtime we will skip this step.
-                    float map = 1.0;
-                    if (lightmap_resolution > 0 && light_is_dynamic(light))
-                    {
-                        uint shadow_channel = light_get_shadow_channel(light);
-
-                        // retrieve the shadow bit at this position with bilinear filtering.
-                        map = lightmap_sample_bilinear(i.uv1, shadow_channel);
-
-                        // whenever the fragment is fully in shadow we can early out.
-                        // confirmed with NVIDIA Quadro K1000M improving the framerate.
-                        if (map == 0.0) continue;
-                    }
-
-                    // spot lights determine whether we are in the light cone or outside.
-                    if (light_is_spotlight(light))
-                    {
-                        // anything outside of the spot light can and must be skipped.
-                        float2 spotlight = light_calculate_spotlight(light, light_direction);
-                        if (spotlight.x <= light.outerCutoff)
-                            continue;
-                        map *= spotlight.y;
-                    }
-                    else if (light_is_discoball(light))
-                    {
-                        // anything outside of the spot lights can and must be skipped.
-                        float2 spotlight = light_calculate_discoball(light, light_direction);
-                        if (spotlight.x <= light.outerCutoff)
-                            continue;
-                        map *= spotlight.y;
-                    }
-                    if (light_is_watershimmer(light))
-                    {
-                        map *= light_calculate_watershimmer_bilinear(light, i.world);
-                    }
-                    else if (light_is_randomshimmer(light))
-                    {
-                        map *= light_calculate_randomshimmer_bilinear(light, i.world);
-                    }
-
-                    // important attenuation that actually creates the point light with maximum radius.
-                    float attenuation = saturate(1.0 - light_distanceSqr / light.radiusSqr) * light.intensity;
+                    // this generates the light with shadows and effects calculation declaring:
+                    // 
+                    // DynamicLight light; the current dynamic light source.
+                    // float3 light_direction; normalized direction between the light source and the fragment.
+                    // float light_distanceSqr; the square distance between the light source and the fragment.
+                    // float NdotL; dot product with the normal and light direction (diffusion).
+                    // float map; the computed shadow of this fragment with effects.
+                    // float attenuation; the attenuation of the point light with maximum radius.
+                    //
+                    // it may also early out and continue the loop to the next light.
+                    //
+                    #define GENERATE_NORMAL i.normal
+                    #include "GenerateLightProcessor.cginc"
 
                     // add this light to the final color of the fragment.
-                    light_final += light.color * attenuation * diffusion * map;
+                    light_final += light.color * attenuation * NdotL * map;
                 }
 
                 // sample the main texture, multiply by the light and add vertex colors.

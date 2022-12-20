@@ -8,8 +8,8 @@ struct DynamicLight
 
     float3 up;
     float3 forward;
-    float  cutoff;
-    float  outerCutoff;
+    float  gpFloat1;
+    float  gpFloat2;
     float  shimmerScale;
     float  shimmerModifier;
 };
@@ -111,6 +111,18 @@ uint light_is_randomshimmer(DynamicLight light)
     return light.channel & 512;
 }
 
+// bit 11 determines whether the light is a wave.
+uint light_is_wave(DynamicLight light)
+{
+    return light.channel & 1024;
+}
+
+// macros to name the general purpose variables.
+#define light_cutoff light.gpFloat1
+#define light_outerCutoff light.gpFloat2
+#define light_waveSpeed light.gpFloat1
+#define light_waveFrequency light.gpFloat2
+
 // calculates the spotlight effect.
 //
 // returns:
@@ -128,8 +140,8 @@ uint light_is_randomshimmer(DynamicLight light)
 float2 light_calculate_spotlight(DynamicLight light, float3 light_direction)
 {
     float theta = dot(light_direction, -light.forward);
-    float epsilon = light.cutoff - light.outerCutoff;
-    float intensity = saturate((theta - light.outerCutoff) / epsilon);
+    float epsilon = light_cutoff - light_outerCutoff;
+    float intensity = saturate((theta - light_outerCutoff) / epsilon);
     return float2(theta, intensity);
 }
 
@@ -207,9 +219,15 @@ float2 light_calculate_discoball(DynamicLight light, float3 light_direction)
 
     float3 rotated_direction = mul(light_direction, rot);
     float theta = dot(snap_direction(rotated_direction), rotated_direction);
-    float epsilon = light.cutoff - light.outerCutoff;
-    float intensity = saturate((theta - light.outerCutoff) / epsilon);
+    float epsilon = light_cutoff - light_outerCutoff;
+    float intensity = saturate((theta - light_outerCutoff) / epsilon);
     return float2(theta, intensity);
+}
+
+// calculates the wave effect.
+float light_calculate_wave(DynamicLight light, float3 world)
+{
+    return 0.7 + 0.3 * sin((distance(light.position, world) - _Time.y * light_waveSpeed) * UNITY_PI * 2 * light_waveFrequency);
 }
 
 // shoutouts to anastadunbar https://www.shadertoy.com/view/Xt23Ry

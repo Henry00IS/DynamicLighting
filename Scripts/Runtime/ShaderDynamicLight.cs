@@ -24,10 +24,10 @@ namespace AlpacaIT.DynamicLighting
         public Vector3 up;
         /// <summary>The forward direction of the light.</summary>
         public Vector3 forward;
-        /// <summary>The cutoff angle used by spot lights.</summary>
-        public float cutoff;
-        /// <summary>The outer cutoff angle used by spot lights.</summary>
-        public float outerCutoff;
+        /// <summary>General purpose floating point value.</summary>
+        public float gpFloat1;
+        /// <summary>General purpose floating point value.</summary>
+        public float gpFloat2;
         /// <summary>The shimmer scale.</summary>
         public float shimmerScale;
         /// <summary>The shimmer modifier.</summary>

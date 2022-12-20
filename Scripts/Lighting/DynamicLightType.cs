@@ -6,5 +6,6 @@
         Point,
         Spot,
         Discoball,
+        Wave,
     }
 }
