@@ -133,7 +133,11 @@ Shader "Dynamic Lighting/Simple"
                     }
                     if (light_is_watershimmer(light))
                     {
-                        map *= light_calculate_watershimmer_bilinear(i.world, light.waterShimmerScale);
+                        map *= light_calculate_watershimmer_bilinear(light, i.world);
+                    }
+                    else if (light_is_randomshimmer(light))
+                    {
+                        map *= light_calculate_randomshimmer_bilinear(light, i.world);
                     }
 
                     // important attenuation that actually creates the point light with maximum radius.

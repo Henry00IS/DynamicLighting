@@ -71,23 +71,30 @@ namespace AlpacaIT.DynamicLighting
         public float lightCutoff = 26.0f;
 
         /// <summary>
-        /// The water shimmer effect overlays the world with random blocks that smoothly change
-        /// between dark and bright. Combined with bilinear filtering it is meant to look like
-        /// shimmering water, but can also be useful for other scenarios like fire.
+        /// The shimmer effects overlay the world with random blocks that project water caustics or
+        /// fire wavering.
         /// </summary>
-        [Tooltip("The water shimmer effect overlays the world with random blocks that smoothly change between dark and bright. Combined with bilinear filtering it is meant to look like shimmering water, but can also be useful for other scenarios like fire.")]
-        public bool lightWaterShimmer = false;
+        [Tooltip("The shimmer effects overlay the world with random blocks that project water caustics or fire wavering.")]
+        public DynamicLightShimmer lightShimmer = DynamicLightShimmer.None;
 
         /// <summary>
-        /// When using the 'Water Shimmer' light effect, this specifies the scale of the caustics.
-        /// In the shader, the world is essentially overlaid with persistent random value blocks
-        /// from 0.0 to 1.0 that do not change. Then sine waves and time are multiplied against
-        /// these blocks to create the effect. This property changes the size of the blocks. This is
-        /// all mathematics, there is no difference in performance.
+        /// When using a shimmering light, this specifies the scale of the caustics. In the shader,
+        /// the world is essentially overlaid with persistent random value blocks from 0.0 to 1.0
+        /// that do not change. Then sine waves and time are multiplied against these blocks to
+        /// create the effect. This property changes the size of the blocks. This is all
+        /// mathematics, there is no difference in performance.
         /// </summary>
-        [Tooltip("When using the 'Water Shimmer' light effect, this specifies the scale of the caustics. In the shader, the world is essentially overlaid with persistent random value blocks from 0.0 to 1.0 that do not change. Then sine waves and time are multiplied against these blocks to create the effect. This property changes the size of the blocks. This is all mathematics, there is no difference in performance.")]
+        [Tooltip("When using a shimmering light, this specifies the scale of the caustics. In the shader, the world is essentially overlaid with persistent random value blocks from 0.0 to 1.0 that do not change. Then sine waves and time are multiplied against these blocks to create the effect. This property changes the size of the blocks. This is all mathematics, there is no difference in performance.")]
         [Min(0f)]
-        public float lightWaterShimmerScale = 12.25f;
+        public float lightShimmerScale = 12.25f;
+
+        /// <summary>
+        /// When using a shimmering light, this specifies how dim the caustics can become per
+        /// projected block, where 0 is completely off and 1 does nothing.
+        /// </summary>
+        [Tooltip("When using a shimmering light, this specifies how dim the caustics can become per projected block, where 0 is completely off and 1 does nothing.")]
+        [Range(0f, 1f)]
+        public float lightShimmerModifier = 0.8f;
 
         /// <summary>The effect applied to this dynamic light.</summary>
         [Tooltip("The effect applied to this dynamic light.")]

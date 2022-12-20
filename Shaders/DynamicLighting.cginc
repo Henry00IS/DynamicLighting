@@ -10,7 +10,8 @@ struct DynamicLight
     float3 forward;
     float  cutoff;
     float  outerCutoff;
-    float  waterShimmerScale;
+    float  shimmerScale;
+    float  shimmerModifier;
 };
 
 StructuredBuffer<DynamicLight> dynamic_lights;
@@ -104,6 +105,12 @@ uint light_is_watershimmer(DynamicLight light)
     return light.channel & 256;
 }
 
+// bit 10 determines whether the light has random shimmer.
+uint light_is_randomshimmer(DynamicLight light)
+{
+    return light.channel & 512;
+}
+
 // calculates the spotlight effect.
 //
 // returns:
@@ -124,24 +131,6 @@ float2 light_calculate_spotlight(DynamicLight light, float3 light_direction)
     float epsilon = light.cutoff - light.outerCutoff;
     float intensity = saturate((theta - light.outerCutoff) / epsilon);
     return float2(theta, intensity);
-}
-
-// Rotation with angle (in radians) and axis
-float3x3 AngleAxis3x3(float angle, float3 axis)
-{
-    float c, s;
-    sincos(angle, s, c);
-
-    float t = 1 - c;
-    float x = axis.x;
-    float y = axis.y;
-    float z = axis.z;
-
-    return float3x3(
-        t * x * x + c, t * x * y - s * z, t * x * z + s * y,
-        t * x * y + s * z, t * y * y + c, t * y * z - s * x,
-        t * x * z - s * y, t * y * z + s * x, t * z * z + c
-        );
 }
 
 float4x4 axis_matrix(float3 right, float3 up, float3 forward)
@@ -216,87 +205,51 @@ float2 light_calculate_discoball(DynamicLight light, float3 light_direction)
 {
     float3x3 rot = look_at_matrix(light.forward, light.up);
 
-    float theta = dot(snap_direction(mul(light_direction, rot)), mul(light_direction, rot));
+    float3 rotated_direction = mul(light_direction, rot);
+    float theta = dot(snap_direction(rotated_direction), rotated_direction);
     float epsilon = light.cutoff - light.outerCutoff;
     float intensity = saturate((theta - light.outerCutoff) / epsilon);
     return float2(theta, intensity);
 }
 
-// Gold Noise © 2015 dcerisano@standard3d.com
-// - based on the Golden Ratio
-// - uniform normalized distribution
-// - fastest static noise generator function (also runs at low precision)
-// - use with indicated fractional seeding method
-
-const float PHI = 1.61803398874989484820459; // = Golden Ratio 
-
-float gold_noise(in float2 xy, in float seed)
-{
-    return frac(tan(distance(xy * PHI, xy) * seed) * xy.x);
-}
+// shoutouts to anastadunbar https://www.shadertoy.com/view/Xt23Ry
+float rand(float co) { return frac(sin(co * (91.3458)) * 47453.5453); }
+float rand(float2 co) { return frac(sin(dot(co.xy, float2(12.9898, 78.233))) * 43758.5453); }
+float rand(float3 co) { return rand(co.xy + rand(co.z)); }
 
 // calculates the water shimmer effect.
 //
 // returns: the multiplier for the shadow map.
 //
-float light_calculate_watershimmer(float3 world)
+float light_calculate_watershimmer(float3 world, float modifier)
 {
     // overlay the entire world with random blocks that never change between 0.0 and 1.0.
-    
-    // the random function cannot work when there is a zero component.
-    if (world.x == 0.0) world.x = 1.0;
-    if (world.y == 0.0) world.y = 1.0;
-    if (world.z == 0.0) world.z = 1.0;
-
-    float stablerng = gold_noise(world.xy, world.z);
-
-    // fixme: why is this necessary?
-    // without this check in place there are occasional black blocks.
-    // could it be we are dealing with a NaN?
-    if (stablerng == 0.0)
-        stablerng = 1.0;
+    float stablerng = rand(world);
 
     // use a sine wave to change the brightness of the stable random blocks.
-    return lerp(0.8, 1.0, -abs(sin(stablerng * _Time.w + _Time.x)));
+    return lerp(modifier, 1.0, -abs(sin(stablerng * _Time.w + _Time.x)));
 }
 
-// shoutouts to https://chat.openai.com/ for actually figuring out bilinear filtering in 3 dimensions.
-float light_calculate_watershimmer_bilinear(float3 world, float scale)
+#define GENERATE_FUNCTION_NAME light_calculate_watershimmer_bilinear
+#define GENERATE_FUNCTION_CALL light_calculate_watershimmer
+#include "GenerateBilinearFilter3D.cginc"
+
+// calculates the random shimmer effect.
+//
+// returns: the multiplier for the shadow map.
+//
+float light_calculate_randomshimmer(float3 world, float modifier)
 {
-    world *= scale;
+    // overlay the entire world with random blocks that change at 30FPS between 0.0 and 1.0.
+    float stablerng = rand(world + frac(floor(_Time.y * 30) * 0.001));
 
-    // calculate the weights for the bilinear interpolation.
-    float3 weight = frac(world);
-
-    // calculate the integer part of the texture coordinates.
-    world = floor(world);
-
-    // sample the texture at the neighboring cells.
-    float topLeftFront = light_calculate_watershimmer(world);
-    float topRightFront = light_calculate_watershimmer(world + float3(1, 0, 0));
-    float bottomLeftFront = light_calculate_watershimmer(world + float3(0, 1, 0));
-    float bottomRightFront = light_calculate_watershimmer(world + float3(1, 1, 0));
-    float topLeftBack = light_calculate_watershimmer(world + float3(0, 0, 1));
-    float topRightBack = light_calculate_watershimmer(world + float3(1, 0, 1));
-    float bottomLeftBack = light_calculate_watershimmer(world + float3(0, 1, 1));
-    float bottomRightBack = light_calculate_watershimmer(world + float3(1, 1, 1));
-
-    // perform bilinear interpolation in the x direction.
-    float topFront = lerp(topLeftFront, topRightFront, weight.x);
-    float bottomFront = lerp(bottomLeftFront, bottomRightFront, weight.x);
-    float topBack = lerp(topLeftBack, topRightBack, weight.x);
-    float bottomBack = lerp(bottomLeftBack, bottomRightBack, weight.x);
-
-    // perform bilinear interpolation in the y direction.
-    float front = lerp(topFront, bottomFront, weight.y);
-    float back = lerp(topBack, bottomBack, weight.y);
-
-    // perform bilinear interpolation in the z direction.
-    float result = lerp(front, back, weight.z);
-
-    // return the final interpolated value.
-    return result;
+    // clamp the range down to change the intensity.
+    return modifier + (1.0 - modifier) * stablerng;
 }
+
+#define GENERATE_FUNCTION_NAME light_calculate_randomshimmer_bilinear
+#define GENERATE_FUNCTION_CALL light_calculate_randomshimmer
+#include "GenerateBilinearFilter3D.cginc"
 
 // special thanks to https://learnopengl.com/PBR/Lighting
 
