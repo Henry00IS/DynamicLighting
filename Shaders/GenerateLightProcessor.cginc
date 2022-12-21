@@ -63,6 +63,10 @@ else if (light_is_interference(light))
 {
     map *= light_calculate_interference(light, i.world);
 }
+else if (light_is_rotor(light))
+{
+    map *= light_calculate_rotor(light, i.world);
+}
 
 if (light_is_watershimmer(light))
 {

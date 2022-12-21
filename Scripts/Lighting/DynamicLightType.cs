@@ -8,5 +8,6 @@
         Discoball,
         Wave,
         Interference,
+        Rotor,
     }
 }

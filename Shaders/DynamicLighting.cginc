@@ -123,6 +123,12 @@ uint light_is_interference(DynamicLight light)
     return light.channel & 2048;
 }
 
+// bit 13 determines whether the light is a rotor.
+uint light_is_rotor(DynamicLight light)
+{
+    return light.channel & 4096;
+}
+
 // macros to name the general purpose variables.
 #define light_cutoff light.gpFloat1
 #define light_outerCutoff light.gpFloat2
@@ -244,6 +250,22 @@ float light_calculate_interference(DynamicLight light, float3 world)
 
     float angle = atan2(sqrt((world.x * world.x) + (world.z * world.z)), world.y) * UNITY_PI * light_waveFrequency;
     float scale = 0.5 + 0.5 * cos(angle + _Time.y * light_waveSpeed * UNITY_PI * 2.0);
+    return scale;
+}
+
+// calculates the rotor effect.
+float light_calculate_rotor(DynamicLight light, float3 world)
+{
+    world = world - light.position;
+
+    // this is similar to the interference effect and causes spinning blades.
+    // there is a sharp center point directly under the light source.
+    float angle = round(light_waveFrequency) * atan2(world.x, world.z);
+    float scale = 0.5 + 0.5 * cos(angle - _Time.y * light_waveSpeed * UNITY_PI * 2.0);
+
+    // we have to dampen the sharp point.
+    float dist = 0.9 * ((world.x * world.x) + (world.z * world.z));
+    if (dist < 1.0) scale = 1.0 - dist + scale * dist;
     return scale;
 }
 
