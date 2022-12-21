@@ -256,12 +256,13 @@ float light_calculate_interference(DynamicLight light, float3 world)
 // calculates the rotor effect.
 float light_calculate_rotor(DynamicLight light, float3 world)
 {
-    world = world - light.position;
+    float3x3 rot = look_at_matrix(light.forward, light.up);
+    world = mul(world - light.position, rot);
 
     // this is similar to the interference effect and causes spinning blades.
     // there is a sharp center point directly under the light source.
     float angle = round(light_waveFrequency) * atan2(world.x, world.z);
-    float scale = 0.5 + 0.5 * cos(angle - _Time.y * light_waveSpeed * UNITY_PI * 2.0);
+    float scale = 0.5 + 0.5 * cos(angle + _Time.y * light_waveSpeed * UNITY_PI * 2.0);
 
     // we have to dampen the sharp point.
     float dist = 0.9 * ((world.x * world.x) + (world.z * world.z));
