@@ -117,6 +117,12 @@ uint light_is_wave(DynamicLight light)
     return light.channel & 1024;
 }
 
+// bit 12 determines whether the light is interference.
+uint light_is_interference(DynamicLight light)
+{
+    return light.channel & 2048;
+}
+
 // macros to name the general purpose variables.
 #define light_cutoff light.gpFloat1
 #define light_outerCutoff light.gpFloat2
@@ -228,6 +234,17 @@ float2 light_calculate_discoball(DynamicLight light, float3 light_direction)
 float light_calculate_wave(DynamicLight light, float3 world)
 {
     return 0.7 + 0.3 * sin((distance(light.position, world) - _Time.y * light_waveSpeed) * UNITY_PI * 2 * light_waveFrequency);
+}
+
+// calculates the interference effect.
+float light_calculate_interference(DynamicLight light, float3 world)
+{
+    float3x3 rot = look_at_matrix(light.forward, light.up);
+    world = mul(world - light.position, rot);
+
+    float angle = atan2(sqrt((world.x * world.x) + (world.z * world.z)), world.y) * UNITY_PI * light_waveFrequency;
+    float scale = 0.5 + 0.5 * cos(angle + _Time.y * light_waveSpeed * UNITY_PI * 2.0);
+    return scale;
 }
 
 // shoutouts to anastadunbar https://www.shadertoy.com/view/Xt23Ry

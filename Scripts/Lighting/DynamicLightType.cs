@@ -7,5 +7,6 @@
         Spot,
         Discoball,
         Wave,
+        Interference,
     }
 }

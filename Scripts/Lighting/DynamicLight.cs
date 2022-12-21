@@ -73,17 +73,17 @@ namespace AlpacaIT.DynamicLighting
         public float lightCutoff = 26.0f;
 
         /// <summary>
-        /// When using the 'Wave' light type, this specifies how fast the waves move away from the
-        /// light source. This number can be negative to reverse the effect.
+        /// When using the 'Wave' or 'Interference' light types, this specifies how fast the waves
+        /// move around the light source. This number can be negative to reverse the effect.
         /// </summary>
-        [Tooltip("When using the 'Wave' light type, this specifies how fast the waves move away from the light source. This number can be negative to reverse the effect.")]
+        [Tooltip("When using the 'Wave' or 'Interference' light types, this specifies how fast the waves move around the light source. This number can be negative to reverse the effect.")]
         public float lightWaveSpeed = 1f;
 
         /// <summary>
-        /// When using the 'Wave' light type, this changes the frequency of the waves. A higher
-        /// number produces more waves that are closer together.
+        /// When using the 'Wave' or 'Interference' light types, this changes the frequency of the
+        /// waves. A higher number produces more waves that are closer together.
         /// </summary>
-        [Tooltip("When using the 'Wave' light type, this changes the frequency of the waves. A higher number produces more waves that are closer together.")]
+        [Tooltip("When using the 'Wave' or 'Interference' light types, this changes the frequency of the waves. A higher number produces more waves that are closer together.")]
         [Min(0f)]
         public float lightWaveFrequency = 1f;
 

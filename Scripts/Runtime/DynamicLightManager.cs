@@ -542,6 +542,12 @@ namespace AlpacaIT.DynamicLighting
                     shaderDynamicLights[idx].gpFloat1 = light.lightWaveSpeed;
                     shaderDynamicLights[idx].gpFloat2 = light.lightWaveFrequency;
                     break;
+
+                case DynamicLightType.Interference:
+                    shaderDynamicLights[idx].channel |= (uint)1 << 11; // interference light bit
+                    shaderDynamicLights[idx].gpFloat1 = light.lightWaveSpeed;
+                    shaderDynamicLights[idx].gpFloat2 = light.lightWaveFrequency;
+                    break;
             }
 
             switch (light.lightShimmer)

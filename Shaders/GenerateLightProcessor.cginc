@@ -59,6 +59,10 @@ else if (light_is_wave(light))
 {
     map *= light_calculate_wave(light, i.world);
 }
+else if (light_is_interference(light))
+{
+    map *= light_calculate_interference(light, i.world);
+}
 
 if (light_is_watershimmer(light))
 {
