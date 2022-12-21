@@ -28,6 +28,7 @@ namespace AlpacaIT.DynamicLighting
         /// illuminated by 32 lights- quite a lot), otherwise an error will occur.
         /// </summary>
         [Tooltip("The spherical radius that the light will occupy. The light cannot exceed this radius and is guaranteed to be completely gone when it reaches the end. Each light type (e.g. spot lights) will always use this entire radius for their calculations.\n\nThere must never be more than 32 lights all overlapping each other (i.e. some pixel in the level getting illuminated by 32 lights- quite a lot), otherwise an error will occur.")]
+        [Min(0f)]
         public float lightRadius = 4.0f;
 
         /// <summary>
@@ -44,6 +45,7 @@ namespace AlpacaIT.DynamicLighting
         /// light uses so that each light has its own unique space in memory to store shadows in.
         /// </summary>
         [Tooltip("This is the channel that the light occupies. This value is automatically assigned to the light during ray tracing. Dynamic realtime lights must always use channel 32 (they can move around the scene without shadows). This value is a crucial part of the inner workings of the lighting system. You should not touch this field unless you know what you are doing or to simply set it to 32 to make it a realtime light. The raytracer will ignore lights that are on channel 32 (i.e. it will not reset this channel to something else).\n\nIt can be useful to temporarily set the channel to 32 to adjust the light in an already raytraced scene. As a realtime light, it will be easier to see what it will look like. Then select any value between 0-31 and raytrace the scene again. This will then assign a proper channel.\n\nThis channel is assigned a number that no other overlapping light uses so that each light has its own unique space in memory to store shadows in.")]
+        [Range(0, 32)]
         public uint lightChannel = 0;
 
         /// <summary>The type of dynamic light (e.g. point light or a spot light etc.).</summary>

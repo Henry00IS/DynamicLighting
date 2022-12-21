@@ -125,7 +125,7 @@ Shader "Dynamic Lighting/Metallic PBR"
                     
                     // this generates the light with shadows and effects calculation declaring:
                     // 
-                    // DynamicLight light; the current dynamic light source.
+                    // required: DynamicLight light; the current dynamic light source.
                     // float3 light_direction; normalized direction between the light source and the fragment.
                     // float light_distanceSqr; the square distance between the light source and the fragment.
                     // float NdotL; dot product with the normal and light direction (diffusion).

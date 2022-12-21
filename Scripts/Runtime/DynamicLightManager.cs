@@ -520,8 +520,6 @@ namespace AlpacaIT.DynamicLighting
 
             shaderDynamicLights[idx].up = light.transform.up;
             shaderDynamicLights[idx].forward = light.transform.forward;
-            shaderDynamicLights[idx].gpFloat1 = Mathf.Cos(light.lightCutoff * Mathf.Deg2Rad);
-            shaderDynamicLights[idx].gpFloat2 = Mathf.Cos(light.lightOuterCutoff * Mathf.Deg2Rad);
             shaderDynamicLights[idx].shimmerScale = light.lightShimmerScale;
             shaderDynamicLights[idx].shimmerModifier = light.lightShimmerModifier;
 
@@ -529,10 +527,14 @@ namespace AlpacaIT.DynamicLighting
             {
                 case DynamicLightType.Spot:
                     shaderDynamicLights[idx].channel |= (uint)1 << 6; // spot light bit
+                    shaderDynamicLights[idx].gpFloat1 = Mathf.Cos(light.lightCutoff * Mathf.Deg2Rad);
+                    shaderDynamicLights[idx].gpFloat2 = Mathf.Cos(light.lightOuterCutoff * Mathf.Deg2Rad);
                     break;
 
                 case DynamicLightType.Discoball:
                     shaderDynamicLights[idx].channel |= (uint)1 << 7; // discoball light bit
+                    shaderDynamicLights[idx].gpFloat1 = Mathf.Cos(light.lightCutoff * Mathf.Deg2Rad);
+                    shaderDynamicLights[idx].gpFloat2 = Mathf.Cos(light.lightOuterCutoff * Mathf.Deg2Rad);
                     break;
 
                 case DynamicLightType.Wave:
