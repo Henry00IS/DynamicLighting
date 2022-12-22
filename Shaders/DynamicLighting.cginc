@@ -10,6 +10,7 @@ struct DynamicLight
     float3 forward;
     float  gpFloat1;
     float  gpFloat2;
+    float  gpFloat3;
     float  shimmerScale;
     float  shimmerModifier;
 };
@@ -134,6 +135,7 @@ uint light_is_rotor(DynamicLight light)
 #define light_outerCutoff light.gpFloat2
 #define light_waveSpeed light.gpFloat1
 #define light_waveFrequency light.gpFloat2
+#define light_rotorCenter light.gpFloat3
 
 // calculates the spotlight effect.
 //
@@ -256,17 +258,36 @@ float light_calculate_interference(DynamicLight light, float3 world)
 // calculates the rotor effect.
 float light_calculate_rotor(DynamicLight light, float3 world)
 {
+    float signRotorCenter = sign(light_rotorCenter);
+
     float3x3 rot = look_at_matrix(light.forward, light.up);
     world = mul(world - light.position, rot);
 
-    // this is similar to the interference effect and causes spinning blades.
-    // there is a sharp center point directly under the light source.
+    // world.xz are zero at the light position and move outwards. atan2 then calculates the angle
+    // from the zero point towards the world coordinate yielding positive pi to zero to negative pi.
+    // the angle changes less when it's further away creating a realistic light cone effect.
     float angle = round(light_waveFrequency) * atan2(world.x, world.z);
+
+    // we now calculate the cosine of the angle so that it does one complete oscillation. the angle
+    // has been multiplied against the desired wave frequency creating multiple rotor blades as it
+    // completes multiple oscillations in one circle. this angle is then offset by the current time
+    // to create a rotation.
     float scale = 0.5 + 0.5 * cos(angle + _Time.y * light_waveSpeed * UNITY_PI * 2.0);
 
-    // we have to dampen the sharp point.
-    float dist = 0.9 * ((world.x * world.x) + (world.z * world.z));
-    if (dist < 1.0) scale = 1.0 - dist + scale * dist;
+    // near world.xz zero the light starts from a sharp center point. that doesn't look very nice so
+    // add a blob of light or shadow in the center of the rotor to hide it.
+    float dist1 = distance(float2(0, 0), world.xz); // helpme reader: optimize the square roots away.
+    float dist2 = sqrt(light.radiusSqr) * abs(light_rotorCenter);
+    if (dist1 < dist2)
+    {
+        // the light blob uses an exponent of 2 and shadows use 4.
+        float exponent = max(signRotorCenter * 4, 2);
+        scale *= pow(dist1 / dist2, exponent);
+    }
+
+    // this if statement does not cause a branch in the shader.
+    if (light_rotorCenter < 0)
+        return 1.0 - scale;
     return scale;
 }
 

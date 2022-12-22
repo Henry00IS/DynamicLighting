@@ -28,6 +28,8 @@ namespace AlpacaIT.DynamicLighting
         public float gpFloat1;
         /// <summary>General purpose floating point value.</summary>
         public float gpFloat2;
+        /// <summary>General purpose floating point value.</summary>
+        public float gpFloat3;
         /// <summary>The shimmer scale.</summary>
         public float shimmerScale;
         /// <summary>The shimmer modifier.</summary>

@@ -88,6 +88,14 @@ namespace AlpacaIT.DynamicLighting
         public float lightWaveFrequency = 1f;
 
         /// <summary>
+        /// When using the 'Rotor' light type, this changes the scale of the blob of light or shadow
+        /// in the center. A negative number adds a shadow instead of a blob of light.
+        /// </summary>
+        [Tooltip("When using the 'Rotor' light type, this changes the scale of the blob of light or shadow in the center. A negative number adds a shadow instead of a blob of light.")]
+        [Range(-1f, 1f)]
+        public float lightRotorCenter = 0.2f;
+
+        /// <summary>
         /// The shimmer effects overlay the world with random blocks that project water caustics or
         /// fire wavering.
         /// </summary>
