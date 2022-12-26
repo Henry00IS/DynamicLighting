@@ -9,5 +9,6 @@
         Wave,
         Interference,
         Rotor,
+        Shock,
     }
 }

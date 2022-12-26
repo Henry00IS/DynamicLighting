@@ -130,6 +130,12 @@ uint light_is_rotor(DynamicLight light)
     return light.channel & 4096;
 }
 
+// bit 14 determines whether the light is a shockwave.
+uint light_is_shock(DynamicLight light)
+{
+    return light.channel & 8192;
+}
+
 // macros to name the general purpose variables.
 #define light_cutoff light.gpFloat1
 #define light_outerCutoff light.gpFloat2
@@ -289,6 +295,16 @@ float light_calculate_rotor(DynamicLight light, float3 world)
     if (light_rotorCenter < 0)
         return 1.0 - scale;
     return scale;
+}
+
+// calculates the shock effect.
+float light_calculate_shock(DynamicLight light, float3 world)
+{
+	float dist = light_waveFrequency * distance(light.position, world);
+	float brightness = 0.9 + 0.1 * sin((dist * 2.0 - _Time.y * light_waveSpeed) * UNITY_PI * 2.0);
+	brightness      *= 0.9 + 0.1 * cos((dist + _Time.y * light_waveSpeed) * UNITY_PI * 2.0);
+	brightness      *= 0.9 + 0.1 * sin((dist / 2.0 - _Time.y * light_waveSpeed) * UNITY_PI * 2.0);
+    return brightness;
 }
 
 // shoutouts to anastadunbar https://www.shadertoy.com/view/Xt23Ry

@@ -555,6 +555,12 @@ namespace AlpacaIT.DynamicLighting
                     shaderDynamicLights[idx].gpFloat2 = light.lightWaveFrequency;
                     shaderDynamicLights[idx].gpFloat3 = -light.lightRotorCenter;
                     break;
+
+                case DynamicLightType.Shock:
+                    shaderDynamicLights[idx].channel |= (uint)1 << 13; // shock light bit
+                    shaderDynamicLights[idx].gpFloat1 = light.lightWaveSpeed;
+                    shaderDynamicLights[idx].gpFloat2 = light.lightWaveFrequency;
+                    break;
             }
 
             switch (light.lightShimmer)

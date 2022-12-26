@@ -67,6 +67,10 @@ else if (light_is_rotor(light))
 {
     map *= light_calculate_rotor(light, i.world);
 }
+else if (light_is_shock(light))
+{
+    map *= light_calculate_shock(light, i.world);
+}
 
 if (light_is_watershimmer(light))
 {
