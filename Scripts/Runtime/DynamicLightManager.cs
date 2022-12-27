@@ -552,7 +552,7 @@ namespace AlpacaIT.DynamicLighting
                 case DynamicLightType.Rotor:
                     shaderDynamicLights[idx].channel |= (uint)1 << 12; // rotor light bit
                     shaderDynamicLights[idx].gpFloat1 = light.lightWaveSpeed;
-                    shaderDynamicLights[idx].gpFloat2 = light.lightWaveFrequency;
+                    shaderDynamicLights[idx].gpFloat2 = Mathf.Round(light.lightWaveFrequency);
                     shaderDynamicLights[idx].gpFloat3 = -light.lightRotorCenter;
                     break;
 
@@ -560,6 +560,13 @@ namespace AlpacaIT.DynamicLighting
                     shaderDynamicLights[idx].channel |= (uint)1 << 13; // shock light bit
                     shaderDynamicLights[idx].gpFloat1 = light.lightWaveSpeed;
                     shaderDynamicLights[idx].gpFloat2 = light.lightWaveFrequency;
+                    break;
+
+                case DynamicLightType.Disco:
+                    shaderDynamicLights[idx].channel |= (uint)1 << 14; // disco light bit
+                    shaderDynamicLights[idx].gpFloat1 = light.lightWaveSpeed;
+                    shaderDynamicLights[idx].gpFloat2 = Mathf.Round(light.lightWaveFrequency);
+                    shaderDynamicLights[idx].gpFloat3 = light.lightDiscoVerticalSpeed;
                     break;
             }
 

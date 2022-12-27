@@ -71,6 +71,10 @@ else if (light_is_shock(light))
 {
     map *= light_calculate_shock(light, i.world);
 }
+else if (light_is_disco(light))
+{
+    map *= light_calculate_disco(light, i.world);
+}
 
 if (light_is_watershimmer(light))
 {

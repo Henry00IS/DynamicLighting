@@ -10,5 +10,6 @@
         Interference,
         Rotor,
         Shock,
+        Disco,
     }
 }

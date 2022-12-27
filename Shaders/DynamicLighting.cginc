@@ -136,12 +136,19 @@ uint light_is_shock(DynamicLight light)
     return light.channel & 8192;
 }
 
+// bit 15 determines whether the light is a disco.
+uint light_is_disco(DynamicLight light)
+{
+    return light.channel & 16384;
+}
+
 // macros to name the general purpose variables.
 #define light_cutoff light.gpFloat1
 #define light_outerCutoff light.gpFloat2
 #define light_waveSpeed light.gpFloat1
 #define light_waveFrequency light.gpFloat2
 #define light_rotorCenter light.gpFloat3
+#define light_discoVerticalSpeed light.gpFloat3
 
 // calculates the spotlight effect.
 //
@@ -272,7 +279,7 @@ float light_calculate_rotor(DynamicLight light, float3 world)
     // world.xz are zero at the light position and move outwards. atan2 then calculates the angle
     // from the zero point towards the world coordinate yielding positive pi to zero to negative pi.
     // the angle changes less when it's further away creating a realistic light cone effect.
-    float angle = round(light_waveFrequency) * atan2(world.x, world.z);
+    float angle = light_waveFrequency * atan2(world.x, world.z);
 
     // we now calculate the cosine of the angle so that it does one complete oscillation. the angle
     // has been multiplied against the desired wave frequency creating multiple rotor blades as it
@@ -305,6 +312,26 @@ float light_calculate_shock(DynamicLight light, float3 world)
 	brightness      *= 0.9 + 0.1 * cos((dist + _Time.y * light_waveSpeed) * UNITY_PI * 2.0);
 	brightness      *= 0.9 + 0.1 * sin((dist / 2.0 - _Time.y * light_waveSpeed) * UNITY_PI * 2.0);
     return brightness;
+}
+
+// calculates the disco effect.
+float light_calculate_disco(DynamicLight light, float3 world)
+{
+    float3x3 rot = look_at_matrix(light.forward, light.up);
+    world = mul(world - light.position, rot);
+
+	float horizontal = light_waveFrequency * atan2(world.x, world.z);
+	float vertical = light_waveFrequency * atan2(sqrt(world.x * world.x + world.z * world.z), world.y);
+
+	float scale1 = 0.5 + 0.5 * cos(horizontal + _Time.y * light_waveSpeed * UNITY_PI * 2.0);
+	float scale2 = 0.5 + 0.5 * cos(vertical + _Time.y * light_discoVerticalSpeed * UNITY_PI * 2.0);
+
+	float scale  = scale1 + scale2 - scale1 * scale2;
+
+	float dist = 0.5 * (world.x * world.x + world.z * world.z);
+	if (dist < 1.0) scale *= dist;
+
+    return 1.0 - scale;
 }
 
 // shoutouts to anastadunbar https://www.shadertoy.com/view/Xt23Ry
