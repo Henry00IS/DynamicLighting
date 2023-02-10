@@ -119,15 +119,6 @@ namespace AlpacaIT.DynamicLighting
             Instance.useContinuousPreview = !Instance.useContinuousPreview;
         }
 
-        [UnityEditor.MenuItem("Dynamic Lighting/Toggle Unlit Surfaces", false, 22)]
-        private static void EditorToggleUnlitSurfaces()
-        {
-            if (Shader.IsKeywordEnabled("DYNAMIC_LIGHTING_UNLIT"))
-                Shader.DisableKeyword("DYNAMIC_LIGHTING_UNLIT");
-            else
-                Shader.EnableKeyword("DYNAMIC_LIGHTING_UNLIT");
-        }
-
         [UnityEditor.MenuItem("Dynamic Lighting/PayPal Donation", false, 41)]
         private static void EditorPayPalDonation()
         {
@@ -357,6 +348,21 @@ namespace AlpacaIT.DynamicLighting
             else
             {
                 Debug.Assert(camera != null, "Could not find a camera that is tagged \"MainCamera\" for lighting calculations.");
+            }
+
+            // respect the scene view lighting toggle.
+            {
+                var sceneView = UnityEditor.SceneView.lastActiveSceneView;
+                if (sceneView)
+                {
+                    var sceneLighting = sceneView.sceneLighting;
+                    var shaderUnlit = Shader.IsKeywordEnabled("DYNAMIC_LIGHTING_UNLIT");
+
+                    if (sceneLighting && shaderUnlit)
+                        Shader.DisableKeyword("DYNAMIC_LIGHTING_UNLIT");
+                    else if (!sceneLighting && !shaderUnlit)
+                        Shader.EnableKeyword("DYNAMIC_LIGHTING_UNLIT");
+                }
             }
 #endif
 
