@@ -3,11 +3,11 @@ Shader "Dynamic Lighting/Metallic PBR"
     Properties
     {
         _MainTex("Albedo", 2D) = "white" {}
-        _MetallicGlossMap("Metallic", 2D) = "black" {}
+        [NoScaleOffset] _MetallicGlossMap("Metallic", 2D) = "black" {}
         _GlossMapScale("Smoothness", Range(0,1)) = 1
-        _BumpMap("Normal map", 2D) = "bump" {}
-        _BumpScale("Normal scale", Range(0,1)) = 1
-        _OcclusionMap("Occlusion", 2D) = "white" {}
+        [NoScaleOffset][Normal] _BumpMap("Normal map", 2D) = "bump" {}
+        _BumpScale("Normal scale", Float) = 1
+        [NoScaleOffset] _OcclusionMap("Occlusion", 2D) = "white" {}
         _OcclusionStrength("Occlusion strength", Range(0,1)) = 0.75
     }
     SubShader
@@ -102,7 +102,7 @@ Shader "Dynamic Lighting/Metallic PBR"
                 float roughness = 1.0 - metallicmap.a * _GlossMapScale;
                 float ao = tex2D(_OcclusionMap, i.uv0).r;
 
-                half3 bumpmap = UnpackNormal(tex2D(_BumpMap, i.uv0));
+                half3 bumpmap = UnpackNormalWithScale(tex2D(_BumpMap, i.uv0), _BumpScale);
                 // transform normal from tangent to world space
                 half3 worldNormal;
                 worldNormal.x = dot(i.tspace0, bumpmap);
