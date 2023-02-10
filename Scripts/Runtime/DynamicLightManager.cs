@@ -111,14 +111,6 @@ namespace AlpacaIT.DynamicLighting
 
 #if UNITY_EDITOR
 
-        private bool useContinuousPreview = false;
-
-        [UnityEditor.MenuItem("Dynamic Lighting/Toggle Continuous Preview", false, 21)]
-        private static void EditorToggleContinuousPreview()
-        {
-            Instance.useContinuousPreview = !Instance.useContinuousPreview;
-        }
-
         [UnityEditor.MenuItem("Dynamic Lighting/PayPal Donation", false, 41)]
         private static void EditorPayPalDonation()
         {
@@ -638,7 +630,9 @@ namespace AlpacaIT.DynamicLighting
         private void OnDrawGizmos()
         {
 #if UNITY_EDITOR
-            if (useContinuousPreview)
+            // the scene view continuous preview toggle.
+            var sceneView = UnityEditor.SceneView.lastActiveSceneView;
+            if (sceneView && sceneView.sceneViewState.alwaysRefresh)
             {
                 // ensure continuous update calls.
                 if (!Application.isPlaying)
