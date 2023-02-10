@@ -4,12 +4,15 @@ Shader "Dynamic Lighting/Metallic PBR"
     {
         _MainTex("Albedo", 2D) = "white" {}
         [NoScaleOffset] _MetallicGlossMap("Metallic", 2D) = "black" {}
+        _Metallic("Metallic (Fallback)", Range(0,1)) = 0
         _GlossMapScale("Smoothness", Range(0,1)) = 1
         [NoScaleOffset][Normal] _BumpMap("Normal map", 2D) = "bump" {}
         _BumpScale("Normal scale", Float) = 1
         [NoScaleOffset] _OcclusionMap("Occlusion", 2D) = "white" {}
         _OcclusionStrength("Occlusion strength", Range(0,1)) = 0.75
     }
+    
+    CustomEditor "AlpacaIT.DynamicLighting.MetallicShaderGUI"
     SubShader
     {
         Tags { "RenderType" = "Opaque" }
@@ -22,6 +25,7 @@ Shader "Dynamic Lighting/Metallic PBR"
             #pragma fragment frag
             #pragma multi_compile_fog
             #pragma shader_feature DYNAMIC_LIGHTING_UNLIT
+            #pragma shader_feature METALLIC_TEXTURE_UNASSIGNED
 
             #include "UnityCG.cginc"
             #include "DynamicLighting.cginc"
@@ -53,6 +57,7 @@ Shader "Dynamic Lighting/Metallic PBR"
             sampler2D _MainTex;
             float4 _MainTex_ST;
             sampler2D _MetallicGlossMap;
+            float _Metallic;
             float _GlossMapScale;
             sampler2D _BumpMap;
             sampler2D _OcclusionMap;
@@ -97,9 +102,15 @@ Shader "Dynamic Lighting/Metallic PBR"
             {
                 // material parameters
                 float3 albedo = tex2D(_MainTex, i.uv0).rgb;
+                
+#if METALLIC_TEXTURE_UNASSIGNED
+                float metallic = _Metallic;
+                float roughness = 1.0 - _GlossMapScale;
+#else
                 float4 metallicmap = tex2D(_MetallicGlossMap, i.uv0);
                 float metallic = metallicmap.r;
                 float roughness = 1.0 - metallicmap.a * _GlossMapScale;
+#endif
                 float ao = tex2D(_OcclusionMap, i.uv0).r;
 
                 half3 bumpmap = UnpackNormalWithScale(tex2D(_BumpMap, i.uv0), _BumpScale);
