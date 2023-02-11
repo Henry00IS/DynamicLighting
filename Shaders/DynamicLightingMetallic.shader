@@ -169,7 +169,8 @@ Shader "Dynamic Lighting/Metallic PBR"
                     Lo += (kD * albedo / UNITY_PI + specular) * radiance * NdotL * map;
                 }
 
-                float3 color = Lo * lerp(1.0, ao, _OcclusionStrength);
+                float3 ambient = (albedo * dynamic_ambient_color);
+                float3 color = (ambient + Lo) * lerp(1.0, ao, _OcclusionStrength);
 
                 // apply fog.
                 UNITY_APPLY_FOG(i.fogCoord, color);

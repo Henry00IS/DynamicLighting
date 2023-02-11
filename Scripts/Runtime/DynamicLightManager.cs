@@ -33,6 +33,16 @@ namespace AlpacaIT.DynamicLighting
         public static bool hasInstance => s_Instance;
 
         /// <summary>
+        /// The ambient lighting color is added to the whole scene, thus making it look like there
+        /// is always some scattered light, even when there no direct light source. This prevents
+        /// absolute black, dark patches from appearing in the scene that are impossible to see
+        /// through (unless this is desired). This color should be very dark to achieve the best effect.
+        /// </summary>
+        [Tooltip("The ambient lighting color is added to the whole scene, thus making it look like there is always some scattered light, even when there no direct light source. This prevents absolute black, dark patches from appearing in the scene that are impossible to see through (unless this is desired). This color should be very dark to achieve the best effect.")]
+        [ColorUsage(showAlpha: false)]
+        public Color ambientColor = Color.black;
+
+        /// <summary>
         /// The number of dynamic lights that can be active at the same time. If this budget is
         /// exceeded, lights that are out of view or furthest away from the camera will
         /// automatically fade out in a way that the player will hopefully not notice. A
@@ -484,6 +494,9 @@ namespace AlpacaIT.DynamicLighting
             if (dynamicLightsBuffer != null && dynamicLightsBuffer.IsValid())
                 dynamicLightsBuffer.SetData(shaderDynamicLights);
             Shader.SetGlobalInt("dynamic_lights_count", activeDynamicLightsCount + activeRealtimeLightsCount);
+
+            // update the ambient lighting color.
+            Shader.SetGlobalColor("dynamic_ambient_color", ambientColor);
         }
 
         /// <summary>

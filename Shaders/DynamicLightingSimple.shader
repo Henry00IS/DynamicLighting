@@ -95,7 +95,7 @@ Shader "Dynamic Lighting/Simple"
                 }
 
                 // sample the main texture, multiply by the light and add vertex colors.
-                fixed4 col = tex2D(_MainTex, i.uv0) * half4(light_final, 1) * i.color;
+                fixed4 col = tex2D(_MainTex, i.uv0) * half4(dynamic_ambient_color + light_final, 1) * i.color;
 
                 // apply fog.
                 UNITY_APPLY_FOG(i.fogCoord, col);
