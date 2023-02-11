@@ -645,7 +645,7 @@ namespace AlpacaIT.DynamicLighting
 #if UNITY_EDITOR
             // the scene view continuous preview toggle.
             var sceneView = UnityEditor.SceneView.lastActiveSceneView;
-            if (sceneView && sceneView.sceneViewState.alwaysRefresh)
+            if (sceneView && sceneView.sceneViewState.fxEnabled && sceneView.sceneViewState.alwaysRefresh)
             {
                 // ensure continuous update calls.
                 if (!Application.isPlaying)
