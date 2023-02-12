@@ -30,8 +30,13 @@ if (lightmap_resolution > 0 && light_is_dynamic(light))
 {
     uint shadow_channel = light_get_shadow_channel(light);
 
+#if DYNAMIC_LIGHTING_SHADOW_SOFT
     // retrieve the shadow bit at this position with bilinear filtering.
     map = lightmap_sample_bilinear(i.uv1, shadow_channel);
+#else
+    // retrieve the shadow bit at this position with 3x3 average sampling.
+    map = lightmap_sample3x3(i.uv1, shadow_channel);
+#endif
 
     // whenever the fragment is fully in shadow we can early out.
     // confirmed with NVIDIA Quadro K1000M improving the framerate.

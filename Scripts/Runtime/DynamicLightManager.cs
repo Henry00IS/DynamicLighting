@@ -497,6 +497,20 @@ namespace AlpacaIT.DynamicLighting
 
             // update the ambient lighting color.
             Shader.SetGlobalColor("dynamic_ambient_color", ambientColor);
+
+            // update the shadow filtering algorithm.
+            switch (QualitySettings.shadows)
+            {
+                case ShadowQuality.Disable:
+                case ShadowQuality.HardOnly:
+                    Shader.DisableKeyword("DYNAMIC_LIGHTING_SHADOW_SOFT");
+                    Shader.EnableKeyword("DYNAMIC_LIGHTING_SHADOW_HARD");
+                    break;
+                case ShadowQuality.All:
+                    Shader.EnableKeyword("DYNAMIC_LIGHTING_SHADOW_SOFT");
+                    Shader.DisableKeyword("DYNAMIC_LIGHTING_SHADOW_HARD");
+                    break;
+            }
         }
 
         /// <summary>
