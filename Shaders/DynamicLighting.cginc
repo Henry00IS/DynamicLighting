@@ -377,6 +377,9 @@ float light_calculate_randomshimmer(float3 world, float modifier)
 
 // special thanks to https://learnopengl.com/PBR/Lighting
 
+// normal distribution function: approximates the amount the surface's
+// microfacets are aligned to the halfway vector, influenced by the roughness of
+// the surface; this is the primary function approximating the microfacets.
 float DistributionGGX(float3 N, float3 H, float3 roughness)
 {
     float a = roughness * roughness;
@@ -391,6 +394,9 @@ float DistributionGGX(float3 N, float3 H, float3 roughness)
     return num / denom;
 }
 
+// geometry function: describes the self-shadowing property of the microfacets.
+// when a surface is relatively rough, the surface's microfacets can overshadow
+// other microfacets reducing the light the surface reflects.
 float GeometrySchlickGGX(float NdotV, float roughness)
 {
     float r = (roughness + 1.0);
@@ -412,7 +418,14 @@ float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
     return ggx1 * ggx2;
 }
 
+// fresnel equation: the fresnel equation describes the ratio of surface
+// reflection at different surface angles.
 float3 fresnelSchlick(float cosTheta, float3 F0)
 {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+float3 fresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
+{
+    return F0 + (max(1.0 - roughness, F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }

@@ -34,7 +34,7 @@ Shader "Dynamic Lighting/Simple"
             {
                 float2 uv0 : TEXCOORD0;
                 float2 uv1 : TEXCOORD1;
-                UNITY_FOG_COORDS(1)
+                UNITY_FOG_COORDS(4)
                 float4 vertex : SV_POSITION;
                 float4 color : COLOR;
                 float3 world : TEXCOORD2;

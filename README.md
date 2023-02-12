@@ -12,6 +12,12 @@ Add the following line to your Unity Package Manager:
 
 `https://github.com/Henry00IS/VertexTracer.git`
 
+## Reflection Probes
+
+When you bake reflection probes, Unity may also create a small lightmap that messes up the UV1 coordinates when you enter play mode. You can fix this by disabling the baked global illumination in the lighting settings:
+
+![Unchecking baked global illumination in the lighting settings window](https://github.com/Henry00IS/VertexTracer/wiki/images/home/baked-global-illumination.png)
+
 ## Donations:
 
 If you found this package useful, please consider making a donation or supporting me on Patreon. Your donations are a tremendous encouragement for the continued development and support of this package. 😁

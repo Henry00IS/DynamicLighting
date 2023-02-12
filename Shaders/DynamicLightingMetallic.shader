@@ -1,5 +1,7 @@
 Shader "Dynamic Lighting/Metallic PBR"
 {
+    // special thanks to https://learnopengl.com/PBR/Lighting
+
     Properties
     {
         _MainTex("Albedo", 2D) = "white" {}
@@ -45,7 +47,7 @@ Shader "Dynamic Lighting/Metallic PBR"
             {
                 float2 uv0 : TEXCOORD0;
                 float2 uv1 : TEXCOORD1;
-                UNITY_FOG_COORDS(1)
+                UNITY_FOG_COORDS(7)
                 float4 vertex : SV_POSITION;
                 float4 color : COLOR;
                 float3 world : TEXCOORD2;
@@ -124,8 +126,9 @@ Shader "Dynamic Lighting/Metallic PBR"
                 float3 N = normalize(worldNormal);
                 float3 V = normalize(_WorldSpaceCameraPos - i.world);
 
-                float3 F0 = float3(0.04, 0.04, 0.04);
-                F0 = lerp(F0, albedo, metallic);
+                // calculate reflectance at normal incidence; if dia-electric (like plastic) use F0
+                // of 0.04 and if it's a metal, use the albedo color as F0 (metallic workflow).
+                float3 F0 = lerp(0.04, albedo, metallic);
 
                 // reflectance equation
                 float3 Lo = float3(0.0, 0.0, 0.0);
@@ -153,15 +156,38 @@ Shader "Dynamic Lighting/Metallic PBR"
                     float3 H = normalize(V + light_direction);
                     float3 radiance = light.color * light.intensity * attenuation;
 
-                    // cook-torrance brdf
+                    // normal distribution function: approximates the amount the surface's
+                    // microfacets are aligned to the halfway vector, influenced by the roughness of
+                    // the surface; this is the primary function approximating the microfacets.
                     float NDF = DistributionGGX(N, H, roughness);
+
+                    // geometry function: describes the self-shadowing property of the microfacets.
+                    // when a surface is relatively rough, the surface's microfacets can overshadow
+                    // other microfacets reducing the light the surface reflects.
                     float G = GeometrySmith(N, V, light_direction, roughness);
+
+                    // fresnel equation: the fresnel equation describes the ratio of surface
+                    // reflection at different surface angles.
                     float3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
 
+                    // reflected and refracted light must be mutually exclusive. whatever light
+                    // energy gets reflected will no longer be absorbed by the material itself.
+                    // 
+                    // kS: reflection/specular fraction.
+                    // kD: refraction/diffuse fraction.
                     float3 kS = F;
-                    float3 kD = float3(1.0, 1.0, 1.0) - kS;
-                    kD *= 1.0 - metallic;
 
+                    // for energy conservation, the diffuse and specular light can't be above 1.0
+                    // (unless the surface emits light); to preserve this relationship the diffuse
+                    // component (kD) should equal 1.0 - kS.
+                    float3 kD = 1.0 - kS;
+
+                    // multiply kD by the inverse metalness such that only non-metals have diffuse
+                    // lighting, or a linear blend if partly metal (pure metals have no diffuse light).
+                    kD *= 1.0 - metallic; 
+
+                    // cook-torrance brdf
+                    // we add 0.0001 to the denominator to prevent a potential divide by zero.
                     float3 numerator = NDF * G * F;
                     float denominator = 4.0 * max(dot(N, V), 0.0) * NdotL + 0.0001;
                     float3 specular = numerator / denominator;
@@ -170,8 +196,25 @@ Shader "Dynamic Lighting/Metallic PBR"
                     Lo += (kD * albedo / UNITY_PI + specular) * radiance * NdotL * map;
                 }
 
-                float3 ambient = (albedo * dynamic_ambient_color);
-                float3 color = (ambient + Lo) * lerp(1.0, ao, _OcclusionStrength);
+                // ambient lighting (we now use IBL as the ambient term).
+                float3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+
+                float3 kS = F;
+                float3 kD = 1.0 - kS;
+                kD *= 1.0 - metallic;
+
+                // direction of the ray from the camera towards the object surface.
+                half3 worldViewDir = normalize(UnityWorldSpaceViewDir(i.world));
+                // direction of the ray after hitting the surface of object.
+                half3 reflection = reflect(-worldViewDir, worldNormal);
+                // sample the default cubemap provided by unity.
+                half4 skyData = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, reflection, roughness * 4.0);
+                half3 skyColor = DecodeHDR(skyData, unity_SpecCube0_HDR);
+                float3 specular = skyColor * F;
+
+                // the final lighting calculation combining all of the parts.
+                float3 ambient = kD * albedo * dynamic_ambient_color;
+                float3 color = (ambient + Lo) * lerp(1.0, ao, _OcclusionStrength) + specular;
 
                 // apply fog.
                 UNITY_APPLY_FOG(i.fogCoord, color);
