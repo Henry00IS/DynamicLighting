@@ -1,6 +1,8 @@
 # Dynamic Lighting for Unity.
 
-The Dynamic Lighting brings an old school lighting technique to Unity.
+This package brings an old school lighting technique to Unity.
+
+It is inspired by Tim Sweeney's lighting system in Unreal Gold and Unreal Tournament (1996-1999).
 
 Primarily tested to work with [RealtimeCSG](https://github.com/LogicalError/realtime-CSG-for-unity).
 
@@ -10,13 +12,13 @@ Add the following line to your Unity Package Manager:
 
 ![Unity Package Manager](https://user-images.githubusercontent.com/7905726/84954483-c82ba100-b0f5-11ea-9cd0-1cdc24ef2660.png)
 
-`https://github.com/Henry00IS/VertexTracer.git`
+`https://github.com/Henry00IS/DynamicLighting.git`
 
 ## Reflection Probes
 
 When you bake reflection probes, Unity may also create a small lightmap that messes up the UV1 coordinates when you enter play mode. You can fix this by disabling the baked global illumination in the lighting settings:
 
-![Unchecking baked global illumination in the lighting settings window](https://github.com/Henry00IS/VertexTracer/wiki/images/home/baked-global-illumination.png)
+![Unchecking baked global illumination in the lighting settings window](https://github.com/Henry00IS/DynamicLighting/wiki/images/home/baked-global-illumination.png)
 
 ## Donations:
 
