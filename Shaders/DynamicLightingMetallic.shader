@@ -203,10 +203,8 @@ Shader "Dynamic Lighting/Metallic PBR"
                 float3 kD = 1.0 - kS;
                 kD *= 1.0 - metallic;
 
-                // direction of the ray from the camera towards the object surface.
-                half3 worldViewDir = normalize(UnityWorldSpaceViewDir(i.world));
-                // direction of the ray after hitting the surface of object.
-                half3 reflection = reflect(-worldViewDir, worldNormal);
+                // reflecting a ray from the camera against the object surface.
+                half3 reflection = reflect(-V, worldNormal);
                 // sample the default cubemap provided by unity.
                 half4 skyData = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, reflection, roughness * 4.0);
                 half3 skyColor = DecodeHDR(skyData, unity_SpecCube0_HDR);
