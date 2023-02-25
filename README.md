@@ -4,7 +4,12 @@ This package brings an old school lighting technique to Unity.
 
 It is inspired by Tim Sweeney's lighting system in Unreal Gold and Unreal Tournament (1996-1999).
 
-Primarily tested to work with [RealtimeCSG](https://github.com/LogicalError/realtime-CSG-for-unity).
+![Showcasing Dynamic Lighting and Reactive Logic by switching some light sources](https://raw.githubusercontent.com/wiki/Henry00IS/ReactiveLogic/images/DynamicLightingAndReactiveLogic.gif)
+
+This system allows you to have an almost unlimited number of light sources in your scene, all with ray traced shadows. Unlike light baking techniques, where you can't change any light source, or shadow mapping, where performance drops off after 4 lights or so, this technique allows real-time adjustments to all lights, such as flickering and changing colours, or even water refraction, among many other effects. This requires using relatively simple custom shaders, including Metallic PBR, which is almost identical to Unity's Standard shader, to work. It doesn't rely on Unity's custom render pipelines, it's just the good old built-in render pipeline.
+
+#### Cons
+The main limitation of this technique is that lights with shadows cannot change their position. If they have to move, they become real-time lights that cast no shadows and can potentially shine through walls, if their radius allows for it. Depending on the use case and level design, this may never be a problem at all.
 
 ## Installation Instructions:
 
