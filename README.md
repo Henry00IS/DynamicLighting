@@ -25,7 +25,11 @@ When you bake reflection probes, Unity may also create a small lightmap that mes
 
 ![Unchecking baked global illumination in the lighting settings window](https://github.com/Henry00IS/DynamicLighting/wiki/images/home/baked-global-illumination.png)
 
-## Donations:
+## Support:
+
+Feel free to join my Discord server and let's talk about it.
+
+[![](https://dcbadge.vercel.app/api/server/sKEvrBwHtq)](https://discord.gg/sKEvrBwHtq)
 
 If you found this package useful, please consider making a donation or supporting me on Patreon. Your donations are a tremendous encouragement for the continued development and support of this package. 😁
 
