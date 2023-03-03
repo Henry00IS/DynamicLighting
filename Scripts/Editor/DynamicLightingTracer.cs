@@ -12,6 +12,7 @@ namespace AlpacaIT.DynamicLighting
         private int traces = 0;
         private float tracingTime = 0f;
         private float seamTime = 0f;
+        private long vramTotal = 0;
         private DynamicLight[] pointLights;
         private int lightmapSize = 2048;
         private float lightmapSizeMin1;
@@ -36,6 +37,7 @@ namespace AlpacaIT.DynamicLighting
             traces = 0;
             tracingTime = 0f;
             seamTime = 0f;
+            vramTotal = 0;
             pointLights = null;
             lightmapSizeMin1 = lightmapSize - 1;
             uniqueIdentifier = 0;
@@ -75,7 +77,7 @@ namespace AlpacaIT.DynamicLighting
                     }
                 }
 
-                Debug.Log("Raytracing Finished: " + traces + " traces in " + tracingTime + "s! Seams padding in " + seamTime + "s!");
+                Debug.Log("Raytracing Finished: " + traces + " traces in " + tracingTime + "s! Seams padding in " + seamTime + "s! VRAM estimation: " + BytesToUnitString(vramTotal));
                 DynamicLightManager.Instance.Reload();
 #if UNITY_EDITOR
                 UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
@@ -128,6 +130,16 @@ namespace AlpacaIT.DynamicLighting
         }
 
 #endif
+
+        private static string BytesToUnitString(long bytes)
+        {
+            if (bytes < (long)1024) return bytes + "B";
+            if (bytes < (long)1024 * 1024) return bytes / 1024 + "KiB";
+            if (bytes < (long)1024 * 1024 * 1024) return bytes / 1024 / 1024 + "MiB";
+            if (bytes < (long)1024 * 1024 * 1024 * 1024) return bytes / 1024 / 1024 / 1024 + "GiB";
+            if (bytes < (long)1024 * 1024 * 1024 * 1024 * 1024) return bytes / 1024 / 1024 / 1024 / 1024 + "TiB"; // the future!
+            return bytes + "B";
+        }
 
         private void AssignPointLightChannels()
         {
@@ -201,7 +213,11 @@ namespace AlpacaIT.DynamicLighting
             }
             else
             {
-                Debug.Log(meshFilter.name + " surface area: " + meshBuilder.surfaceArea.ToString("0.00") + "m² lightmap size: " + lightmapSize + "x" + lightmapSize);
+                // estimate the amount of vram required (purely statistical).
+                long vramLightmap = lightmapSize * lightmapSize * 4; // uint32
+                vramTotal += vramLightmap;
+
+                Debug.Log(meshFilter.name + " surface area: " + meshBuilder.surfaceArea.ToString("0.00") + "m² lightmap size: " + lightmapSize + "x" + lightmapSize + " VRAM: " + BytesToUnitString(vramLightmap), meshFilter);
             }
 #endif
 
