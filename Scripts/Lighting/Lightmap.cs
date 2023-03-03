@@ -2,17 +2,15 @@
 
 namespace AlpacaIT.DynamicLighting
 {
-    public class Lightmap : MonoBehaviour
+    [System.Serializable]
+    public class Lightmap
     {
-        [HideInInspector]
-        [SerializeField]
+        public MeshRenderer renderer;
+
         public int identifier;
 
-        [HideInInspector]
-        [SerializeField]
         public int resolution;
 
-        [HideInInspector]
         public ComputeBuffer buffer;
     }
 }

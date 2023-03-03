@@ -56,7 +56,10 @@ namespace AlpacaIT.DynamicLighting
             {
                 // reset the internal state.
                 Prepare();
-
+#if UNITY_EDITOR
+                // clear all of the old lightmap data.
+                DynamicLightManager.Instance.EditorCleanupLightmaps();
+#endif
                 // find all of the dynamic lights in the scene and assign channels.
                 pointLights = DynamicLightManager.FindDynamicLightsInScene().ToArray();
                 AssignPointLightChannels();
@@ -280,18 +283,18 @@ namespace AlpacaIT.DynamicLighting
                             bool p21 = GetPixel(ref pixels_visited, x, y - 1) == 1;
                             // bool p31 = GetPixel(ref pixels_visited, x + 1, y - 1) == 1;
                             // bool p41 = GetPixel(ref pixels_visited, x + 2, y - 1) == 1;
-                            
+
                             bool p02 = GetPixel(ref pixels_visited, x - 2, y) == 1;
                             bool p12 = GetPixel(ref pixels_visited, x - 1, y) == 1;
                             bool p32 = GetPixel(ref pixels_visited, x + 1, y) == 1;
                             bool p42 = GetPixel(ref pixels_visited, x + 2, y) == 1;
-                            
+
                             // bool p03 = GetPixel(ref pixels_visited, x - 2, y + 1) == 1;
                             // bool p13 = GetPixel(ref pixels_visited, x - 1, y + 1) == 1;
                             bool p23 = GetPixel(ref pixels_visited, x, y + 1) == 1;
                             // bool p33 = GetPixel(ref pixels_visited, x + 1, y + 1) == 1;
                             // bool p43 = GetPixel(ref pixels_visited, x + 2, y + 1) == 1;
-                            
+
                             // bool p04 = GetPixel(ref pixels_visited, x - 2, y + 2) == 1;
                             // bool p14 = GetPixel(ref pixels_visited, x - 1, y + 2) == 1;
                             bool p24 = GetPixel(ref pixels_visited, x, y + 2) == 1;
@@ -305,24 +308,24 @@ namespace AlpacaIT.DynamicLighting
                             uint l20 = GetPixel(ref pixels_lightmap, x, y - 2);
                             // uint l30 = GetPixel(ref pixels_lightmap, x + 1, y - 2);
                             // uint l40 = GetPixel(ref pixels_lightmap, x + 2, y - 2);
-                            
+
                             // uint l01 = GetPixel(ref pixels_lightmap, x - 2, y - 1);
                             // uint l11 = GetPixel(ref pixels_lightmap, x - 1, y - 1);
                             uint l21 = GetPixel(ref pixels_lightmap, x, y - 1);
                             // uint l31 = GetPixel(ref pixels_lightmap, x + 1, y - 1);
                             // uint l41 = GetPixel(ref pixels_lightmap, x + 2, y - 1);
-                            
+
                             uint l02 = GetPixel(ref pixels_lightmap, x - 2, y);
                             uint l12 = GetPixel(ref pixels_lightmap, x - 1, y);
                             uint l32 = GetPixel(ref pixels_lightmap, x + 1, y);
                             uint l42 = GetPixel(ref pixels_lightmap, x + 2, y);
-                            
+
                             // uint l03 = GetPixel(ref pixels_lightmap, x - 2, y + 1);
                             // uint l13 = GetPixel(ref pixels_lightmap, x - 1, y + 1);
                             uint l23 = GetPixel(ref pixels_lightmap, x, y + 1);
                             // uint l33 = GetPixel(ref pixels_lightmap, x + 1, y + 1);
                             // uint l43 = GetPixel(ref pixels_lightmap, x + 2, y + 1);
-                            
+
                             // uint l04 = GetPixel(ref pixels_lightmap, x - 2, y + 2);
                             // uint l14 = GetPixel(ref pixels_lightmap, x - 1, y + 2);
                             uint l24 = GetPixel(ref pixels_lightmap, x, y + 2);
@@ -378,7 +381,7 @@ namespace AlpacaIT.DynamicLighting
                             // down 2x
                             if (!p23 && p24)
                                 res |= l24;
-                            
+
                             SetPixel(ref pixels_lightmap, x, y, res);
                         }
                     }
@@ -386,11 +389,12 @@ namespace AlpacaIT.DynamicLighting
             }
             seamTime += Time.realtimeSinceStartup - tt1;
 
-            Lightmap lightmap;
-            if (!meshFilter.TryGetComponent(out lightmap))
-                lightmap = meshFilter.gameObject.AddComponent<Lightmap>();
+            // store the scene reference renderer in the dynamic light manager with lightmap data.
+            var lightmap = new Lightmap();
+            lightmap.renderer = meshFilter.GetComponent<MeshRenderer>();
             lightmap.resolution = lightmapSize;
             lightmap.identifier = uniqueIdentifier++;
+            DynamicLightManager.Instance.lightmaps.Add(lightmap);
 
             var sceneStorageDirectory = EditorUtilities.CreateAndGetActiveSceneStorageDirectory();
             if (sceneStorageDirectory != null)

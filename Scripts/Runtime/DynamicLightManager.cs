@@ -103,9 +103,13 @@ namespace AlpacaIT.DynamicLighting
         [Tooltip("The desired pixel density (e.g. 128 for 128x128 per meter squared). This lighting system does not require \"power of two\" textures. You may have heard this term before because graphics cards can render textures in such sizes much faster. This system relies on binary data on the GPU using compute buffers and it's quite different. Without going into too much detail, this simply means that we can choose any texture size. An intelligent algorithm calculates the surface area of the meshes and determines exactly how many pixels are needed to cover them evenly with shadow pixels, regardless of the ray tracing resolution (unless it exceeds that maximum ray tracing resolution, of course, then those shadow pixels will start to increase in size). Here you can set how many pixels should cover a square meter. It can result in a 47x47 texture or 328x328, exactly the amount needed to cover all polygons with the same amount of shadow pixels. Higher details require more VRAM (exponentially)!")]
         public int pixelDensityPerSquareMeter = 128;
 
+        /// <summary>The collection of lightmap data for mesh renderers in the scene.</summary>
+        [SerializeField]
+        [HideInInspector]
+        internal List<Lightmap> lightmaps = new List<Lightmap>();
+
         /// <summary>The memory size in bytes of the <see cref="ShaderDynamicLight"/> struct.</summary>
         private int dynamicLightStride;
-        private Lightmap[] lightmaps;
         private List<DynamicLight> sceneDynamicLights;
         private List<DynamicLight> sceneRealtimeLights;
         private bool sceneDynamicLightsAddedDirty = false;
@@ -182,6 +186,16 @@ namespace AlpacaIT.DynamicLighting
             return light;
         }
 
+        /// <summary>
+        /// Called by <see cref="DynamicLightingTracer"/> to properly free up the compute buffers
+        /// before clearing the lightmaps collection.
+        /// </summary>
+        internal void EditorCleanupLightmaps()
+        {
+            Cleanup();
+            lightmaps.Clear();
+        }
+
 #endif
 
         private void OnEnable()
@@ -247,14 +261,17 @@ namespace AlpacaIT.DynamicLighting
             Shader.SetGlobalInt("dynamic_lights_count", 0);
 
             // prepare the scene for dynamic lighting.
-            lightmaps = FindObjectsOfType<Lightmap>();
-            for (int i = 0; i < lightmaps.Length; i++)
+            var lightmapsCount = lightmaps.Count;
+            for (int i = 0; i < lightmapsCount; i++)
             {
                 // for every game object that requires a lightmap:
                 var lightmap = lightmaps[i];
 
+                // make sure the scene reference is still valid.
+                var meshRenderer = lightmap.renderer;
+                if (!meshRenderer) continue;
+
                 // fetch the active material on the mesh renderer.
-                var meshRenderer = lightmap.GetComponent<MeshRenderer>();
                 var materialPropertyBlock = new MaterialPropertyBlock();
 
                 // play nice with other scripts.
@@ -285,7 +302,8 @@ namespace AlpacaIT.DynamicLighting
                 dynamicLightsBuffer = null;
             }
 
-            for (int i = 0; i < lightmaps.Length; i++)
+            var lightmapsCount = lightmaps.Count;
+            for (int i = 0; i < lightmapsCount; i++)
             {
                 var lightmap = lightmaps[i];
                 if (lightmap.buffer != null && lightmap.buffer.IsValid())
@@ -506,6 +524,7 @@ namespace AlpacaIT.DynamicLighting
                     Shader.DisableKeyword("DYNAMIC_LIGHTING_SHADOW_SOFT");
                     Shader.EnableKeyword("DYNAMIC_LIGHTING_SHADOW_HARD");
                     break;
+
                 case ShadowQuality.All:
                     Shader.EnableKeyword("DYNAMIC_LIGHTING_SHADOW_SOFT");
                     Shader.DisableKeyword("DYNAMIC_LIGHTING_SHADOW_HARD");
