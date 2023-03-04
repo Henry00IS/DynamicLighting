@@ -144,6 +144,31 @@ namespace AlpacaIT.DynamicLighting
             light.lightType = DynamicLightType.Spot;
         }
 
+        [UnityEditor.MenuItem("GameObject/Light/Dynamic Directional Light", false, 40)]
+        private static void EditorCreateDynamicDirectionalLight()
+        {
+            // create the outer object.
+            var name = "Dynamic Directional Light";
+            GameObject parent = new GameObject(name);
+            UnityEditor.Undo.RegisterCreatedObjectUndo(parent, "Create " + name);
+
+            // create the sun point light far away from the scene.
+            GameObject sun = new GameObject("Dynamic Sun Light");
+            sun.transform.parent = parent.transform;
+            sun.transform.localPosition = new Vector3(0f, 0f, -10000f); // 10km
+
+            // rotate the outer object to look down (identical to a new scene directional light).
+            parent.transform.localRotation = Quaternion.Euler(50f, -30f, 0f);
+
+            // add the dynamic light component.
+            var light = sun.AddComponent<DynamicLight>();
+            light.lightIntensity = 2.0f;
+            light.lightRadius = 100000.0f; // 100km
+
+            // make sure it's selected and unity editor will let the user rename the game object.
+            UnityEditor.Selection.activeGameObject = parent;
+        }
+
         [UnityEditor.MenuItem("GameObject/Light/Dynamic Discoball Light", false, 40)]
         private static void EditorCreateDynamicDiscoballLight()
         {
