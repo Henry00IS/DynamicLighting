@@ -57,8 +57,8 @@ namespace AlpacaIT.DynamicLighting
                 // reset the internal state.
                 Prepare();
 #if UNITY_EDITOR
-                // clear all of the old lightmap data.
-                DynamicLightManager.Instance.EditorCleanupLightmaps();
+                // delete all of the old lightmap data in the scene and on disk.
+                DynamicLightManager.Instance.EditorDeleteLightmaps();
 #endif
                 // find all of the dynamic lights in the scene and assign channels.
                 pointLights = DynamicLightManager.FindDynamicLightsInScene().ToArray();
@@ -100,9 +100,21 @@ namespace AlpacaIT.DynamicLighting
 
 #if UNITY_EDITOR
 
+        private static bool EditorEnsureUserSavedScene()
+        {
+            if (!EditorUtilities.IsActiveSceneSavedToDisk)
+            {
+                UnityEditor.EditorUtility.DisplayDialog("Dynamic Lighting", "Please save your scene to disk before raytracing.", "Okay");
+                return false;
+            }
+            return true;
+        }
+
         [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 512", false, 0)]
         private static void EditorRaytrace512()
         {
+            if (!EditorEnsureUserSavedScene()) return;
+
             var tracer = new DynamicLightingTracer();
             tracer.maximumLightmapSize = 512;
             tracer.StartRaytracing();
@@ -111,6 +123,8 @@ namespace AlpacaIT.DynamicLighting
         [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 1024", false, 1)]
         private static void EditorRaytrace1024()
         {
+            if (!EditorEnsureUserSavedScene()) return;
+
             var tracer = new DynamicLightingTracer();
             tracer.maximumLightmapSize = 1024;
             tracer.StartRaytracing();
@@ -119,6 +133,8 @@ namespace AlpacaIT.DynamicLighting
         [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 2048 (Recommended)", false, 1)]
         private static void EditorRaytrace2048()
         {
+            if (!EditorEnsureUserSavedScene()) return;
+
             var tracer = new DynamicLightingTracer();
             tracer.maximumLightmapSize = 2048;
             tracer.StartRaytracing();
@@ -127,6 +143,8 @@ namespace AlpacaIT.DynamicLighting
         [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 4096", false, 1)]
         private static void EditorRaytrace4096()
         {
+            if (!EditorEnsureUserSavedScene()) return;
+
             var tracer = new DynamicLightingTracer();
             tracer.maximumLightmapSize = 4096;
             tracer.StartRaytracing();
@@ -389,22 +407,16 @@ namespace AlpacaIT.DynamicLighting
             }
             seamTime += Time.realtimeSinceStartup - tt1;
 
-            // store the scene reference renderer in the dynamic light manager with lightmap data.
+            // store the scene reference renderer in the dynamic light manager with lightmap metadata.
             var lightmap = new Lightmap();
             lightmap.renderer = meshFilter.GetComponent<MeshRenderer>();
             lightmap.resolution = lightmapSize;
             lightmap.identifier = uniqueIdentifier++;
             DynamicLightManager.Instance.lightmaps.Add(lightmap);
 
-            var sceneStorageDirectory = EditorUtilities.CreateAndGetActiveSceneStorageDirectory();
-            if (sceneStorageDirectory != null)
-            {
-                EditorUtilities.WriteLightmapData(lightmap.identifier, pixels_lightmap);
-            }
-            else
-            {
-                Debug.LogError("Unable to find or create the active scene storage directory or write the lightmap file!");
-            }
+            // write the lightmap shadow bits to disk.
+            if (!EditorUtilities.WriteLightmapData(lightmap.identifier, pixels_lightmap))
+                Debug.LogError($"Unable to write the lightmap {lightmap.identifier} file in the active scene resources directory!");
         }
 
         private uint GetPixel(ref uint[] pixels, int x, int y)

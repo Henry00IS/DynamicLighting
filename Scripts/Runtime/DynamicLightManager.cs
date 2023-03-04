@@ -188,12 +188,26 @@ namespace AlpacaIT.DynamicLighting
 
         /// <summary>
         /// Called by <see cref="DynamicLightingTracer"/> to properly free up the compute buffers
-        /// before clearing the lightmaps collection.
+        /// before clearing the lightmaps collection. Then deletes all lightmap files from disk.
+        /// This method call must be followed up by a call to <see cref="Reload"/>
         /// </summary>
-        internal void EditorCleanupLightmaps()
+        internal void EditorDeleteLightmaps()
         {
+            // free up the compute buffers.
             Cleanup();
+
+            // clear the lightmap scene data.
             lightmaps.Clear();
+
+            // delete the lightmap files from disk.
+            EditorUtilities.DeleteLightmapData();
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Delete Scene Lightmaps", false, 20)]
+        private static void EditorDeleteLightmapsNow()
+        {
+            Instance.EditorDeleteLightmaps();
+            Instance.Reload();
         }
 
 #endif
@@ -311,6 +325,22 @@ namespace AlpacaIT.DynamicLighting
                     lightmap.buffer.Release();
                     lightmap.buffer = null;
                 }
+
+                // make sure the scene reference is still valid.
+                var meshRenderer = lightmap.renderer;
+                if (!meshRenderer) continue;
+
+                // fetch the active material on the mesh renderer.
+                var materialPropertyBlock = new MaterialPropertyBlock();
+
+                // play nice with other scripts.
+                if (meshRenderer.HasPropertyBlock())
+                    meshRenderer.GetPropertyBlock(materialPropertyBlock);
+
+                // remove the lightmap data from the material property block.
+                materialPropertyBlock.SetBuffer("lightmap", (ComputeBuffer)null);
+                materialPropertyBlock.SetInt("lightmap_resolution", 0);
+                meshRenderer.SetPropertyBlock(materialPropertyBlock);
             }
 
             sceneDynamicLights = null;
