@@ -155,7 +155,7 @@ namespace AlpacaIT.DynamicLighting
             // create the sun point light far away from the scene.
             GameObject sun = new GameObject("Dynamic Sun Light");
             sun.transform.parent = parent.transform;
-            sun.transform.localPosition = new Vector3(0f, 0f, -10000f); // 10km
+            sun.transform.localPosition = new Vector3(0f, 0f, -2500f); // 2.5km
 
             // rotate the outer object to look down (identical to a new scene directional light).
             parent.transform.localRotation = Quaternion.Euler(50f, -30f, 0f);
@@ -163,7 +163,7 @@ namespace AlpacaIT.DynamicLighting
             // add the dynamic light component.
             var light = sun.AddComponent<DynamicLight>();
             light.lightIntensity = 2.0f;
-            light.lightRadius = 100000.0f; // 100km
+            light.lightRadius = 10000.0f; // 10km
 
             // make sure it's selected and unity editor will let the user rename the game object.
             UnityEditor.Selection.activeGameObject = parent;
