@@ -226,6 +226,9 @@ namespace AlpacaIT.DynamicLighting
 
             // delete the lightmap files from disk.
             EditorUtilities.DeleteLightmapData();
+
+            // make sure the user gets prompted to save their scene.
+            UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
         }
 
         [UnityEditor.MenuItem("Dynamic Lighting/Delete Scene Lightmaps", false, 20)]
