@@ -2,8 +2,7 @@
     "name": "de.alpacait.dynamiclighting",
     "rootNamespace": "",
     "references": [
-        "Unity.Mathematics",
-        "de.alpacait.reactivelogic"
+        "Unity.Mathematics"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -12,12 +11,6 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [
-        {
-            "name": "de.alpacait.reactivelogic",
-            "expression": "1.0.36",
-            "define": "ALPACAIT_REACTIVELOGIC"
-        }
-    ],
+    "versionDefines": [],
     "noEngineReferences": false
 }
