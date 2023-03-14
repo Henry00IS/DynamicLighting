@@ -141,10 +141,10 @@ namespace AlpacaIT.DynamicLighting
         public float lightEffectPulseSpeed = 1.0f;
 
         /// <summary>
-        /// When using the 'Pulse' light effect, this specifies how dim the light will become per
-        /// pulse, where 0 is completely off and 1 does nothing.
+        /// When using the 'Pulse', 'Random', 'Strobe' or 'Flicker' light effect, this specifies how
+        /// dim the light can become per pulse, where 0 is completely off and 1 does nothing.
         /// </summary>
-        [Tooltip("When using the 'Pulse' light effect, this specifies how dim the light will become per pulse, where 0 is completely off and 1 does nothing.")]
+        [Tooltip("When using the 'Pulse', 'Random', 'Strobe' or 'Flicker' light effect, this specifies how dim the light can become per pulse, where 0 is completely off and 1 does nothing.")]
         [Range(0f, 1f)]
         public float lightEffectPulseModifier = 0.25f;
 

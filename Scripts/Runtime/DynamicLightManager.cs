@@ -708,7 +708,7 @@ namespace AlpacaIT.DynamicLighting
                 switch (light.lightEffect)
                 {
                     case DynamicLightEffect.Random:
-                        light.cache.intensity = light.lightIntensity * Random.value;
+                        light.cache.intensity = light.lightIntensity * Mathf.Lerp(light.lightEffectPulseModifier, 1.0f, Random.value);
                         break;
 
                     case DynamicLightEffect.Flicker:
@@ -716,12 +716,12 @@ namespace AlpacaIT.DynamicLighting
                         if (random < 0.5f)
                             light.cache.intensity = 0.0f;
                         else
-                            light.cache.intensity = light.lightIntensity * random;
+                            light.cache.intensity = light.lightIntensity * Mathf.Lerp(light.lightEffectPulseModifier, 1.0f, Random.value);
                         break;
 
                     case DynamicLightEffect.Strobe:
                         light.cache.strobeActive = !light.cache.strobeActive;
-                        light.cache.intensity = light.cache.strobeActive ? light.lightIntensity : 0f;
+                        light.cache.intensity = light.cache.strobeActive ? light.lightIntensity : light.lightIntensity * light.lightEffectPulseModifier;
                         break;
                 }
             }
