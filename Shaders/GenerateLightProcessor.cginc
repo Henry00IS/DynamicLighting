@@ -47,6 +47,11 @@ for (uint s = 0; s < dynamic_shapes_count; s++)
 {
     // get the current shape from memory.
     DynamicShape shape = dynamic_shapes[s];
+
+    if (point_in_box(i.world, shape.position, shape.size))
+    {
+        continue;
+    }
     
     if (raycast_box(i.world, light.position, shape.position, shape.size))
     {

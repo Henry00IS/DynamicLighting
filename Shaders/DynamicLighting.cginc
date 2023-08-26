@@ -413,6 +413,11 @@ float raycast_box(float3 origin, float3 target, float3 boxcenter, float3 boxsize
     return 0.0;
 }*/
 
+float point_in_box(float3 pos, float3 boxcenter, float3 boxsize, float epsilon = 0.00001)
+{
+    return (abs(pos.x - boxcenter.x) <= boxsize.x + epsilon && abs(pos.y - boxcenter.y) <= boxsize.y + epsilon && abs(pos.z - boxcenter.z) <= boxsize.z + epsilon);
+}
+
 float raycast_box(float3 origin, float3 target, float3 boxcenter, float3 boxsize)
 {
     #define EPSILON 0.00001;
