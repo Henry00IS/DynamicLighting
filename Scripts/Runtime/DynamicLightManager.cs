@@ -103,6 +103,18 @@ namespace AlpacaIT.DynamicLighting
         [Tooltip("The desired pixel density (e.g. 128 for 128x128 per meter squared). This lighting system does not require \"power of two\" textures. You may have heard this term before because graphics cards can render textures in such sizes much faster. This system relies on binary data on the GPU using compute buffers and it's quite different. Without going into too much detail, this simply means that we can choose any texture size. An intelligent algorithm calculates the surface area of the meshes and determines exactly how many pixels are needed to cover them evenly with shadow pixels, regardless of the ray tracing resolution (unless it exceeds that maximum ray tracing resolution, of course, then those shadow pixels will start to increase in size). Here you can set how many pixels should cover a square meter. It can result in a 47x47 texture or 328x328, exactly the amount needed to cover all polygons with the same amount of shadow pixels. Higher details require more VRAM (exponentially)!")]
         public int pixelDensityPerSquareMeter = 128;
 
+        /// <summary>
+        /// The number of dynamic shapes that can be active at the same time. If this budget is
+        /// exceeded, shapes that are out of view or furthest away from the camera will
+        /// automatically fade out in a way that the player will hopefully not notice. A
+        /// conservative budget as required by the level design will help older graphics hardware
+        /// when there are hundreds of shapes in the scene. Budgeting does not begin until the
+        /// number of active dynamic shapes actually exceeds this number.
+        /// </summary>
+        [Tooltip("The number of dynamic shapes that can be active at the same time. If this budget is exceeded, shapes that are out of view or furthest away from the camera will automatically fade out in a way that the player will hopefully not notice. A conservative budget as required by the level design will help older graphics hardware when there are hundreds of shapes in the scene. Budgeting does not begin until the number of active dynamic shapes actually exceeds this number.")]
+        [Min(0)]
+        public int dynamicShapeBudget = 2048;
+
         /// <summary>The collection of lightmap data for mesh renderers in the scene.</summary>
         [SerializeField]
         [HideInInspector]
@@ -118,6 +130,15 @@ namespace AlpacaIT.DynamicLighting
         private List<DynamicLight> activeRealtimeLights;
         private ShaderDynamicLight[] shaderDynamicLights;
         private ComputeBuffer dynamicLightsBuffer;
+
+        /// <summary>The memory size in bytes of the <see cref="ShaderDynamicShape"/> struct.</summary>
+        private int dynamicShapeStride;
+        private List<DynamicShape> sceneDynamicShapes;
+        private bool sceneDynamicShapesAddedDirty = false;
+
+        private List<DynamicShape> activeDynamicShapes;
+        private ShaderDynamicShape[] shaderDynamicShapes;
+        private ComputeBuffer dynamicShapesBuffer;
 
         private Vector3 lastCameraMetricGridPosition = new Vector3(float.NegativeInfinity, float.NegativeInfinity, float.NegativeInfinity);
         [System.NonSerialized]
@@ -282,16 +303,24 @@ namespace AlpacaIT.DynamicLighting
             isInitialized = true;
 
             dynamicLightStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(ShaderDynamicLight));
+            dynamicShapeStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(ShaderDynamicShape));
 
             // prepare to store dynamic lights that will register themselves to us.
             sceneDynamicLights = new List<DynamicLight>(dynamicLightBudget);
             sceneRealtimeLights = new List<DynamicLight>(realtimeLightBudget);
+
+            // prepare to store dynamic shapes that will register themselves to us.
+            sceneDynamicShapes = new List<DynamicShape>(dynamicShapeBudget);
 
             if (reload)
             {
                 // manually register all lights - this is used after raytracing.
                 sceneDynamicLights = new List<DynamicLight>(FindObjectsOfType<DynamicLight>());
                 sceneDynamicLightsAddedDirty = true;
+
+                // manually register all shapes - this is used after raytracing.
+                sceneDynamicShapes = new List<DynamicShape>(FindObjectsOfType<DynamicShape>());
+                sceneDynamicShapesAddedDirty = true;
             }
 
             // allocate the required arrays and buffers according to our budget.
@@ -301,6 +330,13 @@ namespace AlpacaIT.DynamicLighting
             dynamicLightsBuffer = new ComputeBuffer(shaderDynamicLights.Length, dynamicLightStride, ComputeBufferType.Default);
             Shader.SetGlobalBuffer("dynamic_lights", dynamicLightsBuffer);
             Shader.SetGlobalInt("dynamic_lights_count", 0);
+
+            // allocate the required arrays and buffers according to our budget.
+            activeDynamicShapes = new List<DynamicShape>(dynamicShapeBudget);
+            shaderDynamicShapes = new ShaderDynamicShape[dynamicShapeBudget];
+            dynamicShapesBuffer = new ComputeBuffer(shaderDynamicShapes.Length, dynamicShapeStride, ComputeBufferType.Default);
+            Shader.SetGlobalBuffer("dynamic_shapes", dynamicShapesBuffer);
+            Shader.SetGlobalInt("dynamic_shapes_count", 0);
 
             // prepare the scene for dynamic lighting.
             var lightmapsCount = lightmaps.Count;
@@ -344,6 +380,12 @@ namespace AlpacaIT.DynamicLighting
                 dynamicLightsBuffer = null;
             }
 
+            if (dynamicShapesBuffer != null && dynamicShapesBuffer.IsValid())
+            {
+                dynamicShapesBuffer.Release();
+                dynamicShapesBuffer = null;
+            }
+
             var lightmapsCount = lightmaps.Count;
             for (int i = 0; i < lightmapsCount; i++)
             {
@@ -375,6 +417,8 @@ namespace AlpacaIT.DynamicLighting
             sceneRealtimeLights = null;
             activeDynamicLights = null;
             activeRealtimeLights = null;
+            sceneDynamicShapes = null;
+            activeDynamicShapes = null;
         }
 
         internal void RegisterDynamicLight(DynamicLight light)
@@ -391,7 +435,22 @@ namespace AlpacaIT.DynamicLighting
                 sceneDynamicLights.Remove(light);
                 sceneRealtimeLights.Remove(light);
                 activeDynamicLights.Remove(light);
-                activeDynamicLights.Remove(light);
+            }
+        }
+
+        internal void RegisterDynamicShape(DynamicShape shape)
+        {
+            Initialize();
+            sceneDynamicShapes.Add(shape);
+            sceneDynamicShapesAddedDirty = true;
+        }
+
+        internal void UnregisterDynamicShape(DynamicShape shape)
+        {
+            if (sceneDynamicShapes != null)
+            {
+                sceneDynamicShapes.Remove(shape);
+                activeDynamicShapes.Remove(shape);
             }
         }
 
@@ -410,6 +469,22 @@ namespace AlpacaIT.DynamicLighting
             shaderDynamicLights = new ShaderDynamicLight[totalLightBudget];
             dynamicLightsBuffer = new ComputeBuffer(shaderDynamicLights.Length, dynamicLightStride, ComputeBufferType.Default);
             Shader.SetGlobalBuffer("dynamic_lights", dynamicLightsBuffer);
+        }
+
+        /// <summary>
+        /// Whenever the dynamic shapes budget changes we must update the shader buffer.
+        /// </summary>
+        private void ReallocateShaderShapeBuffer()
+        {
+            Debug.Log("REALLOC");
+
+            // properly release any old buffer.
+            if (dynamicShapesBuffer != null && dynamicShapesBuffer.IsValid())
+                dynamicShapesBuffer.Release();
+
+            shaderDynamicShapes = new ShaderDynamicShape[dynamicShapeBudget];
+            dynamicShapesBuffer = new ComputeBuffer(shaderDynamicShapes.Length, dynamicShapeStride, ComputeBufferType.Default);
+            Shader.SetGlobalBuffer("dynamic_shapes", dynamicShapesBuffer);
         }
 
         /// <summary>This handles the CPU side lighting effects.</summary>
@@ -450,6 +525,11 @@ namespace AlpacaIT.DynamicLighting
             if (shaderDynamicLights.Length != totalLightBudget)
                 ReallocateShaderLightBuffer();
 
+            // if the budget changed we must recreate the shader buffers.
+            if (dynamicShapeBudget == 0) return; // sanity check.
+            if (shaderDynamicShapes.Length != dynamicShapeBudget)
+                ReallocateShaderShapeBuffer();
+
             // if a dynamic light got added to the scene:
             if (sceneDynamicLightsAddedDirty)
             {
@@ -486,6 +566,13 @@ namespace AlpacaIT.DynamicLighting
             if (sceneRealtimeLights.Count > realtimeLightBudget)
             {
                 SortSceneRealtimeLights(cameraPosition);
+            }
+
+            // if we exceed the dynamic shape budget we sort the dynamic shapes by distance every
+            // frame, as we will assume they are moving around.
+            if (sceneDynamicShapes.Count > dynamicShapeBudget)
+            {
+                SortSceneDynamicShapes(cameraPosition);
             }
 
             /*
@@ -545,6 +632,25 @@ namespace AlpacaIT.DynamicLighting
                 }
             }
 
+            // fill the active shapes back up with the closest shapes.
+            activeDynamicShapes.Clear();
+
+            var sceneDynamicShapesCount = sceneDynamicShapes.Count;
+            for (int i = 0; i < sceneDynamicShapesCount; i++)
+            {
+                if (activeDynamicShapes.Count < dynamicShapeBudget)
+                {
+#if UNITY_EDITOR    // optimization: only add shapes that are within the camera frustum.
+                    if (!Application.isPlaying || MathEx.CheckSphereIntersectsFrustum(frustumPlanes, sceneDynamicShapes[i].transform.position, 1f))
+#else
+                    if (MathEx.CheckSphereIntersectsFrustum(frustumPlanes, sceneDynamicShapes[i].transform.position, 1f))
+#endif
+                    {
+                        activeDynamicShapes.Add(sceneDynamicShapes[i]);
+                    }
+                }
+            }
+
             // write the active lights into the shader data.
 
             var idx = 0;
@@ -570,6 +676,22 @@ namespace AlpacaIT.DynamicLighting
             if (dynamicLightsBuffer != null && dynamicLightsBuffer.IsValid())
                 dynamicLightsBuffer.SetData(shaderDynamicLights);
             Shader.SetGlobalInt("dynamic_lights_count", activeDynamicLightsCount + activeRealtimeLightsCount);
+
+            // write the active shapes into the shader data.
+
+            idx = 0;
+            var activeDynamicShapesCount = activeDynamicShapes.Count;
+            for (int i = 0; i < activeDynamicShapesCount; i++)
+            {
+                var shape = activeDynamicShapes[i];
+                SetShaderDynamicShape(idx, shape);
+                idx++;
+            }
+
+            // upload the active shape data to the graphics card.
+            if (dynamicShapesBuffer != null && dynamicShapesBuffer.IsValid())
+                dynamicShapesBuffer.SetData(shaderDynamicShapes);
+            Shader.SetGlobalInt("dynamic_shapes_count", activeDynamicShapesCount);
 
             // update the ambient lighting color.
             Shader.SetGlobalColor("dynamic_ambient_color", ambientColor);
@@ -609,6 +731,17 @@ namespace AlpacaIT.DynamicLighting
         private void SortSceneRealtimeLights(Vector3 origin)
         {
             sceneRealtimeLights.Sort((a, b) => (origin - a.transform.position).sqrMagnitude
+            .CompareTo((origin - b.transform.position).sqrMagnitude));
+        }
+
+        /// <summary>
+        /// Sorts the scene dynamic shape lists by the distance from the specified origin. The
+        /// closests shapes will appear first in the list.
+        /// </summary>
+        /// <param name="origin">The origin (usually the camera world position).</param>
+        private void SortSceneDynamicShapes(Vector3 origin)
+        {
+            sceneDynamicShapes.Sort((a, b) => (origin - a.transform.position).sqrMagnitude
             .CompareTo((origin - b.transform.position).sqrMagnitude));
         }
 
@@ -682,6 +815,13 @@ namespace AlpacaIT.DynamicLighting
                     shaderDynamicLights[idx].channel |= (uint)1 << 9; // random shimmer light bit
                     break;
             }
+        }
+
+        private void SetShaderDynamicShape(int idx, DynamicShape shape)
+        {
+            shaderDynamicShapes[idx].position = shape.transform.position;
+            shaderDynamicShapes[idx].size = shape.size * 0.5f;
+            shaderDynamicShapes[idx].flags = 1;
         }
 
         private void UpdateLightEffects(int idx, DynamicLight light)

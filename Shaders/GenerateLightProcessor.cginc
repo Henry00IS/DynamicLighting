@@ -43,6 +43,19 @@ if (lightmap_resolution > 0 && light_is_dynamic(light))
     if (map == 0.0) continue;
 }
 
+for (uint s = 0; s < dynamic_shapes_count; s++)
+{
+    // get the current shape from memory.
+    DynamicShape shape = dynamic_shapes[s];
+    
+    if (raycast_box(i.world, light.position, shape.position, shape.size))
+    {
+        map = 0.0;
+        break;
+    }
+}
+if (map == 0.0) continue;
+
 // spot lights determine whether we are in the light cone or outside.
 if (light_is_spotlight(light))
 {

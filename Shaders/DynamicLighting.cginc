@@ -23,6 +23,26 @@ uint lightmap_resolution;
 
 float3 dynamic_ambient_color;
 
+struct DynamicShape
+{
+    float3 position;
+    float3 size;
+    uint   flags;
+    
+    bool isBox()
+    {
+        return flags & 1;
+    }
+    
+    bool isSphere()
+    {
+        return flags & 2;
+    }
+};
+
+StructuredBuffer<DynamicShape> dynamic_shapes;
+uint dynamic_shapes_count;
+
 // fetches a shadow bit as the specified uv coordinates from the lightmap data.
 float lightmap_sample(uint2 uv, uint channel)
 {
@@ -375,6 +395,99 @@ float light_calculate_randomshimmer(float3 world, float modifier)
 #define GENERATE_FUNCTION_CALL light_calculate_randomshimmer
 #include "GenerateBilinearFilter3D.cginc"
 
+/*
+float raycast_box(float3 origin, float3 target, float3 boxcenter, float3 boxsize, int maxsteps)
+{
+    float3 pos = origin;
+    
+    for (int i = 0; i < maxsteps; i++)
+    {
+        if (abs(pos.x - boxcenter.x) <= boxsize.x && abs(pos.y - boxcenter.y) <= boxsize.y && abs(pos.z - boxcenter.z) <= boxsize.z)
+        {
+            return 1.0;
+        }
+        
+        pos = lerp(origin, target, i / float(maxsteps));
+    }
+    
+    return 0.0;
+}*/
+
+float raycast_box(float3 origin, float3 target, float3 boxcenter, float3 boxsize)
+{
+    #define EPSILON 0.00001;
+    
+    float3 p0 = origin;
+    float3 p1 = target;
+    
+    float3 b_min = boxcenter - boxsize;
+    float3 b_max = boxcenter + boxsize;
+    
+    float3 c = (b_min + b_max) * 0.5f; // Box center-point
+    float3 e = b_max - c; // Box halflength extents
+    float3 m = (p0 + p1) * 0.5f; // Segment midpoint
+    float3 d = p1 - m; // Segment halflength vector
+    m = m - c; // Translate box and segment to origin
+    // Try world coordinate axes as separating axes
+    float adx = abs(d.x);
+    if (abs(m.x) > e.x + adx) return 0;
+    float ady = abs(d.y);
+    if (abs(m.y) > e.y + ady) return 0;
+    float adz = abs(d.z);
+    if (abs(m.z) > e.z + adz) return 0;
+    // Add in an epsilon term to counteract arithmetic errors when segment is
+    // (near) parallel to a coordinate axis (see text for detail)
+    adx += EPSILON; ady += EPSILON; adz += EPSILON;
+    // Try cross products of segment direction vector with coordinate axes
+    if (abs(m.y * d.z - m.z * d.y) > e.y * adz + e.z * ady) return 0;
+    if (abs(m.z * d.x - m.x * d.z) > e.x * adz + e.z * adx) return 0;
+    if (abs(m.x * d.y - m.y * d.x) > e.x * ady + e.y * adx) return 0;
+    // No separating axis found; segment must be overlapping AABB
+    return 1;
+    
+    #undef EPSILON
+}
+
+float raycast_sphere(float3 origin, float3 target, float3 spherecenter, float radius)
+{
+    /*float3 d = normalize(target - origin);
+    float3 m = origin - spherecenter;
+    float c = dot(m, m) - radius * radius;
+    // if there is definitely at least one real root, there must be an intersection.
+    if (c <= 0.0) return 1.0;
+    float b = dot(m, d);
+    // early exit if ray origin outside sphere and ray pointing away from sphere.
+    if (b > 0.0) return 0.0;
+    float disc = b*b - c;
+    // a negative discriminant corresponds to ray missing sphere.
+    if (disc < 0.0) return 0.0;
+    // now ray must hit sphere.
+    return 1.0;*/
+    
+    float3 p = origin;
+    float3 d = normalize(target - origin);
+    
+    float3 m = p - spherecenter; 
+    float b = dot(m, d); 
+    float c = dot(m, m) - radius * radius; 
+
+    // exit if r’s origin outside s (c > 0) and r pointing away from s (b > 0).
+    if (c > 0.0 && b > 0.0) return 0.0;
+    float discr = b*b - c;
+
+    // a negative discriminant corresponds to ray missing sphere.
+    if (discr < 0.0) return 0.0; 
+
+    // ray now found to intersect sphere, compute smallest t value of intersection.
+    float t = -b - sqrt(discr); 
+
+    // if t is negative, ray started inside sphere so clamp t to zero.
+    if (t < 0.0) t = 0.0;
+    float q = p + t * d;
+    
+    // ensure that t does not exceed the ray origin and target.
+    return t <= length(abs(target - origin));
+}
 // special thanks to https://learnopengl.com/PBR/Lighting
 
 // normal distribution function: approximates the amount the surface's
