@@ -435,6 +435,7 @@ namespace AlpacaIT.DynamicLighting
                 sceneDynamicLights.Remove(light);
                 sceneRealtimeLights.Remove(light);
                 activeDynamicLights.Remove(light);
+				activeRealtimeLights.Remove(light);
             }
         }
 
