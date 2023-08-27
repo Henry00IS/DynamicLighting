@@ -7,7 +7,8 @@ namespace AlpacaIT.DynamicLighting
     {
         public static bool SpheresIntersect(Vector3 spherePosition1, float sphereRadius1, Vector3 spherePosition2, float sphereRadius2)
         {
-            return Vector3.Distance(spherePosition1, spherePosition2) <= (sphereRadius1 + sphereRadius2);
+            // return Vector3.Distance(spherePosition1, spherePosition2) <= (sphereRadius1 + sphereRadius2);
+            return Vector3.SqrMagnitude(spherePosition1 - spherePosition2) <= (sphereRadius1 * sphereRadius1 + sphereRadius2 * sphereRadius2);
         }
 
         // thanks to https://gist.github.com/openroomxyz/c67e77f710eb53aaaae7390ded9ce86d
