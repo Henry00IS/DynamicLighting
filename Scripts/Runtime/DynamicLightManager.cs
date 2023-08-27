@@ -816,17 +816,9 @@ namespace AlpacaIT.DynamicLighting
             var shapeTransform = shape.transform;
 
             shaderDynamicShapes[idx].position = shapeTransform.position;
+            shaderDynamicShapes[idx].size = shape.size * 0.5f;
             shaderDynamicShapes[idx].type = (uint)shape.shapeType;
             shaderDynamicShapes[idx].rotation = MathEx.ShaderLookAtMatrix(shapeTransform.forward, shapeTransform.up);
-
-            if (shape.shapeType == DynamicShapeType.Cylinder)
-            {
-                shaderDynamicShapes[idx].size = new Vector3(shape.size.x * 0.5f, shape.size.y, 0f);
-            }
-            else
-            {
-                shaderDynamicShapes[idx].size = shape.size * 0.5f;
-            }
         }
 
         private void UpdateLightEffects(int idx, DynamicLight light)
