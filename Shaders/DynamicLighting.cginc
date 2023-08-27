@@ -489,8 +489,15 @@ float raycast_sphere(float3 origin, float3 target, float3 spherecenter, float ra
 }
 
 // special thanks to https://iquilezles.org/articles/intersectors/
-float4 raycast_cylinder(float3 origin, float3 target, float3 p1, float3 p2, float radius)
+float4 raycast_cylinder(float3 origin, float3 target, float3 center, float height, float radius, float3x3 rotation)
 {
+    origin = mul(origin, rotation);
+    target = mul(target, rotation);
+    center = mul(center, rotation);
+    
+    float3 p1 = center - float3(0.0, height, 0.0);
+    float3 p2 = center + float3(0.0, height, 0.0);
+    
     float3 rd = normalize(target - origin);
     
     float3  ba = p2 - p1;
@@ -567,7 +574,7 @@ struct DynamicShape
         else if (is_cylinder())
         {
             // ensure that t does not exceed the ray origin and target.
-            float t = raycast_cylinder(origin, target, position, size, 0.5).x;
+            float t = raycast_cylinder(origin, target, position, size.y, size.x, rotation).x;
             if(t > 0.0 && t <= length(abs(target - origin)))
                 return true;
         }
