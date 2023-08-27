@@ -65,6 +65,19 @@ namespace AlpacaIT.DynamicLighting
         }
 
         /// <summary>
+        /// Given an oriented bounding box size calculates the largest radius it can possibly take
+        /// when rotated.
+        /// </summary>
+        /// <param name="size">The size of the bounding box.</param>
+        /// <returns>The largest enclosing radius of the bounding box.</returns>
+        public static float CalculateLargestObbRadius(Vector3 size)
+        {
+            // calculate the length of the space diagonal using the Pythagorean theorem.
+            float spaceDiagonalLength = math.sqrt(size.x * size.x + size.y * size.y + size.z * size.z);
+            return spaceDiagonalLength * 0.5f; // return half of the space diagonal length (radius).
+        }
+
+        /// <summary>
         /// Calculates a framerate independent fixed timestep.
         /// </summary>
         public class FixedTimestep

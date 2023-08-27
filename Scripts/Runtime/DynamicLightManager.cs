@@ -630,6 +630,9 @@ namespace AlpacaIT.DynamicLighting
                 }
             }
 
+            var activeDynamicLightsCount = activeDynamicLights.Count;
+            var activeRealtimeLightsCount = activeRealtimeLights.Count;
+
             // fill the active shapes back up with the closest shapes.
             activeDynamicShapes.Clear();
 
@@ -638,17 +641,42 @@ namespace AlpacaIT.DynamicLighting
             {
                 if (activeDynamicShapes.Count < dynamicShapeBudget)
                 {
-                    // todo: optimization where we only add shapes when the lights within the camera
-                    //       frustum can cast a shadow with them.
+                    var shape = sceneDynamicShapes[i];
+                    var shapePosition = shape.transform.position;
 
-                    activeDynamicShapes.Add(sceneDynamicShapes[i]);
+                    // unlike lights, shadow shapes outside of the camera frustum may still throw a
+                    // shadow in front of the camera (e.g. a statue off-camera), but a shadow can
+                    // only be thrown by a light that is currently active, which we just finished
+                    // calculating. by design all of the shadow shapes are scaled in the same obb so
+                    // if we know the maximum enclosing radius (as they can be oriented which
+                    // increases their size) we can use that to determine whether an active light
+                    // can even interact with a shadow shape before uploading it to the gpu.
+                    var maxRadius = MathEx.CalculateLargestObbRadius(shape.size);
+
+                    bool uploadShape = false;
+                    for (int j = 0; j < activeDynamicLightsCount; j++)
+                    {
+                        var light = activeDynamicLights[j];
+                        if (MathEx.SpheresIntersect(shapePosition, maxRadius, light.transform.position, light.lightRadius))
+                        { uploadShape = true; break; }
+                    }
+
+                    if (!uploadShape)
+                        for (int j = 0; j < activeRealtimeLightsCount; j++)
+                        {
+                            var light = activeRealtimeLights[j];
+                            if (MathEx.SpheresIntersect(shapePosition, maxRadius, light.transform.position, light.lightRadius))
+                            { uploadShape = true; break; }
+                        }
+
+                    if (uploadShape)
+                        activeDynamicShapes.Add(sceneDynamicShapes[i]);
                 }
             }
 
             // write the active lights into the shader data.
 
             var idx = 0;
-            var activeDynamicLightsCount = activeDynamicLights.Count;
             for (int i = 0; i < activeDynamicLightsCount; i++)
             {
                 var light = activeDynamicLights[i];
@@ -657,7 +685,6 @@ namespace AlpacaIT.DynamicLighting
                 idx++;
             }
 
-            var activeRealtimeLightsCount = activeRealtimeLights.Count;
             for (int i = 0; i < activeRealtimeLightsCount; i++)
             {
                 var light = activeRealtimeLights[i];
