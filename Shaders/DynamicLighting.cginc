@@ -416,33 +416,25 @@ float raycast_box(float3 origin, float3 target, float3 boxcenter, float3 boxsize
 {
     #define EPSILON 0.00001;
     
-    float3 p0 = origin;
-    float3 p1 = target;
-    
-    float3 b_min = boxcenter - boxsize;
-    float3 b_max = boxcenter + boxsize;
-    
-    float3 c = (b_min + b_max) * 0.5f; // Box center-point
-    float3 e = b_max - c; // Box halflength extents
-    float3 m = (p0 + p1) * 0.5f; // Segment midpoint
-    float3 d = p1 - m; // Segment halflength vector
-    m = m - c; // Translate box and segment to origin
+    float3 m = (origin + target) * 0.5; // Segment midpoint
+    float3 d = target - m; // Segment halflength vector
+    m = m - boxcenter; // Translate box and segment to origin
     // Try world coordinate axes as separating axes
     float adx = abs(d.x);
-    if (abs(m.x) > e.x + adx) return 0;
+    if (abs(m.x) > boxsize.x + adx) return 0.0;
     float ady = abs(d.y);
-    if (abs(m.y) > e.y + ady) return 0;
+    if (abs(m.y) > boxsize.y + ady) return 0.0;
     float adz = abs(d.z);
-    if (abs(m.z) > e.z + adz) return 0;
+    if (abs(m.z) > boxsize.z + adz) return 0.0;
     // Add in an epsilon term to counteract arithmetic errors when segment is
     // (near) parallel to a coordinate axis (see text for detail)
     adx += EPSILON; ady += EPSILON; adz += EPSILON;
     // Try cross products of segment direction vector with coordinate axes
-    if (abs(m.y * d.z - m.z * d.y) > e.y * adz + e.z * ady) return 0;
-    if (abs(m.z * d.x - m.x * d.z) > e.x * adz + e.z * adx) return 0;
-    if (abs(m.x * d.y - m.y * d.x) > e.x * ady + e.y * adx) return 0;
+    if (abs(m.y * d.z - m.z * d.y) > boxsize.y * adz + boxsize.z * ady) return 0.0;
+    if (abs(m.z * d.x - m.x * d.z) > boxsize.x * adz + boxsize.z * adx) return 0.0;
+    if (abs(m.x * d.y - m.y * d.x) > boxsize.x * ady + boxsize.y * adx) return 0.0;
     // No separating axis found; segment must be overlapping AABB
-    return 1;
+    return 1.0;
     
     #undef EPSILON
 }
@@ -472,55 +464,50 @@ float raycast_sphere(float3 origin, float3 target, float3 spherecenter, float ra
     // now ray must hit sphere.
     return 1.0;*/
     
-    float3 p = origin;
     float3 d = normalize(target - origin);
     
-    float3 m = p - spherecenter; 
-    float b = dot(m, d); 
-    float c = dot(m, m) - radius * radius; 
+    float3 m = origin - spherecenter; 
+    float b = dot(m, d);
+    float c = dot(m, m) - radius * radius;
 
     // exit if r’s origin outside s (c > 0) and r pointing away from s (b > 0).
     if (c > 0.0 && b > 0.0) return 0.0;
     float discr = b*b - c;
 
     // a negative discriminant corresponds to ray missing sphere.
-    if (discr < 0.0) return 0.0; 
+    if (discr < 0.0) return 0.0;
 
     // ray now found to intersect sphere, compute smallest t value of intersection.
-    float t = -b - sqrt(discr); 
+    float t = -b - sqrt(discr);
 
     // if t is negative, ray started inside sphere so clamp t to zero.
     if (t < 0.0) t = 0.0;
-    float q = p + t * d;
+    float q = origin + t * d;
     
     // ensure that t does not exceed the ray origin and target.
     return t <= length(abs(target - origin));
 }
 
 // special thanks to https://iquilezles.org/articles/intersectors/
-float4 raycast_cylinder(float3 origin, float3 target, float3 p1, float3 p2)
+float4 raycast_cylinder(float3 origin, float3 target, float3 p1, float3 p2, float radius)
 {
-    float3 ro = origin;
     float3 rd = normalize(target - origin);
-    float3 a = p1;
-    float3 b = p2;
-    float ra = 0.5;
     
-    float3  ba = b  - a;
-    float3  oc = ro - a;
+    float3  ba = p2 - p1;
+    float3  oc = origin - p1;
     float baba = dot(ba,ba);
     float bard = dot(ba,rd);
     float baoc = dot(ba,oc);
     float k2 = baba            - bard*bard;
     float k1 = baba*dot(oc,rd) - baoc*bard;
-    float k0 = baba*dot(oc,oc) - baoc*baoc - ra*ra*baba;
+    float k0 = baba*dot(oc,oc) - baoc*baoc - radius*radius*baba;
     float h = k1*k1 - k2*k0;
     if( h<0.0 ) return float4(-1.0, -1.0, -1.0, -1.0);//no intersection
     h = sqrt(h);
     float t = (-k1-h)/k2;
     // body
     float y = baoc + t*bard;
-    if( y>0.0 && y<baba ) return float4( t, (oc+t*rd - ba*y/baba)/ra );
+    if( y>0.0 && y<baba ) return float4( t, (oc+t*rd - ba*y/baba)/radius );
     // caps
     t = ( ((y<0.0) ? 0.0 : baba) - baoc)/bard;
     if( abs(k1+k2*t)<h )
@@ -580,7 +567,7 @@ struct DynamicShape
         else if (is_cylinder())
         {
             // ensure that t does not exceed the ray origin and target.
-            float t = raycast_cylinder(origin, target, position, size).x;
+            float t = raycast_cylinder(origin, target, position, size, 0.5).x;
             if(t > 0.0 && t <= length(abs(target - origin)))
                 return true;
         }
