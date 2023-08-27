@@ -134,7 +134,6 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>The memory size in bytes of the <see cref="ShaderDynamicShape"/> struct.</summary>
         private int dynamicShapeStride;
         private List<DynamicShape> sceneDynamicShapes;
-        private bool sceneDynamicShapesAddedDirty = false;
 
         private List<DynamicShape> activeDynamicShapes;
         private ShaderDynamicShape[] shaderDynamicShapes;
@@ -320,7 +319,6 @@ namespace AlpacaIT.DynamicLighting
 
                 // manually register all shapes - this is used after raytracing.
                 sceneDynamicShapes = new List<DynamicShape>(FindObjectsOfType<DynamicShape>());
-                sceneDynamicShapesAddedDirty = true;
             }
 
             // allocate the required arrays and buffers according to our budget.
@@ -435,7 +433,7 @@ namespace AlpacaIT.DynamicLighting
                 sceneDynamicLights.Remove(light);
                 sceneRealtimeLights.Remove(light);
                 activeDynamicLights.Remove(light);
-				activeRealtimeLights.Remove(light);
+                activeRealtimeLights.Remove(light);
             }
         }
 
@@ -443,7 +441,6 @@ namespace AlpacaIT.DynamicLighting
         {
             Initialize();
             sceneDynamicShapes.Add(shape);
-            sceneDynamicShapesAddedDirty = true;
         }
 
         internal void UnregisterDynamicShape(DynamicShape shape)
@@ -641,14 +638,10 @@ namespace AlpacaIT.DynamicLighting
             {
                 if (activeDynamicShapes.Count < dynamicShapeBudget)
                 {
-#if UNITY_EDITOR    // optimization: only add shapes that are within the camera frustum.
-                    if (!Application.isPlaying || MathEx.CheckSphereIntersectsFrustum(frustumPlanes, sceneDynamicShapes[i].transform.position, 1f))
-#else
-                    if (MathEx.CheckSphereIntersectsFrustum(frustumPlanes, sceneDynamicShapes[i].transform.position, 1f))
-#endif
-                    {
-                        activeDynamicShapes.Add(sceneDynamicShapes[i]);
-                    }
+                    // todo: optimization where we only add shapes when the lights within the camera
+                    //       frustum can cast a shadow with them.
+
+                    activeDynamicShapes.Add(sceneDynamicShapes[i]);
                 }
             }
 
@@ -820,9 +813,17 @@ namespace AlpacaIT.DynamicLighting
 
         private void SetShaderDynamicShape(int idx, DynamicShape shape)
         {
-            shaderDynamicShapes[idx].position = shape.transform.position;
+            var shapeTransform = shape.transform;
+
+            shaderDynamicShapes[idx].position = shapeTransform.position;
             shaderDynamicShapes[idx].size = shape.size * 0.5f;
-            shaderDynamicShapes[idx].flags = 1;
+            shaderDynamicShapes[idx].type = (uint)shape.shapeType;
+            shaderDynamicShapes[idx].rotation = MathEx.ShaderLookAtMatrix(shapeTransform.forward, shapeTransform.up);
+
+            if (shape.shapeType == DynamicShapeType.Cylinder)
+            {
+                shaderDynamicShapes[idx].size = shaderDynamicShapes[idx].position + Vector3.up;
+            }
         }
 
         private void UpdateLightEffects(int idx, DynamicLight light)

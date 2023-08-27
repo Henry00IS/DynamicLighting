@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using Unity.Mathematics;
+using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
@@ -47,6 +48,20 @@ namespace AlpacaIT.DynamicLighting
                     // ^ is the same as: if (planes[i].GetDistanceToPoint(center) < -radius)
                     return false;
             return true;
+        }
+
+        /// <summary>Calculates a look-at orientation matrix compatible with HLSL.</summary>
+        /// <param name="forward">The forward direction (<see cref="Transform.forward"/>).</param>
+        /// <param name="up">The up direction (<see cref="Transform.up"/>).</param>
+        /// <returns>The compressed 3x3 matrix with the rotation.</returns>
+        public static float3x3 ShaderLookAtMatrix(Vector3 forward, Vector3 up)
+        {
+            var right = math.normalize(math.cross(forward, up));
+            return new float3x3(
+                right.x, up.x, forward.x,
+                right.y, up.y, forward.y,
+                right.z, up.z, forward.z
+            );
         }
 
         /// <summary>

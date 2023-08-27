@@ -43,22 +43,27 @@ if (lightmap_resolution > 0 && light_is_dynamic(light))
     if (map == 0.0) continue;
 }
 
+// raycast against the shadow shapes in the scene.
 for (uint s = 0; s < dynamic_shapes_count; s++)
 {
     // get the current shape from memory.
     DynamicShape shape = dynamic_shapes[s];
 
-    if (point_in_box(i.world, shape.position, shape.size))
+    // if the shape blocks the light then we are in darkness.
+    if (shape.raycast(i.world, light.position))
     {
-        continue;
-    }
-    
-    if (raycast_box(i.world, light.position, shape.position, shape.size))
-    {
-        map = 0.0;
-        break;
+        // we skip raycasting a shape when the fragment is inside of it.
+        // this prevents heavy self-shadowing artifacts and makes this technique easy to use.
+        // but at the moment this is actually slowing down the shader performance too.
+        if (!shape.contains_point(i.world))
+        {
+            map = 0.0;
+            break;
+        }
     }
 }
+
+// whenever the fragment is fully in shadow we can early out.
 if (map == 0.0) continue;
 
 // spot lights determine whether we are in the light cone or outside.

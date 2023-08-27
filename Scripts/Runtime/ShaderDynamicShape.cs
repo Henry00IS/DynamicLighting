@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using Unity.Mathematics;
+using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
@@ -9,7 +10,9 @@ namespace AlpacaIT.DynamicLighting
         public Vector3 position;
         /// <summary>The size of the shape.</summary>
         public Vector3 size;
+        /// <summary>The rotation matrix of the shape.</summary>
+        public float3x3 rotation;
         /// <summary>The flags of the shape.</summary>
-        public uint flags;
+        public uint type;
     };
 }

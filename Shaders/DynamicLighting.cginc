@@ -23,26 +23,6 @@ uint lightmap_resolution;
 
 float3 dynamic_ambient_color;
 
-struct DynamicShape
-{
-    float3 position;
-    float3 size;
-    uint   flags;
-    
-    bool isBox()
-    {
-        return flags & 1;
-    }
-    
-    bool isSphere()
-    {
-        return flags & 2;
-    }
-};
-
-StructuredBuffer<DynamicShape> dynamic_shapes;
-uint dynamic_shapes_count;
-
 // fetches a shadow bit as the specified uv coordinates from the lightmap data.
 float lightmap_sample(uint2 uv, uint channel)
 {
@@ -413,9 +393,23 @@ float raycast_box(float3 origin, float3 target, float3 boxcenter, float3 boxsize
     return 0.0;
 }*/
 
-float point_in_box(float3 pos, float3 boxcenter, float3 boxsize, float epsilon = 0.00001)
+float point_in_box(float3 pos, float3 center, float3 boxsize, float epsilon = 0.00001)
 {
-    return (abs(pos.x - boxcenter.x) <= boxsize.x + epsilon && abs(pos.y - boxcenter.y) <= boxsize.y + epsilon && abs(pos.z - boxcenter.z) <= boxsize.z + epsilon);
+    return (abs(pos.x - center.x) <= boxsize.x + epsilon && abs(pos.y - center.y) <= boxsize.y + epsilon && abs(pos.z - center.z) <= boxsize.z + epsilon);
+}
+
+float point_in_obb(float3 pos, float3 center, float3 boxsize, float3x3 rotation, float epsilon = 0.00001)
+{
+    pos = mul(pos, rotation);
+    center = mul(center, rotation);
+    return point_in_box(pos, center, boxsize, epsilon);
+}
+
+float point_in_sphere(float3 pos, float3 center, float radius, float epsilon = 0.00001)
+{
+    float3 dist = center - pos;
+    dist = dot(dist, dist);
+    return dist < (radius * radius) + epsilon;
 }
 
 float raycast_box(float3 origin, float3 target, float3 boxcenter, float3 boxsize)
@@ -451,6 +445,15 @@ float raycast_box(float3 origin, float3 target, float3 boxcenter, float3 boxsize
     return 1;
     
     #undef EPSILON
+}
+
+float raycast_obb(float3 origin, float3 target, float3 boxcenter, float3 boxsize, float3x3 rotation)
+{
+    origin = mul(origin, rotation);
+    target = mul(target, rotation);
+    boxcenter = mul(boxcenter, rotation);
+    
+    return raycast_box(origin, target, boxcenter, boxsize);
 }
 
 float raycast_sphere(float3 origin, float3 target, float3 spherecenter, float radius)
@@ -493,6 +496,107 @@ float raycast_sphere(float3 origin, float3 target, float3 spherecenter, float ra
     // ensure that t does not exceed the ray origin and target.
     return t <= length(abs(target - origin));
 }
+
+// special thanks to https://iquilezles.org/articles/intersectors/
+float4 raycast_cylinder(float3 origin, float3 target, float3 p1, float3 p2)
+{
+    float3 ro = origin;
+    float3 rd = normalize(target - origin);
+    float3 a = p1;
+    float3 b = p2;
+    float ra = 0.5;
+    
+    float3  ba = b  - a;
+    float3  oc = ro - a;
+    float baba = dot(ba,ba);
+    float bard = dot(ba,rd);
+    float baoc = dot(ba,oc);
+    float k2 = baba            - bard*bard;
+    float k1 = baba*dot(oc,rd) - baoc*bard;
+    float k0 = baba*dot(oc,oc) - baoc*baoc - ra*ra*baba;
+    float h = k1*k1 - k2*k0;
+    if( h<0.0 ) return float4(-1.0, -1.0, -1.0, -1.0);//no intersection
+    h = sqrt(h);
+    float t = (-k1-h)/k2;
+    // body
+    float y = baoc + t*bard;
+    if( y>0.0 && y<baba ) return float4( t, (oc+t*rd - ba*y/baba)/ra );
+    // caps
+    t = ( ((y<0.0) ? 0.0 : baba) - baoc)/bard;
+    if( abs(k1+k2*t)<h )
+    {
+        return float4( t, ba*sign(y)/sqrt(baba) );
+    }
+    return float4(-1.0, -1.0, -1.0, -1.0);//no intersection
+}
+
+struct DynamicShape
+{
+    float3   position;
+    float3   size;
+    float3x3 rotation;
+    uint     type;
+    
+    bool is_box()
+    {
+        return type == 0;
+    }
+    
+    bool is_sphere()
+    {
+        return type == 1;
+    }
+    
+    bool is_cylinder()
+    {
+        return type == 2;
+    }
+    
+    bool is_capsule()
+    {
+        return type == 3;
+    }
+    
+    bool is_plane()
+    {
+        return type == 4;
+    }
+    
+    bool contains_point(float3 pos)
+    {
+        if (is_box() && point_in_obb(pos, position, size, rotation))
+            return true;
+        else if (is_sphere() && point_in_sphere(pos, position, size.x))
+            return true;
+        return false;
+    }
+    
+    bool raycast(float3 origin, float3 target)
+    {
+        if (is_box() && raycast_obb(origin, target, position, size, rotation))
+            return true;
+        else if (is_sphere() && raycast_sphere(origin, target, position, size.x))
+            return true;
+        else if (is_cylinder())
+        {
+            // ensure that t does not exceed the ray origin and target.
+            float t = raycast_cylinder(origin, target, position, size).x;
+            if(t > 0.0 && t <= length(abs(target - origin)))
+                return true;
+        }
+        return false;
+    }
+};
+
+StructuredBuffer<DynamicShape> dynamic_shapes;
+uint dynamic_shapes_count;
+
+
+
+
+
+
+
 // special thanks to https://learnopengl.com/PBR/Lighting
 
 // normal distribution function: approximates the amount the surface's
