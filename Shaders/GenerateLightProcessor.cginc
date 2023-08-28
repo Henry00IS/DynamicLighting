@@ -12,6 +12,9 @@ float light_distanceSqr = dot(light_direction, light_direction);
 // confirmed with NVIDIA Quadro K1000M doubling the framerate.
 if (light_distanceSqr > light.radiusSqr) continue;
 
+// many effects require the (light.position - i.world) that we already calculated.
+float3 light_position_minus_world = light_direction;
+
 // properly normalize the direction between the light source and the fragment.
 light_direction = normalize(light_direction);
 
@@ -66,11 +69,11 @@ else if (light.is_wave())
 }
 else if (light.is_interference())
 {
-    map *= light.calculate_interference(i.world);
+    map *= light.calculate_interference(i.world, light_position_minus_world);
 }
 else if (light.is_rotor())
 {
-    map *= light.calculate_rotor(i.world);
+    map *= light.calculate_rotor(i.world, light_position_minus_world);
 }
 else if (light.is_shock())
 {
@@ -78,7 +81,7 @@ else if (light.is_shock())
 }
 else if (light.is_disco())
 {
-    map *= light.calculate_disco(i.world);
+    map *= light.calculate_disco(i.world, light_position_minus_world);
 }
 
 if (light.is_watershimmer())
