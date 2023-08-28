@@ -12,6 +12,9 @@ float light_distanceSqr = dot(light_direction, light_direction);
 // confirmed with NVIDIA Quadro K1000M doubling the framerate.
 if (light_distanceSqr > light.radiusSqr) continue;
 
+// many effects require the (light.position - i.world) that we already calculated.
+float3 light_position_minus_world = light_direction;
+
 // properly normalize the direction between the light source and the fragment.
 light_direction = normalize(light_direction);
 
@@ -26,9 +29,9 @@ if (NdotL == 0.0) continue;
 // if this renderer has a lightmap we use shadow bits otherwise it's a dynamic object.
 // if this light is realtime we will skip this step.
 float map = 1.0;
-if (lightmap_resolution > 0 && light_is_dynamic(light))
+if (lightmap_resolution > 0 && light.is_dynamic())
 {
-    uint shadow_channel = light_get_shadow_channel(light);
+    uint shadow_channel = light.get_shadow_channel();
 
 #if DYNAMIC_LIGHTING_SHADOW_SOFT
     // retrieve the shadow bit at this position with bilinear filtering.
@@ -67,50 +70,50 @@ for (uint s = 0; s < dynamic_shapes_count; s++)
 if (map == 0.0) continue;
 
 // spot lights determine whether we are in the light cone or outside.
-if (light_is_spotlight(light))
+if (light.is_spotlight())
 {
     // anything outside of the spot light can and must be skipped.
-    float2 spotlight = light_calculate_spotlight(light, light_direction);
-    if (spotlight.x <= light_outerCutoff)
+    float2 spotlight = light.calculate_spotlight(light_direction);
+    if (spotlight.x <= light.light_outerCutoff)
         continue;
     map *= spotlight.y;
 }
-else if (light_is_discoball(light))
+else if (light.is_discoball())
 {
     // anything outside of the spot lights can and must be skipped.
-    float2 spotlight = light_calculate_discoball(light, light_direction);
-    if (spotlight.x <= light_outerCutoff)
+    float2 spotlight = light.calculate_discoball(light_direction);
+    if (spotlight.x <= light.light_outerCutoff)
         continue;
     map *= spotlight.y;
 }
-else if (light_is_wave(light))
+else if (light.is_wave())
 {
-    map *= light_calculate_wave(light, i.world);
+    map *= light.calculate_wave(i.world);
 }
-else if (light_is_interference(light))
+else if (light.is_interference())
 {
-    map *= light_calculate_interference(light, i.world);
+    map *= light.calculate_interference(i.world, light_position_minus_world);
 }
-else if (light_is_rotor(light))
+else if (light.is_rotor())
 {
-    map *= light_calculate_rotor(light, i.world);
+    map *= light.calculate_rotor(i.world, light_position_minus_world);
 }
-else if (light_is_shock(light))
+else if (light.is_shock())
 {
-    map *= light_calculate_shock(light, i.world);
+    map *= light.calculate_shock(i.world);
 }
-else if (light_is_disco(light))
+else if (light.is_disco())
 {
-    map *= light_calculate_disco(light, i.world);
+    map *= light.calculate_disco(i.world, light_position_minus_world);
 }
 
-if (light_is_watershimmer(light))
+if (light.is_watershimmer())
 {
-    map *= light_calculate_watershimmer_bilinear(light, i.world);
+    map *= light.calculate_watershimmer_bilinear(i.world);
 }
-else if (light_is_randomshimmer(light))
+else if (light.is_randomshimmer())
 {
-    map *= light_calculate_randomshimmer_bilinear(light, i.world);
+    map *= light.calculate_randomshimmer_bilinear(i.world);
 }
 
 // important attenuation that actually creates the point light with maximum radius.

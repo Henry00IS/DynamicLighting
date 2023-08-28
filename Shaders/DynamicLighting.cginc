@@ -1,3 +1,13 @@
+#include "Common.cginc"
+
+// macros to name the general purpose variables.
+#define light_cutoff gpFloat1
+#define light_outerCutoff gpFloat2
+#define light_waveSpeed gpFloat1
+#define light_waveFrequency gpFloat2
+#define light_rotorCenter gpFloat3
+#define light_discoVerticalSpeed gpFloat3
+
 struct DynamicLight
 {
     float3 position;
@@ -13,6 +23,242 @@ struct DynamicLight
     float  gpFloat3;
     float  shimmerScale;
     float  shimmerModifier;
+    
+    // the first 5 bits contain a valid channel index so mask by 31.
+    uint get_shadow_channel()
+    {
+        return channel & 31;
+    }
+
+    // bit 6 determines whether the light is realtime and does not have shadows.
+    uint is_realtime()
+    {
+        return channel & 32;
+    }
+
+    // bit 6 determines whether the light is realtime and does not have shadows.
+    uint is_dynamic()
+    {
+        return (channel & 32) == 0;
+    }
+
+    // bit 7 determines whether the light is a spotlight.
+    uint is_spotlight()
+    {
+        return channel & 64;
+    }
+
+    // bit 8 determines whether the light is a discoball.
+    uint is_discoball()
+    {
+        return channel & 128;
+    }
+
+    // bit 9 determines whether the light has water shimmer.
+    uint is_watershimmer()
+    {
+        return channel & 256;
+    }
+
+    // bit 10 determines whether the light has random shimmer.
+    uint is_randomshimmer()
+    {
+        return channel & 512;
+    }
+
+    // bit 11 determines whether the light is a wave.
+    uint is_wave()
+    {
+        return channel & 1024;
+    }
+
+    // bit 12 determines whether the light is interference.
+    uint is_interference()
+    {
+        return channel & 2048;
+    }
+
+    // bit 13 determines whether the light is a rotor.
+    uint is_rotor()
+    {
+        return channel & 4096;
+    }
+
+    // bit 14 determines whether the light is a shockwave.
+    uint is_shock()
+    {
+        return channel & 8192;
+    }
+
+    // bit 15 determines whether the light is a disco.
+    uint is_disco()
+    {
+        return channel & 16384;
+    }
+    
+    // calculates the spotlight effect.
+    //
+    // returns:
+    // x: the cutoff angle theta.
+    // y: the intensity for a smooth transition.
+    // 
+    // example:
+    // 
+    //    // anything outside of the spot light can and must be skipped.
+    //    float2 spotlight = light_calculate_spotlight(light, light_direction);
+    //    if (spotlight.x <= light.outerCutoff)
+    //        continue;
+    //    map *= spotlight.y;
+    //
+    float2 calculate_spotlight(float3 light_direction)
+    {
+        float theta = dot(light_direction, -forward);
+        float epsilon = light_cutoff - light_outerCutoff;
+        float intensity = saturate((theta - light_outerCutoff) / epsilon);
+        return float2(theta, intensity);
+    }
+    
+    // calculates the discoball spotlights effect.
+    //
+    // returns:
+    // x: the cutoff angle theta.
+    // y: the intensity for a smooth transition.
+    // 
+    // example:
+    // 
+    //    // anything outside of the spot lights can and must be skipped.
+    //    float2 spotlight = light_calculate_spotlight(light, light_direction);
+    //    if (spotlight.x <= light.outerCutoff)
+    //        continue;
+    //    map *= spotlight.y;
+    //
+    float2 calculate_discoball(float3 light_direction)
+    {
+        float3x3 rot = look_at_matrix(forward, up);
+
+        float3 rotated_direction = mul(light_direction, rot);
+        float theta = dot(snap_direction(rotated_direction), rotated_direction);
+        float epsilon = light_cutoff - light_outerCutoff;
+        float intensity = saturate((theta - light_outerCutoff) / epsilon);
+        return float2(theta, intensity);
+    }
+    
+    // calculates the wave effect.
+    float calculate_wave(float3 world)
+    {
+        return 0.7 + 0.3 * sin((distance(position, world) - _Time.y * light_waveSpeed) * UNITY_PI * 2 * light_waveFrequency);
+    }
+    
+    // calculates the interference effect.
+    float calculate_interference(float3 world, float3 light_position_minus_world)
+    {
+        float3x3 rot = look_at_matrix(forward, up);
+        world = mul(light_position_minus_world, rot);
+
+        float angle = atan2(sqrt((world.x * world.x) + (world.z * world.z)), world.y) * UNITY_PI * light_waveFrequency;
+        float scale = 0.5 + 0.5 * cos(angle - _Time.y * light_waveSpeed * UNITY_PI * 2.0);
+        return scale;
+    }
+    
+    // calculates the rotor effect.
+    float calculate_rotor(float3 world, float3 light_position_minus_world)
+    {
+        float signRotorCenter = sign(light_rotorCenter);
+
+        float3x3 rot = look_at_matrix(forward, up);
+        world = mul(light_position_minus_world, rot);
+
+        // world.xz are zero at the light position and move outwards. atan2 then calculates the angle
+        // from the zero point towards the world coordinate yielding positive pi to zero to negative pi.
+        // the angle changes less when it's further away creating a realistic light cone effect.
+        float angle = light_waveFrequency * atan2(world.x, world.z);
+
+        // we now calculate the cosine of the angle so that it does one complete oscillation. the angle
+        // has been multiplied against the desired wave frequency creating multiple rotor blades as it
+        // completes multiple oscillations in one circle. this angle is then offset by the current time
+        // to create a rotation.
+        float scale = 0.5 + 0.5 * cos(angle + _Time.y * light_waveSpeed * UNITY_PI * 2.0);
+
+        // near world.xz zero the light starts from a sharp center point. that doesn't look very nice so
+        // add a blob of light or shadow in the center of the rotor to hide it.
+        float dist1 = distance(float2(0, 0), world.xz); // helpme reader: optimize the square roots away.
+        float dist2 = sqrt(radiusSqr) * abs(light_rotorCenter);
+        if (dist1 < dist2)
+        {
+            // the light blob uses an exponent of 2 and shadows use 4.
+            float exponent = max(signRotorCenter * 4, 2);
+            scale *= pow(dist1 / dist2, exponent);
+        }
+
+        // this if statement does not cause a branch in the shader.
+        if (light_rotorCenter < 0)
+            return 1.0 - scale;
+        return scale;
+    }
+    
+    // calculates the shock effect.
+    float calculate_shock(float3 world)
+    {
+	    float dist = light_waveFrequency * distance(position, world);
+	    float brightness = 0.9 + 0.1 * sin((dist * 2.0 - _Time.y * light_waveSpeed) * UNITY_PI * 2.0);
+	    brightness      *= 0.9 + 0.1 * cos((dist + _Time.y * light_waveSpeed) * UNITY_PI * 2.0);
+	    brightness      *= 0.9 + 0.1 * sin((dist / 2.0 - _Time.y * light_waveSpeed) * UNITY_PI * 2.0);
+        return brightness;
+    }
+    
+    // calculates the disco effect.
+    float calculate_disco(float3 world, float3 light_position_minus_world)
+    {
+        float3x3 rot = look_at_matrix(forward, up);
+        world = mul(light_position_minus_world, rot);
+
+	    float horizontal = light_waveFrequency * atan2(world.x, world.z);
+	    float vertical = light_waveFrequency * atan2(sqrt(world.x * world.x + world.z * world.z), world.y);
+
+	    float scale1 = 0.5 + 0.5 * cos(horizontal + _Time.y * light_waveSpeed * UNITY_PI * 2.0);
+	    float scale2 = 0.5 + 0.5 * cos(vertical - _Time.y * light_discoVerticalSpeed * UNITY_PI * 2.0);
+
+	    float scale  = scale1 + scale2 - scale1 * scale2;
+
+	    float dist = 0.5 * (world.x * world.x + world.z * world.z);
+	    if (dist < 1.0) scale *= dist;
+
+        return 1.0 - scale;
+    }
+    
+    // calculates the water shimmer effect.
+    //
+    // returns: the multiplier for the shadow map.
+    //
+    float calculate_watershimmer(float3 world, float modifier)
+    {
+        // overlay the entire world with random blocks that never change between 0.0 and 1.0.
+        float stablerng = rand(world);
+
+        // use a sine wave to change the brightness of the stable random blocks.
+        return lerp(modifier, 1.0, -abs(sin(stablerng * _Time.w + _Time.x)));
+    }
+
+    #define GENERATE_FUNCTION_NAME calculate_watershimmer_bilinear
+    #define GENERATE_FUNCTION_CALL calculate_watershimmer
+    #include "GenerateBilinearFilter3D.cginc"
+    
+    // calculates the random shimmer effect.
+    //
+    // returns: the multiplier for the shadow map.
+    //
+    float calculate_randomshimmer(float3 world, float modifier)
+    {
+        // overlay the entire world with random blocks that change at 30FPS between 0.0 and 1.0.
+        float stablerng = rand(world + frac(floor(_Time.y * 30) * 0.001));
+
+        // clamp the range down to change the intensity.
+        return modifier + (1.0 - modifier) * stablerng;
+    }
+
+    #define GENERATE_FUNCTION_NAME calculate_randomshimmer_bilinear
+    #define GENERATE_FUNCTION_CALL calculate_randomshimmer
+    #include "GenerateBilinearFilter3D.cginc"
 };
 
 StructuredBuffer<DynamicLight> dynamic_lights;
@@ -71,309 +317,6 @@ float lightmap_sample_bilinear(float2 uv, uint channel)
 
     return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y);
 }
-
-// the first 5 bits contain a valid channel index so mask by 31.
-uint light_get_shadow_channel(DynamicLight light)
-{
-    return light.channel & 31;
-}
-
-// bit 6 determines whether the light is realtime and does not have shadows.
-uint light_is_realtime(DynamicLight light)
-{
-    return light.channel & 32;
-}
-
-// bit 6 determines whether the light is realtime and does not have shadows.
-uint light_is_dynamic(DynamicLight light)
-{
-    return (light.channel & 32) == 0;
-}
-
-// bit 7 determines whether the light is a spotlight.
-uint light_is_spotlight(DynamicLight light)
-{
-    return light.channel & 64;
-}
-
-// bit 8 determines whether the light is a discoball.
-uint light_is_discoball(DynamicLight light)
-{
-    return light.channel & 128;
-}
-
-// bit 9 determines whether the light has water shimmer.
-uint light_is_watershimmer(DynamicLight light)
-{
-    return light.channel & 256;
-}
-
-// bit 10 determines whether the light has random shimmer.
-uint light_is_randomshimmer(DynamicLight light)
-{
-    return light.channel & 512;
-}
-
-// bit 11 determines whether the light is a wave.
-uint light_is_wave(DynamicLight light)
-{
-    return light.channel & 1024;
-}
-
-// bit 12 determines whether the light is interference.
-uint light_is_interference(DynamicLight light)
-{
-    return light.channel & 2048;
-}
-
-// bit 13 determines whether the light is a rotor.
-uint light_is_rotor(DynamicLight light)
-{
-    return light.channel & 4096;
-}
-
-// bit 14 determines whether the light is a shockwave.
-uint light_is_shock(DynamicLight light)
-{
-    return light.channel & 8192;
-}
-
-// bit 15 determines whether the light is a disco.
-uint light_is_disco(DynamicLight light)
-{
-    return light.channel & 16384;
-}
-
-// macros to name the general purpose variables.
-#define light_cutoff light.gpFloat1
-#define light_outerCutoff light.gpFloat2
-#define light_waveSpeed light.gpFloat1
-#define light_waveFrequency light.gpFloat2
-#define light_rotorCenter light.gpFloat3
-#define light_discoVerticalSpeed light.gpFloat3
-
-// calculates the spotlight effect.
-//
-// returns:
-// x: the cutoff angle theta.
-// y: the intensity for a smooth transition.
-// 
-// example:
-// 
-//    // anything outside of the spot light can and must be skipped.
-//    float2 spotlight = light_calculate_spotlight(light, light_direction);
-//    if (spotlight.x <= light.outerCutoff)
-//        continue;
-//    map *= spotlight.y;
-//
-float2 light_calculate_spotlight(DynamicLight light, float3 light_direction)
-{
-    float theta = dot(light_direction, -light.forward);
-    float epsilon = light_cutoff - light_outerCutoff;
-    float intensity = saturate((theta - light_outerCutoff) / epsilon);
-    return float2(theta, intensity);
-}
-
-float4x4 axis_matrix(float3 right, float3 up, float3 forward)
-{
-    float3 xaxis = right;
-    float3 yaxis = up;
-    float3 zaxis = forward;
-    return float4x4(
-        xaxis.x, yaxis.x, zaxis.x, 0,
-        xaxis.y, yaxis.y, zaxis.y, 0,
-        xaxis.z, yaxis.z, zaxis.z, 0,
-        0, 0, 0, 1
-        );
-}
-
-float4x4 look_at_matrix(float3 forward, float3 up)
-{
-    float3 xaxis = normalize(cross(forward, up));
-    float3 yaxis = up;
-    float3 zaxis = forward;
-    return axis_matrix(xaxis, yaxis, zaxis);
-}
-
-float4x4 look_at_matrix(float3 at, float3 eye, float3 up)
-{
-    float3 zaxis = normalize(at - eye);
-    float3 xaxis = normalize(cross(up, zaxis));
-    float3 yaxis = cross(zaxis, xaxis);
-    return axis_matrix(xaxis, yaxis, zaxis);
-}
-
-// returns the largest component of a float3.
-float max3(float3 v)
-{
-    return max(max(v.x, v.y), v.z);
-}
-
-// https://forum.unity.com/threads/snap-round-3d-direction-vector-based-on-angle.905168/
-// snaps the input direction to 45 degree increments.
-// shoutouts to JoNax97 and Cannist!
-float snap_direction_round(float f)
-{
-    if (abs(f) < tan(UNITY_PI / 8.0))
-        return 0.0;
-    return sign(f);
-}
-float3 snap_direction(float3 input)
-{
-    // scale vector to unit cube.
-    float scaleDivisor = max3(abs(input));
-    input /= scaleDivisor;
-
-    float3 rounded = float3(snap_direction_round(input.x), snap_direction_round(input.y), snap_direction_round(input.z));
-    return normalize(rounded);
-}
-
-// calculates the discoball spotlights effect.
-//
-// returns:
-// x: the cutoff angle theta.
-// y: the intensity for a smooth transition.
-// 
-// example:
-// 
-//    // anything outside of the spot lights can and must be skipped.
-//    float2 spotlight = light_calculate_spotlight(light, light_direction);
-//    if (spotlight.x <= light.outerCutoff)
-//        continue;
-//    map *= spotlight.y;
-//
-float2 light_calculate_discoball(DynamicLight light, float3 light_direction)
-{
-    float3x3 rot = look_at_matrix(light.forward, light.up);
-
-    float3 rotated_direction = mul(light_direction, rot);
-    float theta = dot(snap_direction(rotated_direction), rotated_direction);
-    float epsilon = light_cutoff - light_outerCutoff;
-    float intensity = saturate((theta - light_outerCutoff) / epsilon);
-    return float2(theta, intensity);
-}
-
-// calculates the wave effect.
-float light_calculate_wave(DynamicLight light, float3 world)
-{
-    return 0.7 + 0.3 * sin((distance(light.position, world) - _Time.y * light_waveSpeed) * UNITY_PI * 2 * light_waveFrequency);
-}
-
-// calculates the interference effect.
-float light_calculate_interference(DynamicLight light, float3 world)
-{
-    float3x3 rot = look_at_matrix(light.forward, light.up);
-    world = mul(world - light.position, rot);
-
-    float angle = atan2(sqrt((world.x * world.x) + (world.z * world.z)), world.y) * UNITY_PI * light_waveFrequency;
-    float scale = 0.5 + 0.5 * cos(angle + _Time.y * light_waveSpeed * UNITY_PI * 2.0);
-    return scale;
-}
-
-// calculates the rotor effect.
-float light_calculate_rotor(DynamicLight light, float3 world)
-{
-    float signRotorCenter = sign(light_rotorCenter);
-
-    float3x3 rot = look_at_matrix(light.forward, light.up);
-    world = mul(world - light.position, rot);
-
-    // world.xz are zero at the light position and move outwards. atan2 then calculates the angle
-    // from the zero point towards the world coordinate yielding positive pi to zero to negative pi.
-    // the angle changes less when it's further away creating a realistic light cone effect.
-    float angle = light_waveFrequency * atan2(world.x, world.z);
-
-    // we now calculate the cosine of the angle so that it does one complete oscillation. the angle
-    // has been multiplied against the desired wave frequency creating multiple rotor blades as it
-    // completes multiple oscillations in one circle. this angle is then offset by the current time
-    // to create a rotation.
-    float scale = 0.5 + 0.5 * cos(angle + _Time.y * light_waveSpeed * UNITY_PI * 2.0);
-
-    // near world.xz zero the light starts from a sharp center point. that doesn't look very nice so
-    // add a blob of light or shadow in the center of the rotor to hide it.
-    float dist1 = distance(float2(0, 0), world.xz); // helpme reader: optimize the square roots away.
-    float dist2 = sqrt(light.radiusSqr) * abs(light_rotorCenter);
-    if (dist1 < dist2)
-    {
-        // the light blob uses an exponent of 2 and shadows use 4.
-        float exponent = max(signRotorCenter * 4, 2);
-        scale *= pow(dist1 / dist2, exponent);
-    }
-
-    // this if statement does not cause a branch in the shader.
-    if (light_rotorCenter < 0)
-        return 1.0 - scale;
-    return scale;
-}
-
-// calculates the shock effect.
-float light_calculate_shock(DynamicLight light, float3 world)
-{
-	float dist = light_waveFrequency * distance(light.position, world);
-	float brightness = 0.9 + 0.1 * sin((dist * 2.0 - _Time.y * light_waveSpeed) * UNITY_PI * 2.0);
-	brightness      *= 0.9 + 0.1 * cos((dist + _Time.y * light_waveSpeed) * UNITY_PI * 2.0);
-	brightness      *= 0.9 + 0.1 * sin((dist / 2.0 - _Time.y * light_waveSpeed) * UNITY_PI * 2.0);
-    return brightness;
-}
-
-// calculates the disco effect.
-float light_calculate_disco(DynamicLight light, float3 world)
-{
-    float3x3 rot = look_at_matrix(light.forward, light.up);
-    world = mul(world - light.position, rot);
-
-	float horizontal = light_waveFrequency * atan2(world.x, world.z);
-	float vertical = light_waveFrequency * atan2(sqrt(world.x * world.x + world.z * world.z), world.y);
-
-	float scale1 = 0.5 + 0.5 * cos(horizontal + _Time.y * light_waveSpeed * UNITY_PI * 2.0);
-	float scale2 = 0.5 + 0.5 * cos(vertical + _Time.y * light_discoVerticalSpeed * UNITY_PI * 2.0);
-
-	float scale  = scale1 + scale2 - scale1 * scale2;
-
-	float dist = 0.5 * (world.x * world.x + world.z * world.z);
-	if (dist < 1.0) scale *= dist;
-
-    return 1.0 - scale;
-}
-
-// shoutouts to anastadunbar https://www.shadertoy.com/view/Xt23Ry
-float rand(float co) { return frac(sin(co * (91.3458)) * 47453.5453); }
-float rand(float2 co) { return frac(sin(dot(co.xy, float2(12.9898, 78.233))) * 43758.5453); }
-float rand(float3 co) { return rand(co.xy + rand(co.z)); }
-
-// calculates the water shimmer effect.
-//
-// returns: the multiplier for the shadow map.
-//
-float light_calculate_watershimmer(float3 world, float modifier)
-{
-    // overlay the entire world with random blocks that never change between 0.0 and 1.0.
-    float stablerng = rand(world);
-
-    // use a sine wave to change the brightness of the stable random blocks.
-    return lerp(modifier, 1.0, -abs(sin(stablerng * _Time.w + _Time.x)));
-}
-
-#define GENERATE_FUNCTION_NAME light_calculate_watershimmer_bilinear
-#define GENERATE_FUNCTION_CALL light_calculate_watershimmer
-#include "GenerateBilinearFilter3D.cginc"
-
-// calculates the random shimmer effect.
-//
-// returns: the multiplier for the shadow map.
-//
-float light_calculate_randomshimmer(float3 world, float modifier)
-{
-    // overlay the entire world with random blocks that change at 30FPS between 0.0 and 1.0.
-    float stablerng = rand(world + frac(floor(_Time.y * 30) * 0.001));
-
-    // clamp the range down to change the intensity.
-    return modifier + (1.0 - modifier) * stablerng;
-}
-
-#define GENERATE_FUNCTION_NAME light_calculate_randomshimmer_bilinear
-#define GENERATE_FUNCTION_CALL light_calculate_randomshimmer
-#include "GenerateBilinearFilter3D.cginc"
 
 /*
 float raycast_box(float3 origin, float3 target, float3 boxcenter, float3 boxsize, int maxsteps)
@@ -584,64 +527,3 @@ struct DynamicShape
 
 StructuredBuffer<DynamicShape> dynamic_shapes;
 uint dynamic_shapes_count;
-
-
-
-
-
-
-
-// special thanks to https://learnopengl.com/PBR/Lighting
-
-// normal distribution function: approximates the amount the surface's
-// microfacets are aligned to the halfway vector, influenced by the roughness of
-// the surface; this is the primary function approximating the microfacets.
-float DistributionGGX(float3 N, float3 H, float3 roughness)
-{
-    float a = roughness * roughness;
-    float a2 = a * a;
-    float NdotH = max(dot(N, H), 0.0);
-    float NdotH2 = NdotH * NdotH;
-
-    float num = a2;
-    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
-    denom = UNITY_PI * denom * denom;
-
-    return num / denom;
-}
-
-// geometry function: describes the self-shadowing property of the microfacets.
-// when a surface is relatively rough, the surface's microfacets can overshadow
-// other microfacets reducing the light the surface reflects.
-float GeometrySchlickGGX(float NdotV, float roughness)
-{
-    float r = (roughness + 1.0);
-    float k = (r * r) / 8.0;
-
-    float num = NdotV;
-    float denom = NdotV * (1.0 - k) + k;
-
-    return num / denom;
-}
-
-float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
-{
-    float NdotV = max(dot(N, V), 0.0);
-    float NdotL = max(dot(N, L), 0.0);
-    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
-    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
-
-    return ggx1 * ggx2;
-}
-
-// fresnel equation: the fresnel equation describes the ratio of surface
-// reflection at different surface angles.
-float3 fresnelSchlick(float cosTheta, float3 F0)
-{
-    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
-}
-
-float3 fresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
-{
-    return F0 + (max(1.0 - roughness, F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
-}
