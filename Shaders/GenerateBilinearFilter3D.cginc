@@ -2,9 +2,9 @@
 // GENERATE_FUNCTION_CALL: The function to call to get samples to be filtered.
 
 // shoutouts to https://chat.openai.com/ for actually figuring out bilinear filtering in 3 dimensions.
-float GENERATE_FUNCTION_NAME(DynamicLight light, float3 world)
+float GENERATE_FUNCTION_NAME(float3 world)
 {
-    world *= light.shimmerScale;
+    world *= shimmerScale;
 
     // calculate the weights for the bilinear interpolation.
     float3 weight = frac(world);
@@ -13,7 +13,7 @@ float GENERATE_FUNCTION_NAME(DynamicLight light, float3 world)
     world = floor(world);
 
     // sample the texture at the neighboring cells.
-    float modifier = light.shimmerModifier;
+    float modifier = shimmerModifier;
     float topLeftFront = GENERATE_FUNCTION_CALL(world, modifier);
     float topRightFront = GENERATE_FUNCTION_CALL(world + float3(1, 0, 0), modifier);
     float bottomLeftFront = GENERATE_FUNCTION_CALL(world + float3(0, 1, 0), modifier);
