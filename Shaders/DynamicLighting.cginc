@@ -174,33 +174,15 @@ float2 light_calculate_spotlight(DynamicLight light, float3 light_direction)
     return float2(theta, intensity);
 }
 
-float4x4 axis_matrix(float3 right, float3 up, float3 forward)
+// calculates a look-at orientation matrix.
+float3x3 look_at_matrix(float3 forward, float3 up)
 {
-    float3 xaxis = right;
-    float3 yaxis = up;
-    float3 zaxis = forward;
-    return float4x4(
-        xaxis.x, yaxis.x, zaxis.x, 0,
-        xaxis.y, yaxis.y, zaxis.y, 0,
-        xaxis.z, yaxis.z, zaxis.z, 0,
-        0, 0, 0, 1
-        );
-}
-
-float4x4 look_at_matrix(float3 forward, float3 up)
-{
-    float3 xaxis = normalize(cross(forward, up));
-    float3 yaxis = up;
-    float3 zaxis = forward;
-    return axis_matrix(xaxis, yaxis, zaxis);
-}
-
-float4x4 look_at_matrix(float3 at, float3 eye, float3 up)
-{
-    float3 zaxis = normalize(at - eye);
-    float3 xaxis = normalize(cross(up, zaxis));
-    float3 yaxis = cross(zaxis, xaxis);
-    return axis_matrix(xaxis, yaxis, zaxis);
+    float3 right = normalize(cross(forward, up));
+    return float3x3(
+        right.x, up.x, forward.x,
+        right.y, up.y, forward.y,
+        right.z, up.z, forward.z
+    );
 }
 
 // returns the largest component of a float3.
