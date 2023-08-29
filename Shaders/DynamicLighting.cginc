@@ -470,6 +470,45 @@ float4 raycast_cylinder(float3 origin, float3 target, float3 center, float heigh
     return float4(-1.0, -1.0, -1.0, -1.0);//no intersection
 }
 
+// special thanks to https://iquilezles.org/articles/intersectors/
+float raycast_capsule(float3 origin, float3 target, float3 center, float height, float radius, float3x3 rotation)
+{
+    origin = mul(origin, rotation);
+    target = mul(target, rotation);
+    center = mul(center, rotation);
+    
+    float3 p1 = center - float3(0.0, height, 0.0);
+    float3 p2 = center + float3(0.0, height, 0.0);
+    
+    float3 rd = normalize(target - origin);
+    
+    float3  ba = p2 - p1;
+    float3  oa = origin - p1;
+    float baba = dot(ba,ba);
+    float bard = dot(ba,rd);
+    float baoa = dot(ba,oa);
+    float rdoa = dot(rd,oa);
+    float oaoa = dot(oa,oa);
+    float a = baba      - bard*bard;
+    float b = baba*rdoa - baoa*bard;
+    float c = baba*oaoa - baoa*baoa - radius*radius*baba;
+    float h = b*b - a*c;
+    if( h >= 0.0 )
+    {
+        float t = (-b-sqrt(h))/a;
+        float y = baoa + t*bard;
+        // body
+        if( y>0.0 && y<baba ) return t;
+        // caps
+        float3 oc = (y <= 0.0) ? oa : origin - p2;
+        b = dot(rd,oc);
+        c = dot(oc,oc) - radius*radius;
+        h = b*b - c;
+        if( h>0.0 ) return -b - sqrt(h);
+    }
+    return -1.0;
+}
+
 struct DynamicShape
 {
     float3   position;
@@ -522,6 +561,13 @@ struct DynamicShape
         {
             // ensure that t does not exceed the ray origin and target.
             float t = raycast_cylinder(origin, target, position, size.y, size.x, rotation).x;
+            if(t > 0.0 && t <= length(abs(target - origin)))
+                return true;
+        }
+        else if (is_capsule())
+        {
+            // ensure that t does not exceed the ray origin and target.
+            float t = raycast_capsule(origin, target, position, size.y * 0.5, size.x, rotation).x;
             if(t > 0.0 && t <= length(abs(target - origin)))
                 return true;
         }
