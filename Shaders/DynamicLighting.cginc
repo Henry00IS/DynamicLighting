@@ -11,17 +11,20 @@
 struct DynamicLight
 {
     float3 position;
-    float3 color;
-    float  intensity;
     float  radiusSqr;
+    // -- 16 byte boundary --
     uint   channel;
-
-    float3 up;
-    float3 forward;
+    float  intensity;
     float  gpFloat1;
     float  gpFloat2;
+    // -- 16 byte boundary --
+    float3 color;
     float  gpFloat3;
+    // -- 16 byte boundary --
+    float3 up;
     float  shimmerScale;
+    // -- 16 byte boundary --
+    float3 forward;
     float  shimmerModifier;
     
     // the first 5 bits contain a valid channel index so mask by 31.
