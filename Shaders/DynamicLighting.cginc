@@ -321,43 +321,6 @@ float lightmap_sample_bilinear(float2 uv, uint channel)
     return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y);
 }
 
-/*
-float raycast_box(float3 origin, float3 target, float3 boxcenter, float3 boxsize, int maxsteps)
-{
-    float3 pos = origin;
-    
-    for (int i = 0; i < maxsteps; i++)
-    {
-        if (abs(pos.x - boxcenter.x) <= boxsize.x && abs(pos.y - boxcenter.y) <= boxsize.y && abs(pos.z - boxcenter.z) <= boxsize.z)
-        {
-            return 1.0;
-        }
-        
-        pos = lerp(origin, target, i / float(maxsteps));
-    }
-    
-    return 0.0;
-}*/
-
-float point_in_box(float3 pos, float3 center, float3 boxsize, float epsilon = 0.00001)
-{
-    return (abs(pos.x - center.x) <= boxsize.x + epsilon && abs(pos.y - center.y) <= boxsize.y + epsilon && abs(pos.z - center.z) <= boxsize.z + epsilon);
-}
-
-float point_in_obb(float3 pos, float3 center, float3 boxsize, float3x3 rotation, float epsilon = 0.00001)
-{
-    pos = mul(pos, rotation);
-    center = mul(center, rotation);
-    return point_in_box(pos, center, boxsize, epsilon);
-}
-
-float point_in_sphere(float3 pos, float3 center, float radius, float epsilon = 0.00001)
-{
-    float3 dist = center - pos;
-    dist = dot(dist, dist);
-    return dist < (radius * radius) + epsilon;
-}
-
 float raycast_box(float3 origin, float3 target, float3 boxcenter, float3 boxsize)
 {
     #define EPSILON 0.00001;
@@ -383,6 +346,25 @@ float raycast_box(float3 origin, float3 target, float3 boxcenter, float3 boxsize
     return 1.0;
     
     #undef EPSILON
+}
+
+float point_in_box(float3 pos, float3 center, float3 boxsize, float epsilon = 0.00001)
+{
+    return (abs(pos.x - center.x) <= boxsize.x + epsilon && abs(pos.y - center.y) <= boxsize.y + epsilon && abs(pos.z - center.z) <= boxsize.z + epsilon);
+}
+
+float point_in_obb(float3 pos, float3 center, float3 boxsize, float3x3 rotation, float epsilon = 0.00001)
+{
+    pos = mul(pos, rotation);
+    center = mul(center, rotation);
+    return point_in_box(pos, center, boxsize, epsilon);
+}
+
+float point_in_sphere(float3 pos, float3 center, float radius, float epsilon = 0.00001)
+{
+    float3 dist = center - pos;
+    dist = dot(dist, dist);
+    return dist < (radius * radius) + epsilon;
 }
 
 float raycast_obb(float3 origin, float3 target, float3 boxcenter, float3 boxsize, float3x3 rotation)
@@ -512,51 +494,59 @@ float raycast_capsule(float3 origin, float3 target, float3 center, float height,
 struct DynamicShape
 {
     float3   position;
-    uint     type;
+    uint     flags;
     // -- 16 byte boundary --
     float3   size;
     float3x3 rotation;
     
     bool is_box()
     {
-        return type == 0;
+        return flags & 1;
     }
     
     bool is_sphere()
     {
-        return type == 1;
+        return flags & 2;
     }
     
     bool is_cylinder()
     {
-        return type == 2;
+        return flags & 4;
     }
     
     bool is_capsule()
     {
-        return type == 3;
+        return flags & 8;
     }
     
-    bool is_plane()
+    bool is_skipping_inner_self_shadows()
     {
-        return type == 4;
+        return flags & 16;
     }
     
     bool contains_point(float3 pos)
     {
-        if (is_box() && point_in_obb(pos, position, size, rotation))
-            return true;
-        else if (is_sphere() && point_in_sphere(pos, position, size.x))
-            return true;
+        if (is_box())
+        {
+            return point_in_obb(pos, position, size, rotation);    
+        }
+        else if (is_sphere())
+        {
+            return point_in_sphere(pos, position, size.x);
+        }
         return false;
     }
     
     bool raycast(float3 origin, float3 target)
     {
-        if (is_box() && raycast_obb(origin, target, position, size, rotation))
-            return true;
-        else if (is_sphere() && raycast_sphere(origin, target, position, size.x))
-            return true;
+        if (is_box())
+        {
+            return raycast_obb(origin, target, position, size, rotation);    
+        }
+        else if (is_sphere())
+        {
+            return raycast_sphere(origin, target, position, size.x);
+        }
         else if (is_cylinder())
         {
             // ensure that t does not exceed the ray origin and target.

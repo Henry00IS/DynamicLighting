@@ -12,6 +12,5 @@ namespace AlpacaIT.DynamicLighting
         Sphere = 1,
         Cylinder = 2,
         Capsule = 3,
-        Plane = 4,
     }
 }

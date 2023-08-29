@@ -8,6 +8,8 @@ namespace AlpacaIT.DynamicLighting
     {
         public DynamicShapeType shapeType = DynamicShapeType.Box;
 
+        public bool skipInnerSelfShadows = false;
+
         public Vector3 size
         {
             get
@@ -54,9 +56,6 @@ namespace AlpacaIT.DynamicLighting
                     break;
 
                 case DynamicShapeType.Capsule:
-                    break;
-
-                case DynamicShapeType.Plane:
                     break;
 
                 default:
