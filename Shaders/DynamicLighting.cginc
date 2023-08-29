@@ -473,9 +473,10 @@ float4 raycast_cylinder(float3 origin, float3 target, float3 center, float heigh
 struct DynamicShape
 {
     float3   position;
+    uint     type;
+    // -- 16 byte boundary --
     float3   size;
     float3x3 rotation;
-    uint     type;
     
     bool is_box()
     {

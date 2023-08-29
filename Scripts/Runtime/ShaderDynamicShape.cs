@@ -8,11 +8,14 @@ namespace AlpacaIT.DynamicLighting
     {
         /// <summary>The position of the shape in world space.</summary>
         public Vector3 position;
+        /// <summary>The flags of the shape.</summary>
+        public uint type;
+
+        // -- 16 byte boundary --
+
         /// <summary>The size of the shape.</summary>
         public Vector3 size;
         /// <summary>The rotation matrix of the shape.</summary>
         public float3x3 rotation;
-        /// <summary>The flags of the shape.</summary>
-        public uint type;
     };
 }
