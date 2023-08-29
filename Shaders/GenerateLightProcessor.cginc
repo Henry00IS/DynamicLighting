@@ -69,11 +69,11 @@ else if (light.is_wave())
 }
 else if (light.is_interference())
 {
-    map *= light.calculate_interference(i.world, light_position_minus_world);
+    map *= light.calculate_interference(light_position_minus_world);
 }
 else if (light.is_rotor())
 {
-    map *= light.calculate_rotor(i.world, light_position_minus_world);
+    map *= light.calculate_rotor(light_position_minus_world);
 }
 else if (light.is_shock())
 {
@@ -81,7 +81,7 @@ else if (light.is_shock())
 }
 else if (light.is_disco())
 {
-    map *= light.calculate_disco(i.world, light_position_minus_world);
+    map *= light.calculate_disco(light_position_minus_world);
 }
 
 if (light.is_watershimmer())

@@ -153,10 +153,10 @@ struct DynamicLight
     }
     
     // calculates the interference effect.
-    float calculate_interference(float3 world, float3 light_position_minus_world)
+    float calculate_interference(float3 light_position_minus_world)
     {
         float3x3 rot = look_at_matrix(forward, up);
-        world = mul(light_position_minus_world, rot);
+        float3 world = mul(light_position_minus_world, rot);
 
         float angle = atan2(sqrt((world.x * world.x) + (world.z * world.z)), world.y) * UNITY_PI * light_waveFrequency;
         float scale = 0.5 + 0.5 * cos(angle - _Time.y * light_waveSpeed * UNITY_PI * 2.0);
@@ -164,12 +164,12 @@ struct DynamicLight
     }
     
     // calculates the rotor effect.
-    float calculate_rotor(float3 world, float3 light_position_minus_world)
+    float calculate_rotor(float3 light_position_minus_world)
     {
         float signRotorCenter = sign(light_rotorCenter);
 
         float3x3 rot = look_at_matrix(forward, up);
-        world = mul(light_position_minus_world, rot);
+        float3 world = mul(light_position_minus_world, rot);
 
         // world.xz are zero at the light position and move outwards. atan2 then calculates the angle
         // from the zero point towards the world coordinate yielding positive pi to zero to negative pi.
@@ -210,10 +210,10 @@ struct DynamicLight
     }
     
     // calculates the disco effect.
-    float calculate_disco(float3 world, float3 light_position_minus_world)
+    float calculate_disco(float3 light_position_minus_world)
     {
         float3x3 rot = look_at_matrix(forward, up);
-        world = mul(light_position_minus_world, rot);
+        float3 world = mul(light_position_minus_world, rot);
 
 	    float horizontal = light_waveFrequency * atan2(world.x, world.z);
 	    float vertical = light_waveFrequency * atan2(sqrt(world.x * world.x + world.z * world.z), world.y);
