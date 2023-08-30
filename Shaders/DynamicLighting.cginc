@@ -321,31 +321,26 @@ float lightmap_sample_bilinear(float2 uv, uint channel)
     return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y);
 }
 
-float raycast_box(float3 origin, float3 target, float3 boxcenter, float3 boxsize)
+// axis aligned box centered at 0,0,0 with given size.
+bool raycast_box(float3 origin, float3 size, float light_distanceSqr, float3 light_direction)
 {
-    #define EPSILON 0.00001;
+    float3 m = 1.0/light_direction;
+    float3 n = m*origin;
+    float3 k = abs(m)*size;
+    float3 t1 = -n - k;
+    float3 t2 = -n + k;
+    float tN = max( max( t1.x, t1.y ), t1.z );
+    float tF = min( min( t2.x, t2.y ), t2.z );
+    if(tN>tF || tF<0.0) return false; // no intersection
+    return light_distanceSqr >= tN * tN;
+}
+
+bool raycast_obb(float3 origin, float3 boxcenter, float3 boxsize, float3x3 rotation, float light_distanceSqr, float3 light_direction)
+{
+    origin = mul(origin - boxcenter, rotation);
+    light_direction = mul(light_direction, rotation);
     
-    float3 m = (origin + target) * 0.5; // Segment midpoint
-    float3 d = target - m; // Segment halflength vector
-    m = m - boxcenter; // Translate box and segment to origin
-    // Try world coordinate axes as separating axes
-    float adx = abs(d.x);
-    if (abs(m.x) > boxsize.x + adx) return 0.0;
-    float ady = abs(d.y);
-    if (abs(m.y) > boxsize.y + ady) return 0.0;
-    float adz = abs(d.z);
-    if (abs(m.z) > boxsize.z + adz) return 0.0;
-    // Add in an epsilon term to counteract arithmetic errors when segment is
-    // (near) parallel to a coordinate axis (see text for detail)
-    adx += EPSILON; ady += EPSILON; adz += EPSILON;
-    // Try cross products of segment direction vector with coordinate axes
-    if (abs(m.y * d.z - m.z * d.y) > boxsize.y * adz + boxsize.z * ady) return 0.0;
-    if (abs(m.z * d.x - m.x * d.z) > boxsize.x * adz + boxsize.z * adx) return 0.0;
-    if (abs(m.x * d.y - m.y * d.x) > boxsize.x * ady + boxsize.y * adx) return 0.0;
-    // No separating axis found; segment must be overlapping AABB
-    return 1.0;
-    
-    #undef EPSILON
+    return raycast_box(origin, boxsize, light_distanceSqr, light_direction);
 }
 
 float point_in_box(float3 pos, float3 center, float3 boxsize, float epsilon = 0.00001)
@@ -367,14 +362,7 @@ float point_in_sphere(float3 pos, float3 center, float radius, float epsilon = 0
     return dist < (radius * radius) + epsilon;
 }
 
-float raycast_obb(float3 origin, float3 target, float3 boxcenter, float3 boxsize, float3x3 rotation)
-{
-    origin = mul(origin, rotation);
-    target = mul(target, rotation);
-    boxcenter = mul(boxcenter, rotation);
-    
-    return raycast_box(origin, target, boxcenter, boxsize);
-}
+
 
 float raycast_sphere(float3 origin, float3 target, float3 spherecenter, float radius)
 {
@@ -537,11 +525,11 @@ struct DynamicShape
         return false;
     }
     
-    bool raycast(float3 origin, float3 target)
+    bool raycast(float3 origin, float3 target, float light_distanceSqr, float3 light_direction)
     {
         if (is_box())
         {
-            return raycast_obb(origin, target, position, size, rotation);    
+            return raycast_obb(origin, position, size, rotation, light_distanceSqr, light_direction);    
         }
         else if (is_sphere())
         {

@@ -54,7 +54,7 @@ for (uint s = 0; s < dynamic_shapes_count; s++)
     DynamicShape shape = dynamic_shapes[s];
 
     // if the shape blocks the light then we are in darkness.
-    if (shape.raycast(ray_origin, light.position))
+    if (shape.raycast(ray_origin, light.position, light_distanceSqr, light_direction))
     {
         // if desired we skip raycasting a shape when the fragment is inside of it.
         // this prevents self-shadowing artifacts and makes this technique easy to use.
