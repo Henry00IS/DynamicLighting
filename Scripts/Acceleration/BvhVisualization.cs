@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -6,14 +5,14 @@ namespace AlpacaIT.DynamicLighting.Acceleration
 {
     public class BvhVisualization : MonoBehaviour
     {
-        private BvhNode hierarchy = new BvhNode() { boundingVolume = new BoundingBox() };
+        private BvhNode hierarchy = new BvhNode() { boundingVolume = new BvhBoundingVolume() };
 
         private void Start()
         {
-            var boundingVolumes = new List<BoundingBox>();
+            var boundingVolumes = new List<BvhBoundingVolume>();
             foreach (var light in FindObjectsOfType<DynamicLight>())
             {
-                boundingVolumes.Add(new BoundingBox() { center = light.transform.position, bounds = new Bounds(light.transform.position, Vector3.one * light.lightRadius * 2f) });
+                boundingVolumes.Add(new BvhBoundingVolume(light.transform.position, light.lightRadius));
             }
 
             hierarchy = BvhNode.Build(boundingVolumes.ToArray());
@@ -24,7 +23,7 @@ namespace AlpacaIT.DynamicLighting.Acceleration
             Gizmos.color = Color.white;
             DrawRecursive(hierarchy);
 
-            //List<BoundingVolume> overlappingVolumes = new List<BoundingVolume>();
+            //List<BvhBoundingVolume> overlappingVolumes = new List<BvhBoundingVolume>();
             //hierarchy.FindNodesOverlappingPosition(Camera.main.transform.position, overlappingVolumes);
             //
             //Debug.Log(overlappingVolumes.Count);
@@ -32,20 +31,15 @@ namespace AlpacaIT.DynamicLighting.Acceleration
 
         private void DrawRecursive(BvhNode node, int depth = 0)
         {
+            Gizmos.DrawWireCube(node.boundingVolume.center, node.boundingVolume.size);
+
             if (node.leftChild != null)
             {
-                Gizmos.DrawWireCube(node.boundingVolume.center, ((BoundingBox)node.boundingVolume).bounds.size);
                 DrawRecursive(node.leftChild, depth + 1);
             }
             if (node.rightChild != null)
             {
-                Gizmos.DrawWireCube(node.boundingVolume.center, ((BoundingBox)node.boundingVolume).bounds.size);
                 DrawRecursive(node.rightChild, depth + 1);
-            }
-            else
-            {
-                //Gizmos.color = Color.red;
-                Gizmos.DrawWireCube(node.boundingVolume.center, ((BoundingBox)node.boundingVolume).bounds.size);
             }
         }
     }

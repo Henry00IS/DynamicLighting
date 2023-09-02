@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using Unity.Mathematics;
-using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting.Acceleration
 {
@@ -10,7 +9,7 @@ namespace AlpacaIT.DynamicLighting.Acceleration
         /// <summary>
         /// The bounding volume that encompasses both the <see cref="leftChild"/> and the <see cref="rightChild"/>.
         /// </summary>
-        public BoundingVolume boundingVolume;
+        public BvhBoundingVolume boundingVolume;
 
         /// <summary>The left bounding volume at this node (if any).</summary>
         public BvhNode leftChild;
@@ -21,7 +20,7 @@ namespace AlpacaIT.DynamicLighting.Acceleration
         /// <summary>Takes the given bounding volumes and constructs a bounding volume hierarchy.</summary>
         /// <param name="boundingVolumes">The bounding volumes to be processed into a hierarchy.</param>
         /// <returns>The root node of the bounding volume hierarchy.</returns>
-        public static BvhNode Build(BoundingVolume[] boundingVolumes)
+        public static BvhNode Build(BvhBoundingVolume[] boundingVolumes)
         {
             var node = new BvhNode();
 
@@ -36,27 +35,25 @@ namespace AlpacaIT.DynamicLighting.Acceleration
             int splittingAxis = boundingVolumes[0].FindSplittingAxis(boundingVolumes);
 
             // Split the bounding volumes into two subsets.
-            BoundingVolume.SplitBoundingVolumes(boundingVolumes, splittingAxis, out BoundingVolume[] leftSubset, out BoundingVolume[] rightSubset);
+            BvhBoundingVolume.SplitBoundingVolumes(boundingVolumes, splittingAxis, out BvhBoundingVolume[] leftSubset, out BvhBoundingVolume[] rightSubset);
 
             node.leftChild = Build(leftSubset);
             node.rightChild = Build(rightSubset);
 
             // Calculate the bounding volume for the current node (e.g., union of left and right children's bounding volumes).
-            var aabb = new BoundingBox();
+            var aabb = new BvhBoundingVolume();
             node.boundingVolume = aabb;
 
             if (leftSubset.Length > 0)
-                aabb.bounds = new Bounds(leftSubset[0].center, Vector3.zero);
+                aabb.center = leftSubset[0].center;
             if (rightSubset.Length > 0)
-                aabb.bounds = new Bounds(rightSubset[0].center, Vector3.zero);
+                aabb.center = rightSubset[0].center;
 
             foreach (var child in leftSubset)
-                aabb.bounds.Encapsulate(((BoundingBox)child).bounds);
+                aabb.Encapsulate(child);
 
             foreach (var child in rightSubset)
-                aabb.bounds.Encapsulate(((BoundingBox)child).bounds);
-
-            aabb.center = aabb.bounds.center;
+                aabb.Encapsulate(child);
 
             return node;
         }
@@ -64,7 +61,7 @@ namespace AlpacaIT.DynamicLighting.Acceleration
         /// <summary>Find the nodes overlapping the specified world position.</summary>
         /// <param name="position">The world position to check for overlap.</param>
         /// <param name="nodes">A list to store the overlapping nodes.</param>
-        public void FindNodesOverlappingPosition(float3 position, ICollection<BoundingVolume> nodes)
+        public void FindNodesOverlappingPosition(float3 position, ICollection<BvhBoundingVolume> nodes)
         {
             // check if the current node's bounding volume intersects with the target position.
             if (boundingVolume.Contains(position))
