@@ -351,9 +351,8 @@ float point_in_box(float3 pos, float3 center, float3 boxsize, float epsilon = 0.
 
 float point_in_obb(float3 pos, float3 center, float3 boxsize, float3x3 rotation, float epsilon = 0.00001)
 {
-    pos = mul(pos, rotation);
-    center = mul(center, rotation);
-    return point_in_box(pos, center, boxsize, epsilon);
+    pos = abs(mul(pos - center, rotation));
+    return (pos.x <= boxsize.x + epsilon && pos.y <= boxsize.y + epsilon && pos.z <= boxsize.z + epsilon);
 }
 
 float point_in_sphere(float3 pos, float3 center, float radius, float epsilon = 0.00001)
@@ -363,46 +362,18 @@ float point_in_sphere(float3 pos, float3 center, float radius, float epsilon = 0
     return dist < (radius * radius) + epsilon;
 }
 
-
-
-float raycast_sphere(float3 origin, float3 target, float3 spherecenter, float radius)
+// special thanks to https://iquilezles.org/articles/intersectors/
+bool raycast_sphere(float3 origin, float3 center, float radius, float light_distanceSqr, float3 light_direction)
 {
-    /*float3 d = normalize(target - origin);
-    float3 m = origin - spherecenter;
-    float c = dot(m, m) - radius * radius;
-    // if there is definitely at least one real root, there must be an intersection.
-    if (c <= 0.0) return 1.0;
-    float b = dot(m, d);
-    // early exit if ray origin outside sphere and ray pointing away from sphere.
-    if (b > 0.0) return 0.0;
-    float disc = b*b - c;
-    // a negative discriminant corresponds to ray missing sphere.
-    if (disc < 0.0) return 0.0;
-    // now ray must hit sphere.
-    return 1.0;*/
-    
-    float3 d = normalize(target - origin);
-    
-    float3 m = origin - spherecenter; 
-    float b = dot(m, d);
-    float c = dot(m, m) - radius * radius;
-
-    // exit if r’s origin outside s (c > 0) and r pointing away from s (b > 0).
-    if (c > 0.0 && b > 0.0) return 0.0;
-    float discr = b*b - c;
-
-    // a negative discriminant corresponds to ray missing sphere.
-    if (discr < 0.0) return 0.0;
-
-    // ray now found to intersect sphere, compute smallest t value of intersection.
-    float t = -b - sqrt(discr);
-
-    // if t is negative, ray started inside sphere so clamp t to zero.
-    if (t < 0.0) t = 0.0;
-    float q = origin + t * d;
-    
-    // ensure that t does not exceed the ray origin and target.
-    return t <= length(abs(target - origin));
+    float3 oc = origin - center;
+    float b = dot( oc, light_direction );
+    float c = dot( oc, oc ) - radius*radius;
+    float h = b*b - c;
+    if(h<0.0)
+        return false; // no intersection
+    h = sqrt(h);
+    float tN = -b-h;
+    return tN > 0.0 && light_distanceSqr >= tN * tN;
 }
 
 // special thanks to https://iquilezles.org/articles/intersectors/
@@ -530,11 +501,11 @@ struct DynamicShape
     {
         if (is_box())
         {
-            return raycast_obb(origin, position, size, rotation, light_distanceSqr, light_direction);    
+            return raycast_obb(origin, position, size, rotation, light_distanceSqr, light_direction);
         }
         else if (is_sphere())
         {
-            return raycast_sphere(origin, target, position, size.x);
+            return raycast_sphere(origin, position, size.x, light_distanceSqr, light_direction);
         }
         else if (is_cylinder())
         {
