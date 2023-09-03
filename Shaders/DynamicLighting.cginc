@@ -362,18 +362,28 @@ float point_in_sphere(float3 pos, float3 center, float radius, float epsilon = 0
     return dist < (radius * radius) + epsilon;
 }
 
-// special thanks to https://iquilezles.org/articles/intersectors/
+// special thanks to Christer Ericson for the book Real-Time Collision Detection.
 bool raycast_sphere(float3 origin, float3 center, float radius, float light_distanceSqr, float3 light_direction)
 {
     float3 oc = origin - center;
-    float b = dot( oc, light_direction );
-    float c = dot( oc, oc ) - radius*radius;
-    float h = b*b - c;
-    if(h<0.0)
-        return false; // no intersection
-    h = sqrt(h);
-    float tN = -b-h;
-    return tN > 0.0 && light_distanceSqr >= tN * tN;
+    float b = dot(oc, light_direction);
+    float c = dot(oc, oc) - radius * radius;
+
+    // exit if ray's origin outside s (c > 0) and r pointing away from s (b > 0).
+    if (c > 0.0 && b > 0.0) return false;
+    float discr = b*b - c;
+
+    // a negative discriminant corresponds to ray missing sphere.
+    if (discr < 0.0) return false;
+
+    // ray now found to intersect sphere, compute smallest t value of intersection.
+    float t = -b - sqrt(discr);
+
+    // if t is negative, ray started inside sphere so clamp t to zero.
+    if (t < 0.0) t = 0.0;
+    
+    // ensure that t does not exceed the ray origin and target.
+    return light_distanceSqr >= t * t;
 }
 
 // special thanks to https://iquilezles.org/articles/intersectors/
