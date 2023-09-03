@@ -331,7 +331,8 @@ bool raycast_box(float3 origin, float3 size, float light_distanceSqr, float3 lig
     float3 t2 = -n + k;
     float tN = max( max( t1.x, t1.y ), t1.z );
     float tF = min( min( t2.x, t2.y ), t2.z );
-    if(tN>tF || tF<0.0) return false; // no intersection
+    if(tN>tF || tF<0.0)
+        return false; // no intersection
     return light_distanceSqr >= tN * tN;
 }
 
