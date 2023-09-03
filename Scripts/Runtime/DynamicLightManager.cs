@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using AlpacaIT.DynamicLighting.Acceleration;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
@@ -118,6 +119,8 @@ namespace AlpacaIT.DynamicLighting
         private List<DynamicLight> activeRealtimeLights;
         private ShaderDynamicLight[] shaderDynamicLights;
         private ComputeBuffer dynamicLightsBuffer;
+
+        internal ssBVH<DynamicLight> dynamicLightsBvh;
 
         private Vector3 lastCameraMetricGridPosition = new Vector3(float.NegativeInfinity, float.NegativeInfinity, float.NegativeInfinity);
         [System.NonSerialized]
@@ -292,6 +295,11 @@ namespace AlpacaIT.DynamicLighting
                 // manually register all lights - this is used after raytracing.
                 sceneDynamicLights = new List<DynamicLight>(FindObjectsOfType<DynamicLight>());
                 sceneDynamicLightsAddedDirty = true;
+                dynamicLightsBvh = new ssBVH<DynamicLight>(new SSObjectBVHNodeAdaptor(), sceneDynamicLights);
+            }
+            else
+            {
+                dynamicLightsBvh = new ssBVH<DynamicLight>(new SSObjectBVHNodeAdaptor(), new List<DynamicLight>());
             }
 
             // allocate the required arrays and buffers according to our budget.
@@ -382,6 +390,7 @@ namespace AlpacaIT.DynamicLighting
             Initialize();
             sceneDynamicLights.Add(light);
             sceneDynamicLightsAddedDirty = true;
+            dynamicLightsBvh.addObject(light);
         }
 
         internal void UnregisterDynamicLight(DynamicLight light)
@@ -392,6 +401,7 @@ namespace AlpacaIT.DynamicLighting
                 sceneRealtimeLights.Remove(light);
                 activeDynamicLights.Remove(light);
                 activeRealtimeLights.Remove(light);
+                dynamicLightsBvh.removeObject(light);
             }
         }
 
@@ -588,7 +598,37 @@ namespace AlpacaIT.DynamicLighting
                     Shader.DisableKeyword("DYNAMIC_LIGHTING_SHADOW_HARD");
                     break;
             }
+
+            dynamicLightsBvh.optimize();
         }
+
+        /*
+        private void LightsBvhToShader()
+        {
+            var shaderData = new List<BvhNode>();
+            var stack = new Stack<ssBVHNode<DynamicLight>>(16);
+            stack.Push(dynamicLightsBvh.rootBVH);
+            while (stack.Count > 0)
+            {
+                var node = stack.Pop();
+
+                if (node.IsLeaf)
+                {
+                    shaderData.Add(new BvhNode()
+                    {
+                        min = node.box.Min,
+                        max = node.box.Max,
+                        leftChild = 0,
+                        rightChild = 0,
+                    });
+                }
+                else
+                {
+                    stack.Push(node.left);
+                    stack.Push(node.right);
+                }
+            }
+        }*/
 
         /// <summary>
         /// Sorts the scene dynamic light lists by the distance from the specified origin. The

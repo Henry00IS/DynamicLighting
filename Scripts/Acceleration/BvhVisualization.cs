@@ -5,42 +5,74 @@ namespace AlpacaIT.DynamicLighting.Acceleration
 {
     public class BvhVisualization : MonoBehaviour
     {
-        private BvhNode hierarchy = new BvhNode() { boundingVolume = new BvhBoundingVolume() };
+        private void OnDrawGizmos()
+        {
+            Gizmos.color = Color.white;
+
+            var bvh = DynamicLightManager.Instance.dynamicLightsBvh;
+
+            if (bvh == null) return;
+            if (bvh.rootBVH == null) return;
+
+            var stack = new Stack<ssBVHNode<DynamicLight>>();
+            stack.Push(bvh.rootBVH);
+            while (stack.Count > 0)
+            {
+                var node = stack.Pop();
+
+                Gizmos.DrawWireCube(node.box.Center(), node.box.Diff());
+
+                if (!node.IsLeaf)
+                {
+                    stack.Push(node.left);
+                    stack.Push(node.right);
+                }
+            }
+        }
+
+        /*
+        private BvhHierarchy hierarchy = new BvhHierarchy();
 
         private void Start()
         {
-            var boundingVolumes = new List<BvhBoundingVolume>();
+            var boundingVolumes = new List<BvhNode>();
             foreach (var light in FindObjectsOfType<DynamicLight>())
             {
-                boundingVolumes.Add(new BvhBoundingVolume(light.transform.position, light.lightRadius));
+                boundingVolumes.Add(new BvhNode(light.transform.position, light.lightRadius));
             }
 
-            hierarchy = BvhNode.Build(boundingVolumes.ToArray());
+            hierarchy = new BvhHierarchy();
+            hierarchy.Build(boundingVolumes.ToArray());
         }
 
         private void OnDrawGizmos()
         {
-            Gizmos.color = Color.white;
-            DrawRecursive(hierarchy);
+            if (hierarchy.IsEmpty) return;
 
-            //List<BvhBoundingVolume> overlappingVolumes = new List<BvhBoundingVolume>();
+            Gizmos.color = Color.white;
+
+            var stack = new Stack<BvhNode>();
+            stack.Push(hierarchy.GetNode(0));
+            while (stack.Count > 0)
+            {
+                var node = stack.Pop();
+
+                Gizmos.DrawWireCube(node.center, node.size);
+
+                if (node.leftChild != 0)
+                {
+                    stack.Push(hierarchy.GetNode(node.leftChild));
+                }
+                if (node.rightChild != 0)
+                {
+                    stack.Push(hierarchy.GetNode(node.rightChild));
+                }
+            }
+
+            //var overlappingVolumes = new List<BvhNode>();
             //hierarchy.FindNodesOverlappingPosition(Camera.main.transform.position, overlappingVolumes);
             //
             //Debug.Log(overlappingVolumes.Count);
-        }
-
-        private void DrawRecursive(BvhNode node, int depth = 0)
-        {
-            Gizmos.DrawWireCube(node.boundingVolume.center, node.boundingVolume.size);
-
-            if (node.leftChild != null)
-            {
-                DrawRecursive(node.leftChild, depth + 1);
-            }
-            if (node.rightChild != null)
-            {
-                DrawRecursive(node.rightChild, depth + 1);
-            }
-        }
+        }*/
     }
 }
