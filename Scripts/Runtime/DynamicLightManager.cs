@@ -568,7 +568,7 @@ namespace AlpacaIT.DynamicLighting
 
             // upload the active light data to the graphics card.
             if (dynamicLightsBuffer != null && dynamicLightsBuffer.IsValid())
-                dynamicLightsBuffer.SetData(shaderDynamicLights);
+                dynamicLightsBuffer.SetData(shaderDynamicLights, 0, 0, activeDynamicLightsCount + activeRealtimeLightsCount);
             Shader.SetGlobalInt("dynamic_lights_count", activeDynamicLightsCount + activeRealtimeLightsCount);
 
             // update the ambient lighting color.
