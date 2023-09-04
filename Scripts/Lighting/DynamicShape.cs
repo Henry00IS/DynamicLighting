@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
@@ -69,6 +70,22 @@ namespace AlpacaIT.DynamicLighting
         private void OnDrawGizmosSelected()
         {
             selected = true;
+        }
+
+        private Vector3 previousPosition;
+        private Quaternion previousRotation;
+        private Vector3 previousScale;
+        public event Action<DynamicShape> OnTransformChanged;
+
+        private void Update()
+        {
+            if (transform.position != previousPosition || transform.rotation != previousRotation || transform.lossyScale != previousScale)
+            {
+                previousPosition = transform.position;
+                previousRotation = transform.rotation;
+                previousScale = transform.lossyScale;
+                OnTransformChanged?.Invoke(this);
+            }
         }
     }
 }

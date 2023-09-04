@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using AlpacaIT.DynamicLighting.Acceleration;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
@@ -19,11 +20,12 @@ namespace AlpacaIT.DynamicLighting
 
         /// <summary>The memory size in bytes of the <see cref="ShaderDynamicShape"/> struct.</summary>
         private int dynamicShapeStride;
-        private List<DynamicShape> sceneDynamicShapes;
 
+        private List<DynamicShape> sceneDynamicShapes;
         private List<DynamicShape> activeDynamicShapes;
         private ShaderDynamicShape[] shaderDynamicShapes;
         private ComputeBuffer dynamicShapesBuffer;
+        internal ssBVH<DynamicShape> dynamicShapesBvh;
 
         private void Initialize_Shapes(bool reload = false)
         {
@@ -31,6 +33,7 @@ namespace AlpacaIT.DynamicLighting
 
             // prepare to store dynamic shapes that will register themselves to us.
             sceneDynamicShapes = new List<DynamicShape>(dynamicShapeBudget);
+            dynamicShapesBvh = new ssBVH<DynamicShape>(new SSObjectBVHNodeShapeAdaptor(), new List<DynamicShape>());
 
             if (reload)
             {
@@ -62,6 +65,7 @@ namespace AlpacaIT.DynamicLighting
         {
             Initialize();
             sceneDynamicShapes.Add(shape);
+            dynamicShapesBvh.addObject(shape);
         }
 
         internal void UnregisterDynamicShape(DynamicShape shape)
@@ -70,6 +74,7 @@ namespace AlpacaIT.DynamicLighting
             {
                 sceneDynamicShapes.Remove(shape);
                 activeDynamicShapes.Remove(shape);
+                dynamicShapesBvh.removeObject(shape);
             }
         }
 

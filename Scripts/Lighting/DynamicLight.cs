@@ -1,3 +1,5 @@
+using AlpacaIT.DynamicLighting.Acceleration;
+using System;
 using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
@@ -178,6 +180,22 @@ namespace AlpacaIT.DynamicLighting
         {
             if (DynamicLightManager.hasInstance)
                 DynamicLightManager.Instance.UnregisterDynamicLight(this);
+        }
+
+        private Vector3 previousPosition;
+        private Quaternion previousRotation;
+        private float previousRadius;
+        public event Action<DynamicLight> OnTransformChanged;
+
+        private void Update()
+        {
+            if (transform.position != previousPosition || transform.rotation != previousRotation || lightRadius != previousRadius)
+            {
+                previousPosition = transform.position;
+                previousRotation = transform.rotation;
+                previousRadius = lightRadius;
+                OnTransformChanged?.Invoke(this);
+            }
         }
 
 #if UNITY_EDITOR
