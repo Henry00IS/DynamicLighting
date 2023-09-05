@@ -77,14 +77,14 @@ namespace AlpacaIT.DynamicLighting
         /// specifies how fast the waves move around the light source. This number can be negative
         /// to reverse the effect.
         /// </summary>
-        [Tooltip("When using the 'Wave' or 'Interference' light types, this specifies how fast the waves move around the light source. This number can be negative to reverse the effect.")]
+        [Tooltip("When using the 'Wave', 'Interference', 'Rotor', 'Shock' or 'Disco' light types, this specifies how fast the waves move around the light source. This number can be negative to reverse the effect.")]
         public float lightWaveSpeed = 1f;
 
         /// <summary>
         /// When using the 'Wave', 'Interference', 'Rotor', 'Shock' or 'Disco' light types, this
         /// changes the frequency of the waves. A higher number produces more waves that are closer together.
         /// </summary>
-        [Tooltip("When using the 'Wave' or 'Interference' light types, this changes the frequency of the waves. A higher number produces more waves that are closer together.")]
+        [Tooltip("When using the 'Wave', 'Interference', 'Rotor', 'Shock' or 'Disco' light types, this changes the frequency of the waves. A higher number produces more waves that are closer together.")]
         [Min(0f)]
         public float lightWaveFrequency = 1f;
 
@@ -94,7 +94,7 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         [Tooltip("When using the 'Rotor' light type, this changes the scale of the blob of light or shadow in the center. A negative number adds a shadow instead of a blob of light.")]
         [Range(-1f, 1f)]
-        public float lightRotorCenter = 0.2f;
+        public float lightRotorCenter = 0.1f;
 
         /// <summary>
         /// When using the 'Disco' light type, this specifies how fast the lights move vertically

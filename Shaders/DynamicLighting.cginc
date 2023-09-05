@@ -166,8 +166,6 @@ struct DynamicLight
     // calculates the rotor effect.
     float calculate_rotor(float3 light_position_minus_world)
     {
-        float signRotorCenter = sign(light_rotorCenter);
-
         float3x3 rot = look_at_matrix(forward, up);
         float3 world = mul(light_position_minus_world, rot);
 
@@ -181,22 +179,25 @@ struct DynamicLight
         // completes multiple oscillations in one circle. this angle is then offset by the current time
         // to create a rotation.
         float scale = 0.5 + 0.5 * cos(angle + _Time.y * light_waveSpeed * UNITY_PI * 2.0);
-
+        
         // near world.xz zero the light starts from a sharp center point. that doesn't look very nice so
         // add a blob of light or shadow in the center of the rotor to hide it.
-        float dist1 = distance(float2(0, 0), world.xz); // helpme reader: optimize the square roots away.
-        float dist2 = sqrt(radiusSqr) * abs(light_rotorCenter);
-        if (dist1 < dist2)
+        float absRotorCenter = radiusSqr * abs(light_rotorCenter);
+        float distSquared = dot(world.xz, world.xz);
+        if (light_rotorCenter < 0.0)
         {
-            // the light blob uses an exponent of 2 and shadows use 4.
-            float exponent = max(signRotorCenter * 4, 2);
-            scale *= pow(dist1 / dist2, exponent);
+            if (distSquared < absRotorCenter)
+                scale *= pow(distSquared / absRotorCenter, UNITY_PI);
         }
-
-        // this if statement does not cause a branch in the shader.
-        if (light_rotorCenter < 0)
-            return 1.0 - scale;
-        return scale;
+        else
+        {
+            distSquared *= 1.0 / absRotorCenter;
+            if (distSquared < 1.0)
+                scale = 1.0 - distSquared + scale * distSquared;
+        }
+        
+        // clueless why but this makes light and shadow blades equal size.
+        return pow(scale, UNITY_PI);
     }
     
     // calculates the shock effect.
