@@ -4,7 +4,7 @@ using System.IO.Compression;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace AlpacaIT.DynamicLighting
+namespace AlpacaIT.DynamicLighting.Internal
 {
     public static class Utilities
     {

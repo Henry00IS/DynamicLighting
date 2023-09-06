@@ -1,3 +1,4 @@
+using AlpacaIT.DynamicLighting.Internal;
 using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting.Editor

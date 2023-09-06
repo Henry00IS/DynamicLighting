@@ -1,3 +1,4 @@
+using AlpacaIT.DynamicLighting.Internal;
 using Unity.Mathematics;
 using UnityEngine;
 
