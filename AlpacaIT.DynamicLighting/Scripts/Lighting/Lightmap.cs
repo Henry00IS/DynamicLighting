@@ -3,7 +3,7 @@
 namespace AlpacaIT.DynamicLighting
 {
     [System.Serializable]
-    public class Lightmap
+    internal class Lightmap
     {
         public MeshRenderer renderer;
 

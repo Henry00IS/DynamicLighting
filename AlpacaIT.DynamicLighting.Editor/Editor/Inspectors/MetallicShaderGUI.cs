@@ -1,9 +1,7 @@
-#if UNITY_EDITOR
-
 using UnityEditor;
 using UnityEngine;
 
-namespace AlpacaIT.DynamicLighting
+namespace AlpacaIT.DynamicLighting.Editor
 {
     public class MetallicShaderGUI : ShaderGUI
     {
@@ -34,5 +32,3 @@ namespace AlpacaIT.DynamicLighting
         }
     }
 }
-
-#endif

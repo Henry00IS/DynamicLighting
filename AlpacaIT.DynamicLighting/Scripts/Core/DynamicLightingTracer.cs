@@ -4,10 +4,17 @@ using UnityEngine;
 namespace AlpacaIT.DynamicLighting
 {
     /// <summary>The raytracer that calculates shadows for all dynamic lights.</summary>
-    public class DynamicLightingTracer
+    internal class DynamicLightingTracer
     {
         /// <summary>The maximum size of the lightmap to be baked (defaults to 2048x2048).</summary>
         public int maximumLightmapSize { get; set; } = 2048;
+
+        /// <summary>Called when this tracer instance has been cancelled.</summary>
+#pragma warning disable CS0067
+
+        public event System.EventHandler<System.EventArgs> cancelled;
+
+#pragma warning restore CS0067
 
         private int traces = 0;
         private float tracingTime = 0f;
@@ -75,7 +82,7 @@ namespace AlpacaIT.DynamicLighting
 
                         Raytrace(meshFilter, progressMin, progressMax);
 #if UNITY_EDITOR
-                        if (progressBarCancel) break;
+                        if (progressBarCancel) { cancelled?.Invoke(this, null); break; }
 #endif
                     }
                 }
@@ -97,60 +104,6 @@ namespace AlpacaIT.DynamicLighting
 #endif
             }
         }
-
-#if UNITY_EDITOR
-
-        private static bool EditorEnsureUserSavedScene()
-        {
-            if (!EditorUtilities.IsActiveSceneSavedToDisk)
-            {
-                UnityEditor.EditorUtility.DisplayDialog("Dynamic Lighting", "Please save your scene to disk before raytracing.", "Okay");
-                return false;
-            }
-            return true;
-        }
-
-        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 512", false, 0)]
-        private static void EditorRaytrace512()
-        {
-            if (!EditorEnsureUserSavedScene()) return;
-
-            var tracer = new DynamicLightingTracer();
-            tracer.maximumLightmapSize = 512;
-            tracer.StartRaytracing();
-        }
-
-        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 1024", false, 1)]
-        private static void EditorRaytrace1024()
-        {
-            if (!EditorEnsureUserSavedScene()) return;
-
-            var tracer = new DynamicLightingTracer();
-            tracer.maximumLightmapSize = 1024;
-            tracer.StartRaytracing();
-        }
-
-        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 2048 (Recommended)", false, 1)]
-        private static void EditorRaytrace2048()
-        {
-            if (!EditorEnsureUserSavedScene()) return;
-
-            var tracer = new DynamicLightingTracer();
-            tracer.maximumLightmapSize = 2048;
-            tracer.StartRaytracing();
-        }
-
-        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 4096", false, 1)]
-        private static void EditorRaytrace4096()
-        {
-            if (!EditorEnsureUserSavedScene()) return;
-
-            var tracer = new DynamicLightingTracer();
-            tracer.maximumLightmapSize = 4096;
-            tracer.StartRaytracing();
-        }
-
-#endif
 
         private static string BytesToUnitString(long bytes)
         {
@@ -415,7 +368,7 @@ namespace AlpacaIT.DynamicLighting
             DynamicLightManager.Instance.lightmaps.Add(lightmap);
 
             // write the lightmap shadow bits to disk.
-            if (!EditorUtilities.WriteLightmapData(lightmap.identifier, pixels_lightmap))
+            if (!Utilities.WriteLightmapData(lightmap.identifier, pixels_lightmap))
                 Debug.LogError($"Unable to write the lightmap {lightmap.identifier} file in the active scene resources directory!");
         }
 

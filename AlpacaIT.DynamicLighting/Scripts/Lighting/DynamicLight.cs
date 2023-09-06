@@ -186,7 +186,7 @@ namespace AlpacaIT.DynamicLighting
         {
             Gizmos.color = lightColor;
 
-            Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/Gizmos/DynamicLightingPointLight.psd", true, lightColor);
+            Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingPointLight.psd", true, lightColor);
         }
 
 #endif

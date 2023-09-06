@@ -1,7 +1,4 @@
-﻿#if UNITY_EDITOR
-
-using UnityEditor;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
@@ -44,5 +41,3 @@ namespace AlpacaIT.DynamicLighting
         public Texture2D dynamicPointLightIcon;
     }
 }
-
-#endif

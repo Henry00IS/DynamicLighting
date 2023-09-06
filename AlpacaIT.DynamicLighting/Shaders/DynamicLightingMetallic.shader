@@ -14,7 +14,7 @@ Shader "Dynamic Lighting/Metallic PBR"
         _OcclusionStrength("Occlusion strength", Range(0,1)) = 0.75
     }
     
-    CustomEditor "AlpacaIT.DynamicLighting.MetallicShaderGUI"
+    CustomEditor "AlpacaIT.DynamicLighting.Editor.MetallicShaderGUI"
     SubShader
     {
         Tags { "RenderType" = "Opaque" }

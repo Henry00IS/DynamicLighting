@@ -1,13 +1,35 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 namespace AlpacaIT.DynamicLighting
 {
     [ExecuteInEditMode]
     public class DynamicLightManager : MonoBehaviour
     {
+        /// <summary>Called when a <see cref="DynamicLight"/> gets registered (i.e. enabled).</summary>
+        public event EventHandler<DynamicLightRegisteredEventArgs> lightRegistered;
+
+        /// <summary>Called when a <see cref="DynamicLight"/> gets unregistered (i.e. disabled).</summary>
+        public event EventHandler<DynamicLightUnregisteredEventArgs> lightUnregistered;
+
+        /// <summary>Called when computing shadows for the current scene has started.</summary>
+        public event EventHandler<EventArgs> traceStarted;
+
+        /// <summary>Called when computing shadows for the current scene has been cancelled.</summary>
+        public event EventHandler<EventArgs> traceCancelled;
+
+        /// <summary>Called when computing shadows for the current scene has completed.</summary>
+        public event EventHandler<EventArgs> traceCompleted;
+
+        /// <summary>The light channel number used by realtime lights without baked shadows.</summary>
         public const int realtimeLightChannel = 32;
 
+        /// <summary>
+        /// The singleton dynamic lighting manager instance in the scene. Use <see cref="Instance"/>
+        /// to access it.
+        /// </summary>
         private static DynamicLightManager s_Instance;
 
         /// <summary>Gets the singleton dynamic lighting manager instance or creates it.</summary>
@@ -125,92 +147,6 @@ namespace AlpacaIT.DynamicLighting
 
 #if UNITY_EDITOR
 
-        [UnityEditor.MenuItem("Dynamic Lighting/PayPal Donation", false, 41)]
-        private static void EditorPayPalDonation()
-        {
-            Application.OpenURL("https://paypal.me/henrydejongh");
-        }
-
-        [UnityEditor.MenuItem("GameObject/Light/Dynamic Point Light", false, 40)]
-        private static void EditorCreateDynamicPointLight()
-        {
-            EditorCreateDynamicLight("Dynamic Light");
-        }
-
-        [UnityEditor.MenuItem("GameObject/Light/Dynamic Spot Light", false, 40)]
-        private static void EditorCreateDynamicSpotLight()
-        {
-            var light = EditorCreateDynamicLight("Dynamic Spot Light");
-            light.lightType = DynamicLightType.Spot;
-        }
-
-        [UnityEditor.MenuItem("GameObject/Light/Dynamic Directional Light", false, 40)]
-        private static void EditorCreateDynamicDirectionalLight()
-        {
-            // create the outer object.
-            var name = "Dynamic Directional Light";
-            GameObject parent = new GameObject(name);
-            UnityEditor.Undo.RegisterCreatedObjectUndo(parent, "Create " + name);
-
-            // create the sun point light far away from the scene.
-            GameObject sun = new GameObject("Dynamic Sun Light");
-            sun.transform.parent = parent.transform;
-            sun.transform.localPosition = new Vector3(0f, 0f, -2500f); // 2.5km
-
-            // rotate the outer object to look down (identical to a new scene directional light).
-            parent.transform.localRotation = Quaternion.Euler(50f, -30f, 0f);
-
-            // add the dynamic light component.
-            var light = sun.AddComponent<DynamicLight>();
-            light.lightIntensity = 2.0f;
-            light.lightRadius = 10000.0f; // 10km
-
-            // make sure it's selected and unity editor will let the user rename the game object.
-            UnityEditor.Selection.activeGameObject = parent;
-        }
-
-        [UnityEditor.MenuItem("GameObject/Light/Dynamic Discoball Light", false, 40)]
-        private static void EditorCreateDynamicDiscoballLight()
-        {
-            var light = EditorCreateDynamicLight("Dynamic Discoball Light");
-            light.lightType = DynamicLightType.Discoball;
-            light.lightCutoff = 12.5f;
-            light.lightOuterCutoff = 14.0f;
-        }
-
-        /// <summary>Adds a new dynamic light game object to the scene.</summary>
-        /// <param name="name">The name of the game object that will be created.</param>
-        /// <returns>The dynamic light component.</returns>
-        private static DynamicLight EditorCreateDynamicLight(string name)
-        {
-            GameObject go = new GameObject(name);
-            UnityEditor.Undo.RegisterCreatedObjectUndo(go, "Create " + name);
-
-            // place the new game object as a child of the current selection in the editor.
-            var parent = UnityEditor.Selection.activeTransform;
-            if (parent)
-            {
-                // keep the game object transform identity.
-                go.transform.SetParent(parent, false);
-            }
-            else
-            {
-                // move it in front of the current camera.
-                var camera = EditorUtilities.GetSceneViewCamera();
-                if (camera)
-                {
-                    go.transform.position = camera.transform.TransformPoint(Vector3.forward * 2f);
-                }
-            }
-
-            // add the dynamic light component.
-            var light = go.AddComponent<DynamicLight>();
-
-            // make sure it's selected and unity editor will let the user rename the game object.
-            UnityEditor.Selection.activeGameObject = go;
-            return light;
-        }
-
         /// <summary>
         /// Called by <see cref="DynamicLightingTracer"/> to properly free up the compute buffers
         /// before clearing the lightmaps collection. Then deletes all lightmap files from disk.
@@ -225,7 +161,7 @@ namespace AlpacaIT.DynamicLighting
             lightmaps.Clear();
 
             // delete the lightmap files from disk.
-            EditorUtilities.DeleteLightmapData();
+            Utilities.DeleteLightmapData();
 
             // make sure the user gets prompted to save their scene.
             UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
@@ -259,7 +195,7 @@ namespace AlpacaIT.DynamicLighting
 
         /// <summary>Finds all of the dynamic lights in the scene that are not realtime.</summary>
         /// <returns>The collection of dynamic lights in the scene.</returns>
-        public static List<DynamicLight> FindDynamicLightsInScene()
+        internal static List<DynamicLight> FindDynamicLightsInScene()
         {
             var dynamicPointLights = new List<DynamicLight>(FindObjectsOfType<DynamicLight>());
 
@@ -321,7 +257,7 @@ namespace AlpacaIT.DynamicLighting
                     meshRenderer.GetPropertyBlock(materialPropertyBlock);
 
                 // assign the lightmap data to the material property block.
-                if (RuntimeUtilities.ReadLightmapData(lightmap.identifier, out uint[] pixels))
+                if (Utilities.ReadLightmapData(lightmap.identifier, out uint[] pixels))
                 {
                     lightmap.buffer = new ComputeBuffer(pixels.Length, 4);
                     lightmap.buffer.SetData(pixels);
@@ -382,6 +318,8 @@ namespace AlpacaIT.DynamicLighting
             Initialize();
             sceneDynamicLights.Add(light);
             sceneDynamicLightsAddedDirty = true;
+
+            lightRegistered?.Invoke(this, new DynamicLightRegisteredEventArgs(light));
         }
 
         internal void UnregisterDynamicLight(DynamicLight light)
@@ -392,6 +330,8 @@ namespace AlpacaIT.DynamicLighting
                 sceneRealtimeLights.Remove(light);
                 activeDynamicLights.Remove(light);
                 activeRealtimeLights.Remove(light);
+
+                lightUnregistered?.Invoke(this, new DynamicLightUnregisteredEventArgs(light));
             }
         }
 
@@ -400,7 +340,8 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         private void ReallocateShaderLightBuffer()
         {
-            Debug.Log("REALLOC");
+            if (Application.isPlaying)
+                Debug.LogWarning("Reallocation of dynamic lighting shader buffers on the graphics card due to a light budget change (slow).");
 
             // properly release any old buffer.
             if (dynamicLightsBuffer != null && dynamicLightsBuffer.IsValid())
@@ -421,7 +362,7 @@ namespace AlpacaIT.DynamicLighting
             // editor scene view support.
             if (!Application.isPlaying)
             {
-                camera = EditorUtilities.GetSceneViewCamera();
+                camera = Utilities.GetSceneViewCamera();
             }
             else
             {
@@ -746,6 +687,43 @@ namespace AlpacaIT.DynamicLighting
                 }
             }
 #endif
+        }
+
+#if UNITY_EDITOR
+
+        private static bool EditorEnsureUserSavedScene()
+        {
+            if (!Utilities.IsActiveSceneSavedToDisk)
+            {
+                UnityEditor.EditorUtility.DisplayDialog("Dynamic Lighting", "Please save your scene to disk before raytracing.", "Okay");
+                return false;
+            }
+            return true;
+        }
+
+#endif
+
+        /// <summary>Raytraces the current scene, calculating the shadows for all dynamic lights.</summary>
+        /// <param name="maximumLightmapSize">
+        /// The maximum size of the lightmap to be baked (defaults to 2048x2048).
+        /// </param>
+        public void Raytrace(int maximumLightmapSize = 2048)
+        {
+#if UNITY_EDITOR
+            if (!EditorEnsureUserSavedScene()) return;
+#endif
+            var tracer = new DynamicLightingTracer();
+            tracer.maximumLightmapSize = maximumLightmapSize;
+
+            bool cancelled = false;
+            tracer.cancelled += (s, e) => { cancelled = true; traceCancelled?.Invoke(this, null); };
+
+            traceStarted?.Invoke(this, null);
+
+            tracer.StartRaytracing();
+
+            if (!cancelled)
+                traceCompleted?.Invoke(this, null);
         }
     }
 }
