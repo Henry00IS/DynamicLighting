@@ -39,6 +39,25 @@ float rand(float co) { return frac(sin(co * (91.3458)) * 47453.5453); }
 float rand(float2 co) { return frac(sin(dot(co.xy, float2(12.9898, 78.233))) * 43758.5453); }
 float rand(float3 co) { return rand(co.xy + rand(co.z)); }
 
+bool point_in_sphere(float3 pos, float3 center, float radius, float epsilon = 0.00001)
+{
+    float3 dist = center - pos;
+    dist = dot(dist, dist);
+    return dist < (radius * radius) + epsilon;
+}
+
+// shoutouts to lordofduct (https://forum.unity.com/threads/how-do-i-find-the-closest-point-on-a-line.340058/)
+float3 nearest_point_on_finite_line(float3 start, float3 end, float3 pnt)
+{
+    float3 linex = end - start;
+    float len = length(linex);
+    linex = normalize(linex);
+    float3 v = pnt - start;
+    float d = dot(v, linex);
+    d = clamp(d, 0.0, len);
+    return start + linex * d;
+}
+
 // special thanks to https://learnopengl.com/PBR/Lighting
 
 // normal distribution function: approximates the amount the surface's
