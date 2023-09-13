@@ -210,6 +210,13 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Stores dynamic light runtime effect values that change at irregular intervals.</summary>
         internal DynamicLightCache cache = new DynamicLightCache();
 
+        /// <summary>
+        /// The largest spherical radius that the light will occupy (either <see
+        /// cref="lightRadius"/> or <see cref="lightVolumetricRadius"/>. This value is internally
+        /// used for culling off-camera lights.
+        /// </summary>
+        internal float largestLightRadius => lightRadius > lightVolumetricRadius ? lightRadius : lightVolumetricRadius;
+
         private void OnEnable()
         {
             DynamicLightManager.Instance.RegisterDynamicLight(this);

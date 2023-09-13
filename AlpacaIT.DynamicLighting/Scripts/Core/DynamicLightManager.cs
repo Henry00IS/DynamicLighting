@@ -457,9 +457,9 @@ namespace AlpacaIT.DynamicLighting
                 if (activeDynamicLights.Count < dynamicLightBudget)
                 {
 #if UNITY_EDITOR    // optimization: only add lights that are within the camera frustum.
-                    if (!Application.isPlaying || MathEx.CheckSphereIntersectsFrustum(frustumPlanes, sceneDynamicLights[i].transform.position, sceneDynamicLights[i].lightRadius))
+                    if (!Application.isPlaying || MathEx.CheckSphereIntersectsFrustum(frustumPlanes, sceneDynamicLights[i].transform.position, sceneDynamicLights[i].largestLightRadius))
 #else
-                    if (MathEx.CheckSphereIntersectsFrustum(frustumPlanes, sceneDynamicLights[i].transform.position, sceneDynamicLights[i].lightRadius))
+                    if (MathEx.CheckSphereIntersectsFrustum(frustumPlanes, sceneDynamicLights[i].transform.position, sceneDynamicLights[i].largestLightRadius))
 #endif
                     {
                         activeDynamicLights.Add(sceneDynamicLights[i]);
