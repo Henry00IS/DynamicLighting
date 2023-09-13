@@ -69,29 +69,43 @@
 				float4 color = tex2D(_MainTex, i.uv);
 				
                 // iterate over every dynamic light in the scene:
-                float3 light_final = float3(0, 0, 0);
+                float4 fog_final = float4(0.0, 0.0, 0.0, 0.0);
                 for (uint k = 0; k < dynamic_lights_count; k++)
 				{
 					// get the current light from memory.
 					DynamicLight light = dynamic_lights[k];
-	
+					
 					float3 camera = _WorldSpaceCameraPos;
 					float4 fog_color = float4(light.color, 1.0);
 					float3 fog_center = light.position;
 					float fog_radius = sqrt(light.radiusSqr);
-					
+					float fog_intensity_multiplier = 1.0;
+		
 					// closest point to the fog center on line between camera and fragment.
 					float3 fog_closest_point = nearest_point_on_finite_line(camera, worldspace, fog_center);
 					
 					// does the camera to world line intersect the fog sphere?
-					if (point_in_sphere(fog_center, fog_closest_point, fog_radius))
+					if (point_in_sphere(fog_closest_point, fog_center, fog_radius))
 					{
 						// distance from the closest point on the camera and fragment line to the fog center.
 						float fog_closest_point_distance_to_interior_sphere = fog_radius - distance(fog_closest_point, fog_center);
-					
+			
 						// t is the volumetric linear color interpolant from 1.0 (center) to 0.0 (edge) of the sphere.
-						float t = pow(fog_closest_point_distance_to_interior_sphere / fog_radius, 2.0);
-					
+						float t = fog_closest_point_distance_to_interior_sphere / fog_radius;
+						//float t = pow(fog_closest_point_distance_to_interior_sphere / fog_radius, 2.0);
+						
+						//t = saturate(t * 4.0);
+						
+						// the distance from the camera to the world is used to make nearby geometry inside the fog visible.
+						float camera_distance_from_world = distance(camera, worldspace) * 0.5;
+						
+						// we only subtract from t so that naturally fading fog takes precedence.
+						t = min(t, camera_distance_from_world);
+			
+						// let the user tweak the fog intensity with a multiplier.
+						t *= fog_intensity_multiplier;
+						
+						// blend between the current color and the fog color.
 						color = lerp(color, fog_color, t);
 					}
 				}
