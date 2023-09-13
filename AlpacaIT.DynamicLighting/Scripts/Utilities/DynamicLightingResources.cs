@@ -39,6 +39,6 @@ namespace AlpacaIT.DynamicLighting
         }
 
         public Texture2D dynamicPointLightIcon;
-        public Material dynamicVolumetricFogMaterial;
+        public Material dynamicLightingPostProcessingMaterial;
     }
 }

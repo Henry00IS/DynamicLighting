@@ -58,6 +58,15 @@ float3 nearest_point_on_finite_line(float3 start, float3 end, float3 pnt)
     return start + linex * d;
 }
 
+// looks at each channel's color information and multiplies the inverse of the blend and
+// base colors. the result color is always a lighter color. screening with black leaves the
+// color unchanged. screening with white produces white. the effect is similar to projecting
+// multiple photographic slides on top of each other.
+float4 color_screen(float4 self, float4 blend)
+{
+    return 1.0 - (1.0 - self) * (1.0 - blend);
+}
+
 // special thanks to https://learnopengl.com/PBR/Lighting
 
 // normal distribution function: approximates the amount the surface's

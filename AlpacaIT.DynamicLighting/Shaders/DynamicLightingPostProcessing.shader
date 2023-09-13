@@ -1,8 +1,8 @@
-﻿Shader "Hidden/DynamicVolumetricFogPostProcess"
+﻿Shader "Hidden/DynamicLightingPostProcessing"
 {
 	Properties
 	{
-        _MainTex ("Texture", 2D) = "white" {}
+		_MainTex ("Texture", 2D) = "white" {}
 	}
 
 	SubShader
@@ -33,7 +33,7 @@
 
 			float4x4 clipToWorld;
 			sampler2D_float _CameraDepthTexture;
-            sampler2D _MainTex;
+			sampler2D _MainTex;
 
 			v2f vert (appdata v)
 			{
@@ -68,21 +68,29 @@
 				float3 worldspace = ComputeWorldSpacePosition(i.uv.xy, depth, clipToWorld);
 				float4 color = tex2D(_MainTex, i.uv);
 				
-                // iterate over every dynamic light in the scene:
-                float4 fog_final = float4(0.0, 0.0, 0.0, 0.0);
-                for (uint k = 0; k < dynamic_lights_count; k++)
+				// iterate over every dynamic light in the scene:
+				float4 fog_final = float4(0.0, 0.0, 0.0, 0.0);
+				float fog_final_t = 0.0;
+				for (uint k = 0; k < dynamic_lights_count; k++)
 				{
 					// get the current light from memory.
 					DynamicLight light = dynamic_lights[k];
+		
+					// only process volumetric lights.
+					if (!light.is_volumetric()) continue;
 					
-					float3 camera = _WorldSpaceCameraPos;
 					float4 fog_color = float4(light.color, 1.0);
 					float3 fog_center = light.position;
-					float fog_radius = sqrt(light.radiusSqr);
-					float fog_intensity_multiplier = 1.0;
+					float fog_radius = sqrt(light.volumetricRadiusSqr);
+					
+					// nothing to do when the radius is zero.
+					if (fog_radius == 0.0) continue;
+		
+					// nothing to do when the intensity is zero.
+					if (light.volumetricIntensity == 0.0) continue;
 		
 					// closest point to the fog center on line between camera and fragment.
-					float3 fog_closest_point = nearest_point_on_finite_line(camera, worldspace, fog_center);
+					float3 fog_closest_point = nearest_point_on_finite_line(_WorldSpaceCameraPos, worldspace, fog_center);
 					
 					// does the camera to world line intersect the fog sphere?
 					if (point_in_sphere(fog_closest_point, fog_center, fog_radius))
@@ -90,27 +98,31 @@
 						// distance from the closest point on the camera and fragment line to the fog center.
 						float fog_closest_point_distance_to_interior_sphere = fog_radius - distance(fog_closest_point, fog_center);
 			
-						// t is the volumetric linear color interpolant from 1.0 (center) to 0.0 (edge) of the sphere.
+						// t is the volumetric non-linear color interpolant from 1.0 (center) to 0.0 (edge) of the sphere.
 						float t = fog_closest_point_distance_to_interior_sphere / fog_radius;
-						//float t = pow(fog_closest_point_distance_to_interior_sphere / fog_radius, 2.0);
 						
-						//t = saturate(t * 4.0);
+						// apply the thickness to the fog that appears as a solid color.
+						t = saturate(t * light.volumetricThickness);
 						
 						// the distance from the camera to the world is used to make nearby geometry inside the fog visible.
-						float camera_distance_from_world = distance(camera, worldspace) * 0.5;
+						float camera_distance_from_world = distance(_WorldSpaceCameraPos, worldspace) * (1.0 / light.volumetricVisibility);
 						
 						// we only subtract from t so that naturally fading fog takes precedence.
 						t = min(t, camera_distance_from_world);
 			
 						// let the user tweak the fog intensity with a multiplier.
-						t *= fog_intensity_multiplier;
-						
+						t *= light.volumetricIntensity;
+			
+						// remember the most opaque fog that we have encountered.
+						fog_final_t = max(fog_final_t, t);
+			
 						// blend between the current color and the fog color.
-						color = lerp(color, fog_color, t);
+						fog_final = color_screen(fog_final, fog_color * t);
 					}
 				}
 				
-				return color;
+				// special blend that allows for fully opaque fog.
+				return lerp(color_screen(fog_final, color), fog_final, saturate(fog_final_t));
 			}
 			ENDCG
 		}

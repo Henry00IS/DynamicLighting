@@ -26,6 +26,12 @@ struct DynamicLight
     // -- 16 byte boundary --
     float3 forward;
     float  shimmerModifier;
+    // -- 16 byte boundary --
+    float  volumetricRadiusSqr;
+    float  volumetricIntensity;
+    float  volumetricThickness;
+    float  volumetricVisibility;
+    // -- 16 byte boundary --
     
     // the first 5 bits contain a valid channel index so mask by 31.
     uint get_shadow_channel()
@@ -97,6 +103,12 @@ struct DynamicLight
     uint is_disco()
     {
         return channel & 16384;
+    }
+    
+    // bit 16 determines whether the light is volumetric.
+    uint is_volumetric()
+    {
+        return channel & 32768;
     }
     
     // calculates the spotlight effect.

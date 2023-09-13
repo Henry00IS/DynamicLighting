@@ -567,6 +567,11 @@ namespace AlpacaIT.DynamicLighting
             shaderDynamicLights[idx].shimmerScale = light.lightShimmerScale;
             shaderDynamicLights[idx].shimmerModifier = light.lightShimmerModifier;
 
+            // the volumetric intensity is set by the effects update step.
+            shaderDynamicLights[idx].volumetricRadiusSqr = light.lightVolumetricRadius * light.lightVolumetricRadius;
+            shaderDynamicLights[idx].volumetricThickness = light.lightVolumetricThickness;
+            shaderDynamicLights[idx].volumetricVisibility = light.lightVolumetricVisibility <= 0f ? 0.00001f : light.lightVolumetricVisibility;
+
             switch (light.lightType)
             {
                 case DynamicLightType.Spot:
@@ -624,6 +629,13 @@ namespace AlpacaIT.DynamicLighting
                     shaderDynamicLights[idx].channel |= (uint)1 << 9; // random shimmer light bit
                     break;
             }
+
+            switch (light.lightVolumetricType)
+            {
+                case DynamicLightVolumetricType.Sphere:
+                    shaderDynamicLights[idx].channel |= (uint)1 << 15; // volumetric light bit
+                    break;
+            }
         }
 
         private void UpdateLightEffects(int idx, DynamicLight light)
@@ -633,11 +645,11 @@ namespace AlpacaIT.DynamicLighting
             switch (light.lightEffect)
             {
                 case DynamicLightEffect.Steady:
-                    light.cache.intensity = light.lightIntensity;
+                    light.cache.intensity = 1.0f;
                     break;
 
                 case DynamicLightEffect.Pulse:
-                    light.cache.intensity = light.lightIntensity * Mathf.Lerp(light.lightEffectPulseModifier, 1.0f, (1f + Mathf.Sin(Time.time * Mathf.PI * 2f * light.lightEffectPulseSpeed)) * 0.5f);
+                    light.cache.intensity = Mathf.Lerp(light.lightEffectPulseModifier, 1.0f, (1f + Mathf.Sin(Time.time * Mathf.PI * 2f * light.lightEffectPulseSpeed)) * 0.5f);
                     break;
             }
 
@@ -650,7 +662,7 @@ namespace AlpacaIT.DynamicLighting
                 switch (light.lightEffect)
                 {
                     case DynamicLightEffect.Random:
-                        light.cache.intensity = light.lightIntensity * Mathf.Lerp(light.lightEffectPulseModifier, 1.0f, Random.value);
+                        light.cache.intensity = Mathf.Lerp(light.lightEffectPulseModifier, 1.0f, Random.value);
                         break;
 
                     case DynamicLightEffect.Flicker:
@@ -658,19 +670,20 @@ namespace AlpacaIT.DynamicLighting
                         if (random < 0.5f)
                             light.cache.intensity = 0.0f;
                         else
-                            light.cache.intensity = light.lightIntensity * Mathf.Lerp(light.lightEffectPulseModifier, 1.0f, Random.value);
+                            light.cache.intensity = Mathf.Lerp(light.lightEffectPulseModifier, 1.0f, Random.value);
                         break;
 
                     case DynamicLightEffect.Strobe:
                         light.cache.strobeActive = !light.cache.strobeActive;
-                        light.cache.intensity = light.cache.strobeActive ? light.lightIntensity : light.lightIntensity * light.lightEffectPulseModifier;
+                        light.cache.intensity = light.cache.strobeActive ? 1.0f : light.lightEffectPulseModifier;
                         break;
                 }
             }
 
             // assign the cached values to the shader lights.
 
-            shaderDynamicLights[idx].intensity = light.cache.intensity;
+            shaderDynamicLights[idx].intensity = light.lightIntensity * light.cache.intensity;
+            shaderDynamicLights[idx].volumetricIntensity = light.lightVolumetricIntensity * light.cache.intensity;
         }
 
         private void OnDrawGizmos()

@@ -45,5 +45,27 @@ namespace AlpacaIT.DynamicLighting
         public Vector3 forward;
         /// <summary>The shimmer modifier.</summary>
         public float shimmerModifier;
+
+        // -- 16 byte boundary --
+
+        /// <summary>
+        /// The maximum cutoff radius where the volumetric light fog is guaranteed to end.
+        /// </summary>
+        public float volumetricRadiusSqr;
+
+        /// <summary>
+        /// The volumetric fog intensity modifier changes the transparency of the final fog.
+        /// </summary>
+        public float volumetricIntensity;
+
+        /// <summary>
+        /// The volumetric fog thickness makes it increasingly more difficult to see through the fog.
+        /// </summary>
+        public float volumetricThickness;
+
+        /// <summary>The visibility in meters within the volumetric fog.</summary>
+        public float volumetricVisibility;
+
+        // -- 16 byte boundary --
     };
 }

@@ -163,6 +163,47 @@ namespace AlpacaIT.DynamicLighting
         [Tooltip("The framerate independent fixed timestep frequency for lighting effects in seconds. For example a frequency of 30Hz would be achieved using the formula 1f / 30f.\n\nUsed to decouple the lighting calculations from the framerate. If you have a flickering light or strobe light, the light may be on over several frames. If you are playing VR at 144Hz then the light may only turn on and off 30 times per second, giving you that sense of reality, opposed to having a light flicker at 144 times per second causing visual noise but no distinct on/off period.")]
         public float lightEffectTimestepFrequency = 1f / 30f;
 
+        /// <summary>
+        /// The different volumetric types that can be applied to a dynamic light. This requires the
+        /// post processing script to be attached to the camera.
+        /// </summary>
+        [Header("Post Processing:")]
+        [Tooltip("The different volumetric types that can be applied to a dynamic light. This requires the post processing script to be attached to the camera.")]
+        public DynamicLightVolumetricType lightVolumetricType = DynamicLightVolumetricType.None;
+
+        /// <summary>
+        /// The spherical radius that the volumetric light will occupy. The volumetric fog cannot
+        /// exceed this radius and is guaranteed to be completely gone when it reaches the end.
+        /// </summary>
+        [Tooltip("The spherical radius that the volumetric light will occupy. The volumetric fog cannot exceed this radius and is guaranteed to be completely gone when it reaches the end.")]
+        [Min(0f)]
+        public float lightVolumetricRadius = 4.0f;
+
+        /// <summary>
+        /// The volumetric fog thickness makes it increasingly more difficult to see through the
+        /// fog. It appears as a solid color.
+        /// </summary>
+        [Tooltip("The volumetric fog thickness makes it increasingly more difficult to see through the fog. It appears as a solid color.")]
+        [Min(1f)]
+        public float lightVolumetricThickness = 1.0f;
+
+        /// <summary>
+        /// The volumetric fog intensity modifier changes the transparency of the final fog where at
+        /// 0 it's completely transparent and 1 it's fully visible.
+        /// </summary>
+        [Tooltip("The volumetric fog intensity modifier changes the transparency of the final fog where at 0 it's completely transparent and 1 it's fully visible.")]
+        [Range(0f, 1f)]
+        public float lightVolumetricIntensity = 0.75f;
+
+        /// <summary>
+        /// The visibility in meters within the volumetric fog, is the measure of the distance at
+        /// which an object can still be clearly discerned. This allows you to see nearby objects
+        /// relatively clearly whilst surrounded by thick fog.
+        /// </summary>
+        [Tooltip("The visibility in meters within the volumetric fog, is the measure of the distance at which an object can still be clearly discerned. This allows you to see nearby objects relatively clearly whilst surrounded by thick fog.")]
+        [Min(0f)]
+        public float lightVolumetricVisibility = 2.0f;
+
         /// <summary>Gets whether this dynamic light is realtime (no shadows, channel 32).</summary>
         public bool realtime { get => lightChannel == 32; }
 

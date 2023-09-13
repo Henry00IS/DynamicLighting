@@ -5,7 +5,7 @@ namespace AlpacaIT.DynamicLighting
     [ExecuteInEditMode]
     [ImageEffectAllowedInSceneView]
     [RequireComponent(typeof(Camera))]
-    public class DynamicVolumetricFog : MonoBehaviour
+    public class DynamicLightingPostProcessing : MonoBehaviour
     {
         private Material _material;
         private Camera _camera;
@@ -15,7 +15,7 @@ namespace AlpacaIT.DynamicLighting
             _camera = GetComponent<Camera>();
             _camera.depthTextureMode = DepthTextureMode.Depth;
 
-            _material = DynamicLightingResources.Instance.dynamicVolumetricFogMaterial;
+            _material = DynamicLightingResources.Instance.dynamicLightingPostProcessingMaterial;
         }
 
         private void OnRenderImage(RenderTexture source, RenderTexture destination)
