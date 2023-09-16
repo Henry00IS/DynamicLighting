@@ -71,7 +71,7 @@ Shader "Dynamic Lighting/Simple"
             fixed4 frag (v2f i) : SV_Target
             {
                 // iterate over every dynamic light in the scene:
-                float3 light_final = float3(0, 0, 0);
+                float3 light_final = dynamic_ambient_color;
                 for (uint k = 0; k < dynamic_lights_count; k++)
                 {
                     // get the current light from memory.
@@ -96,7 +96,7 @@ Shader "Dynamic Lighting/Simple"
                 }
 
                 // sample the main texture, multiply by the light and add vertex colors.
-                fixed4 col = tex2D(_MainTex, i.uv0) * half4(dynamic_ambient_color + light_final, 1) * i.color;
+                fixed4 col = tex2D(_MainTex, i.uv0) * half4(light_final, 1) * i.color;
 
                 // apply fog.
                 UNITY_APPLY_FOG(i.fogCoord, col);

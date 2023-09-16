@@ -321,15 +321,75 @@ float lightmap_sample_bilinear(float2 uv, uint channel)
     // huge shoutout to neu_graphic for their software bilinear filter shader.
     // https://www.shadertoy.com/view/4sBSRK
 
+    // we are sample center, so it's the same as point sample.
     float2 pos = uv - 0.5;
     float2 f = frac(pos);
     uint2 pos_top_left = floor(pos);
 
-    // we are sample center, so it's the same as point sample.
-    float tl = lightmap_sample3x3(pos_top_left, channel);
-    float tr = lightmap_sample3x3(pos_top_left + uint2(1, 0), channel);
-    float bl = lightmap_sample3x3(pos_top_left + uint2(0, 1), channel);
-    float br = lightmap_sample3x3(pos_top_left + uint2(1, 1), channel);
+    // we wish to do the following but with as few instructions as possible:
+    //
+    //float tl = lightmap_sample3x3(pos_top_left, channel);
+    //float tr = lightmap_sample3x3(pos_top_left + uint2(1, 0), channel);
+    //float bl = lightmap_sample3x3(pos_top_left + uint2(0, 1), channel);
+    //float br = lightmap_sample3x3(pos_top_left + uint2(1, 1), channel);
 
+    // read all of the lightmap samples we need in advance.
+    float4x4 map;
+    map[0][0] = lightmap_sample(pos_top_left + uint2(-1, -1), channel);
+    map[0][1] = lightmap_sample(pos_top_left + uint2( 0, -1), channel);
+    map[0][2] = lightmap_sample(pos_top_left + uint2( 1, -1), channel);
+    map[0][3] = lightmap_sample(pos_top_left + uint2( 2, -1), channel);
+    map[1][0] = lightmap_sample(pos_top_left + uint2(-1,  0), channel);
+    map[1][1] = lightmap_sample(pos_top_left + uint2( 0,  0), channel);
+    map[1][2] = lightmap_sample(pos_top_left + uint2( 1,  0), channel);
+    map[1][3] = lightmap_sample(pos_top_left + uint2( 2,  0), channel);
+    map[2][0] = lightmap_sample(pos_top_left + uint2(-1,  1), channel);
+    map[2][1] = lightmap_sample(pos_top_left + uint2( 0,  1), channel);
+    map[2][2] = lightmap_sample(pos_top_left + uint2( 1,  1), channel);
+    map[2][3] = lightmap_sample(pos_top_left + uint2( 2,  1), channel);
+    map[3][0] = lightmap_sample(pos_top_left + uint2(-1,  2), channel);
+    map[3][1] = lightmap_sample(pos_top_left + uint2( 0,  2), channel);
+    map[3][2] = lightmap_sample(pos_top_left + uint2( 1,  2), channel);
+    map[3][3] = lightmap_sample(pos_top_left + uint2( 2,  2), channel);
+
+    // there are several common overlapping 3x3 samples (marked as X).
+    //
+    // ----
+    // -XX-
+    // -XX-
+    // ----
+    // 
+    // m00 m01 m02 m03
+    // m10 m11 m12 m13
+    // m20 m21 m22 m23
+    // m30 m31 m32 m33
+    //
+    float common = map[1][1] + map[1][2] + map[2][1] + map[2][2];
+
+    // for the top 3x3 samples there are more overlapping samples:
+    //
+    // -XX-
+    // -XX-
+    // -XX-
+    // ----
+    //
+    float tcommon = common + map[0][1] + map[0][2];
+
+    float tl = (tcommon + map[0][0] + map[1][0] + map[2][0]) / 9.0;
+    float tr = (tcommon + map[0][3] + map[1][3] + map[2][3]) / 9.0;
+
+    // for the bottom 3x3 samples there are more overlapping samples:
+    //
+    // ----
+    // -XX-
+    // -XX-
+    // -XX-
+    //
+    float bcommon = common + map[3][1] + map[3][2];
+
+    float bl = (bcommon + map[1][0] + map[2][0] + map[3][0]) / 9.0;
+    float br = (bcommon + map[1][3] + map[2][3] + map[3][3]) / 9.0;
+
+    // bilinear interpolation.
     return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y);
 }
