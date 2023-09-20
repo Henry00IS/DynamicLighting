@@ -209,7 +209,7 @@ struct DynamicLight
         }
         
         // clueless why but this makes light and shadow blades equal size.
-        return pow(scale, UNITY_PI);
+        return pow(scale, UNITY_HALF_PI);
     }
     
     // calculates the shock effect.
