@@ -34,6 +34,7 @@ Shader "Dynamic Lighting/Simple"
             {
                 float2 uv0 : TEXCOORD0;
                 float2 uv1 : TEXCOORD1;
+                float2 uv2 : TEXCOORD5;
                 UNITY_FOG_COORDS(4)
                 float4 vertex : SV_POSITION;
                 float4 color : COLOR;
@@ -52,6 +53,7 @@ Shader "Dynamic Lighting/Simple"
                 // as we need pixel coordinates doing the multiplication here saves time.
                 // confirmed with NVIDIA Quadro K1000M improving the framerate.
                 o.uv1 = v.uv1 * lightmap_resolution;
+                o.uv2 = v.uv1 * unity_LightmapST.xy + unity_LightmapST.zw;
                 o.color = v.color;
                 o.normal = UnityObjectToWorldNormal(v.normal);
                 o.world = mul(unity_ObjectToWorld, v.vertex).xyz;
@@ -94,10 +96,13 @@ Shader "Dynamic Lighting/Simple"
                     // add this light to the final color of the fragment.
                     light_final += light.color * attenuation * NdotL * map;
                 }
+    
+                // sample the unity baked lightmap (i.e. progressive lightmapper).
+                light_final += DecodeLightmap(UNITY_SAMPLE_TEX2D(unity_Lightmap, i.uv2));
 
                 // sample the main texture, multiply by the light and add vertex colors.
                 fixed4 col = tex2D(_MainTex, i.uv0) * half4(light_final, 1) * i.color;
-
+                
                 // apply fog.
                 UNITY_APPLY_FOG(i.fogCoord, col);
                 return col;

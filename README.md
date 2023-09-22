@@ -11,8 +11,8 @@ This system allows you to have an almost unlimited number of light sources in yo
 | High Quality Shadows | Volumetric Fog |
 :---: | :---:
 | ![Higher shadow quality than Unreal](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/demo-shadow-detail.png) | ![Volumetric fog surrounding light sources](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/demo-volumetric-fog.png) |
-| **Metallic PBR Workflow** | **Modern Game Ready** |
-| ![Metallic PBR workflow support](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/demo-rendering-pbr.png) | ![Modern game using Dynamic Lighting](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/demo-modern-game.png) |
+| **Metallic PBR Workflow** | **Supports Progressive Lightmapper** |
+| ![Metallic PBR workflow support](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/demo-rendering-pbr.png) | ![Progressive Lightmapper using Dynamic Lighting](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/demo-mixed-lighting.gif) |
 
 #### Cons
 The main limitation of this technique is that lights with shadows cannot change their position. If they have to move, they become real-time lights that cast no shadows and can potentially shine through walls, if their radius allows for it. Depending on the use case and level design, this may never be a problem at all.

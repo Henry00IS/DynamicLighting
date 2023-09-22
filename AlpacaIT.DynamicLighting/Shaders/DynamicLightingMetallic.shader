@@ -47,6 +47,7 @@ Shader "Dynamic Lighting/Metallic PBR"
             {
                 float2 uv0 : TEXCOORD0;
                 float2 uv1 : TEXCOORD1;
+                float2 uv2 : TEXCOORD8;
                 UNITY_FOG_COORDS(7)
                 float4 vertex : SV_POSITION;
                 float4 color : COLOR;
@@ -75,6 +76,7 @@ Shader "Dynamic Lighting/Metallic PBR"
                 // as we need pixel coordinates doing the multiplication here saves time.
                 // confirmed with NVIDIA Quadro K1000M improving the framerate.
                 o.uv1 = v.uv1 * lightmap_resolution;
+                o.uv2 = v.uv1 * unity_LightmapST.xy + unity_LightmapST.zw;
                 o.color = v.color;
                 o.normal = UnityObjectToWorldNormal(v.normal);
                 o.world = mul(unity_ObjectToWorld, v.vertex).xyz;
@@ -209,9 +211,12 @@ Shader "Dynamic Lighting/Metallic PBR"
                 half4 skyData = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, reflection, roughness * 4.0);
                 half3 skyColor = DecodeHDR(skyData, unity_SpecCube0_HDR);
                 float3 specular = skyColor * F;
+    
+                // sample the unity baked lightmap (i.e. progressive lightmapper).
+                half3 unity_lightmap_color = DecodeLightmap(UNITY_SAMPLE_TEX2D(unity_Lightmap, i.uv2));
 
                 // the final lighting calculation combining all of the parts.
-                float3 ambient = kD * albedo * dynamic_ambient_color;
+                float3 ambient = kD * albedo * (unity_lightmap_color + dynamic_ambient_color);
                 float3 color = (ambient + Lo) * lerp(1.0, ao, _OcclusionStrength) + specular;
 
                 // apply fog.
