@@ -6,7 +6,9 @@ It is inspired by Tim Sweeney's lighting system in Unreal Gold and Unreal Tourna
 
 ![Showcasing Dynamic Lighting in Unity with a classic Unreal map the Vortex Rikers](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/demo-vortex2-unity.gif)
 
-This system allows you to have an almost unlimited number of light sources in your scene, all with ray traced shadows. Unlike light baking techniques, where you can't change any light source, or shadow mapping, where performance drops off after 4 lights or so, this technique allows real-time adjustments to all lights, such as flickering and changing colours, or even water refraction, among many other effects. This requires using relatively simple custom shaders, including Metallic PBR, which is almost identical to Unity's Standard shader, to work. It doesn't rely on Unity's custom render pipelines, it's just the good old built-in render pipeline.
+This lighting technique precomputes unique shadows for each light source, allowing dynamic adjustments such as color changes, flickering, or even water refraction. This level of realtime customization is not possible with Unity's baked lighting alone. It utilizes straightforward custom shaders similar to Unity's Standard shader and is compatible with the built-in render pipeline.
+
+To raytrace the scene, meshes with shadows must be marked as static and must have a mesh collider.
 
 | High Quality Shadows | Volumetric Fog |
 :---: | :---:
@@ -27,7 +29,7 @@ Add the following line to your Unity Package Manager:
 
 ## Reflection Probes
 
-When you bake reflection probes, Unity may also create a small lightmap that messes up the UV1 coordinates when you enter play mode. You can fix this by disabling the baked global illumination in the lighting settings:
+When you bake individual reflection probes, without baking the rest of the scene, Unity may also create a small lightmap that messes up the UV1 coordinates when you enter play mode. You can fix this by disabling the baked global illumination in the lighting settings:
 
 ![Unchecking baked global illumination in the lighting settings window](https://github.com/Henry00IS/DynamicLighting/wiki/images/home/baked-global-illumination.png)
 

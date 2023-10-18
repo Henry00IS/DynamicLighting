@@ -18,6 +18,7 @@ namespace AlpacaIT.DynamicLighting
         /// bright it is.
         /// </summary>
         [Tooltip("The intensity of the light, which does not affect the range of the light, only how bright it is.")]
+        [Min(0f)]
         public float lightIntensity = 2.0f;
 
         /// <summary>
