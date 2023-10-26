@@ -216,7 +216,21 @@ namespace AlpacaIT.DynamicLighting
         /// cref="lightRadius"/> or <see cref="lightVolumetricRadius"/>. This value is internally
         /// used for culling off-camera lights.
         /// </summary>
-        internal float largestLightRadius => lightRadius > lightVolumetricRadius ? lightRadius : lightVolumetricRadius;
+        internal float largestLightRadius
+        {
+            get
+            {
+                // always return the light radius if greater than the volumetric radius.
+                if (lightRadius > lightVolumetricRadius)
+                    return lightRadius;
+
+                // the volumetric radius is greater but must to be enabled to affect this light.
+                if (lightVolumetricType != DynamicLightVolumetricType.None)
+                    return lightVolumetricRadius;
+
+                return lightRadius;
+            }
+        }
 
         private void OnEnable()
         {

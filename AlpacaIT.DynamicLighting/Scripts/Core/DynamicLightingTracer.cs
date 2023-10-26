@@ -181,6 +181,7 @@ namespace AlpacaIT.DynamicLighting
 #if UNITY_EDITOR
             var progressTitle = "Raytracing Scene " + meshBuilder.surfaceArea.ToString("0.00") + "m² (" + lightmapSize + "x" + lightmapSize + ")";
             var progressDescription = "Raytracing " + meshFilter.name;
+#endif
             if (meshBuilder.meshUv1.Length == 0)
             {
                 Debug.LogWarning("Raytracer skipping " + meshFilter.name + " because it does not have uv1 lightmap coordinates!");
@@ -194,7 +195,6 @@ namespace AlpacaIT.DynamicLighting
 
                 Debug.Log(meshFilter.name + " surface area: " + meshBuilder.surfaceArea.ToString("0.00") + "m² lightmap size: " + lightmapSize + "x" + lightmapSize + " VRAM: " + BytesToUnitString(vramLightmap), meshFilter);
             }
-#endif
 
             var tt1 = Time.realtimeSinceStartup;
             var pixels_lightmap = new uint[lightmapSize * lightmapSize];
