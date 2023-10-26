@@ -37,5 +37,8 @@ namespace AlpacaIT.DynamicLighting
             // free the original mesh data from memory.
             meshVertices = null;
         }
+
+        /// <summary>Gets the triangle count of the mesh i.e. <see cref="meshTriangles"/> / 3.</summary>
+        public int triangleCount => meshTriangles.Length / 3;
     }
 }

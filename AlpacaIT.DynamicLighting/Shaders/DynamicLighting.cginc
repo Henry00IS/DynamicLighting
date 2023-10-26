@@ -393,3 +393,17 @@ float lightmap_sample_bilinear(float2 uv, uint channel)
     // bilinear interpolation.
     return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y);
 }
+
+StructuredBuffer<uint> dynamic_triangles;
+
+// for a triangle gets the light count affecting it.
+uint dynamic_triangles_light_count(uint triangle_index)
+{
+    return dynamic_triangles[dynamic_triangles[triangle_index]];
+}
+
+// for a triangle gets a light index affecting it.
+uint dynamic_triangles_light_index(uint triangle_index, uint light_index)
+{
+    return dynamic_triangles[dynamic_triangles[triangle_index] + 1 + light_index];
+}

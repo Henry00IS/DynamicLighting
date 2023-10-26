@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 using Random = UnityEngine.Random;
 
 namespace AlpacaIT.DynamicLighting
@@ -126,10 +127,16 @@ namespace AlpacaIT.DynamicLighting
         [Tooltip("The desired pixel density (e.g. 128 for 128x128 per meter squared). This lighting system does not require \"power of two\" textures. You may have heard this term before because graphics cards can render textures in such sizes much faster. This system relies on binary data on the GPU using compute buffers and it's quite different. Without going into too much detail, this simply means that we can choose any texture size. An intelligent algorithm calculates the surface area of the meshes and determines exactly how many pixels are needed to cover them evenly with shadow pixels, regardless of the ray tracing resolution (unless it exceeds that maximum ray tracing resolution, of course, then those shadow pixels will start to increase in size). Here you can set how many pixels should cover a square meter. It can result in a 47x47 texture or 328x328, exactly the amount needed to cover all polygons with the same amount of shadow pixels. Higher details require more VRAM (exponentially)!")]
         public int pixelDensityPerSquareMeter = 128;
 
-        /// <summary>The collection of lightmap data for mesh renderers in the scene.</summary>
+        /// <summary>The collection of raycasted mesh renderers in the scene.</summary>
         [SerializeField]
         [HideInInspector]
-        internal List<Lightmap> lightmaps = new List<Lightmap>();
+        [FormerlySerializedAs("lightmaps")]
+        internal List<RaycastedMeshRenderer> raycastedMeshRenderers = new List<RaycastedMeshRenderer>();
+
+        /// <summary>The collection of raycasted <see cref="DynamicLight"/> sources in the scene.</summary>
+        [SerializeField]
+        [HideInInspector]
+        internal List<RaycastedDynamicLight> raycastedDynamicLights = new List<RaycastedDynamicLight>();
 
         /// <summary>The memory size in bytes of the <see cref="ShaderDynamicLight"/> struct.</summary>
         private int dynamicLightStride;
@@ -159,10 +166,11 @@ namespace AlpacaIT.DynamicLighting
             Cleanup();
 
             // clear the lightmap scene data.
-            lightmaps.Clear();
+            raycastedMeshRenderers.Clear();
 
             // delete the lightmap files from disk.
-            Utilities.DeleteLightmapData();
+            Utilities.DeleteLightmapData("Lightmap");
+            Utilities.DeleteLightmapData("Triangles");
 
             // make sure the user gets prompted to save their scene.
             UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
@@ -192,6 +200,18 @@ namespace AlpacaIT.DynamicLighting
         {
             Cleanup();
             Initialize(true);
+        }
+
+        /// <summary>Gets whether the specified light source has been raycasted in the scene.</summary>
+        /// <param name="light">The dynamic light to check.</param>
+        /// <returns>True when the dynamic light has been raycasted else false.</returns>
+        internal bool IsRaycastedDynamicLight(DynamicLight light)
+        {
+            var raycastedDynamicLightsCount = raycastedDynamicLights.Count;
+            for (int i = 0; i < raycastedDynamicLightsCount; i++)
+                if (raycastedDynamicLights[i].light == light)
+                    return true;
+            return false;
         }
 
         /// <summary>Finds all of the dynamic lights in the scene that are not realtime.</summary>
@@ -240,11 +260,11 @@ namespace AlpacaIT.DynamicLighting
             Shader.SetGlobalInt("dynamic_lights_count", 0);
 
             // prepare the scene for dynamic lighting.
-            var lightmapsCount = lightmaps.Count;
-            for (int i = 0; i < lightmapsCount; i++)
+            var raycastedMeshRenderersCount = raycastedMeshRenderers.Count;
+            for (int i = 0; i < raycastedMeshRenderersCount; i++)
             {
                 // for every game object that requires a lightmap:
-                var lightmap = lightmaps[i];
+                var lightmap = raycastedMeshRenderers[i];
 
                 // make sure the scene reference is still valid.
                 var meshRenderer = lightmap.renderer;
@@ -258,7 +278,7 @@ namespace AlpacaIT.DynamicLighting
                     meshRenderer.GetPropertyBlock(materialPropertyBlock);
 
                 // assign the lightmap data to the material property block.
-                if (Utilities.ReadLightmapData(lightmap.identifier, out uint[] pixels))
+                if (Utilities.ReadLightmapData(lightmap.identifier, "Lightmap", out uint[] pixels))
                 {
                     lightmap.buffer = new ComputeBuffer(pixels.Length, 4);
                     lightmap.buffer.SetData(pixels);
@@ -267,6 +287,16 @@ namespace AlpacaIT.DynamicLighting
                     meshRenderer.SetPropertyBlock(materialPropertyBlock);
                 }
                 else Debug.LogError("Unable to read the lightmap " + lightmap.identifier + " data file!");
+
+                // assign the dynamic triangles data to the material property block.
+                if (Utilities.ReadLightmapData(lightmap.identifier, "Triangles", out uint[] triangles))
+                {
+                    lightmap.trianglebuffer = new ComputeBuffer(triangles.Length, 4);
+                    lightmap.trianglebuffer.SetData(triangles);
+                    materialPropertyBlock.SetBuffer("dynamic_triangles", lightmap.trianglebuffer);
+                    meshRenderer.SetPropertyBlock(materialPropertyBlock);
+                }
+                else Debug.LogError("Unable to read the triangles " + lightmap.identifier + " data file!");
             }
         }
 
@@ -281,18 +311,23 @@ namespace AlpacaIT.DynamicLighting
                 dynamicLightsBuffer = null;
             }
 
-            var lightmapsCount = lightmaps.Count;
-            for (int i = 0; i < lightmapsCount; i++)
+            var raycastedMeshRenderersCount = raycastedMeshRenderers.Count;
+            for (int i = 0; i < raycastedMeshRenderersCount; i++)
             {
-                var lightmap = lightmaps[i];
-                if (lightmap.buffer != null && lightmap.buffer.IsValid())
+                var raycastedMeshRenderer = raycastedMeshRenderers[i];
+                if (raycastedMeshRenderer.buffer != null && raycastedMeshRenderer.buffer.IsValid())
                 {
-                    lightmap.buffer.Release();
-                    lightmap.buffer = null;
+                    raycastedMeshRenderer.buffer.Release();
+                    raycastedMeshRenderer.buffer = null;
+                }
+                if (raycastedMeshRenderer.trianglebuffer != null && raycastedMeshRenderer.trianglebuffer.IsValid())
+                {
+                    raycastedMeshRenderer.trianglebuffer.Release();
+                    raycastedMeshRenderer.trianglebuffer = null;
                 }
 
                 // make sure the scene reference is still valid.
-                var meshRenderer = lightmap.renderer;
+                var meshRenderer = raycastedMeshRenderer.renderer;
                 if (!meshRenderer) continue;
 
                 // fetch the active material on the mesh renderer.
@@ -304,6 +339,7 @@ namespace AlpacaIT.DynamicLighting
 
                 // remove the lightmap data from the material property block.
                 materialPropertyBlock.SetBuffer("lightmap", (ComputeBuffer)null);
+                materialPropertyBlock.SetBuffer("dynamic_triangles", (ComputeBuffer)null);
                 materialPropertyBlock.SetInt("lightmap_resolution", 0);
                 meshRenderer.SetPropertyBlock(materialPropertyBlock);
             }
@@ -417,11 +453,11 @@ namespace AlpacaIT.DynamicLighting
             // meter in the scene we sort all dynamic lights by distance from the camera and the
             // closest lights will appear first in the lists.
             var cameraPosition = camera.transform.position;
-            if (sceneDynamicLights.Count > dynamicLightBudget && Vector3.Distance(lastCameraMetricGridPosition, cameraPosition) > 1f)
-            {
-                lastCameraMetricGridPosition = cameraPosition;
-                SortSceneDynamicLights(lastCameraMetricGridPosition);
-            }
+            //if (sceneDynamicLights.Count > dynamicLightBudget && Vector3.Distance(lastCameraMetricGridPosition, cameraPosition) > 1f)
+            //{
+            //    lastCameraMetricGridPosition = cameraPosition;
+            //    SortSceneDynamicLights(lastCameraMetricGridPosition);
+            //}
 
             // if we exceed the realtime light budget we sort the realtime lights by distance every
             // frame, as we will assume they are moving around.
@@ -447,9 +483,22 @@ namespace AlpacaIT.DynamicLighting
             activeDynamicLights.Clear();
             activeRealtimeLights.Clear();
 
+            var raycastedDynamicLightsCount = raycastedDynamicLights.Count;
+            for (int i = 0; i < raycastedDynamicLightsCount; i++)
+            {
+                // we must always update the fixed timestep calculator as it relies on Time.deltaTime.
+                raycastedDynamicLights[i].light.cache.fixedTimestep.timePerStep = raycastedDynamicLights[i].light.lightEffectTimestepFrequency;
+                raycastedDynamicLights[i].light.cache.fixedTimestep.Update();
+
+                activeDynamicLights.Add(raycastedDynamicLights[i].light);
+            }
+
             var sceneDynamicLightsCount = sceneDynamicLights.Count;
             for (int i = 0; i < sceneDynamicLightsCount; i++)
             {
+                if (IsRaycastedDynamicLight(sceneDynamicLights[i]))
+                    continue;
+
                 // we must always update the fixed timestep calculator as it relies on Time.deltaTime.
                 sceneDynamicLights[i].cache.fixedTimestep.timePerStep = sceneDynamicLights[i].lightEffectTimestepFrequency;
                 sceneDynamicLights[i].cache.fixedTimestep.Update();

@@ -238,6 +238,13 @@ namespace AlpacaIT.DynamicLighting
             Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingPointLight.psd", true, lightColor);
         }
 
+        private void OnDrawGizmosSelected()
+        {
+            Gizmos.color = lightColor;
+
+            Gizmos.DrawWireSphere(transform.position, largestLightRadius);
+        }
+
 #endif
     }
 }

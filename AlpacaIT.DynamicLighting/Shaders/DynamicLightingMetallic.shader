@@ -103,7 +103,7 @@ Shader "Dynamic Lighting/Metallic PBR"
 
 #else
 
-            fixed4 frag (v2f i) : SV_Target
+            fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
             {
                 // material parameters
                 float3 albedo = tex2D(_MainTex, i.uv0).rgb;
@@ -134,11 +134,12 @@ Shader "Dynamic Lighting/Metallic PBR"
 
                 // reflectance equation
                 float3 Lo = float3(0.0, 0.0, 0.0);
-                // iterate over every dynamic light in the scene:
-                for (uint k = 0; k < dynamic_lights_count; k++)
+                // iterate over every dynamic light affecting this triangle:
+                uint triangle_light_count = dynamic_triangles_light_count(triangle_index);
+                for (uint k = 0; k < triangle_light_count; k++)
                 {
                     // get the current light from memory.
-                    DynamicLight light = dynamic_lights[k];
+                    DynamicLight light = dynamic_lights[dynamic_triangles_light_index(triangle_index, k)];
                     
                     // this generates the light with shadows and effects calculation declaring:
                     // 

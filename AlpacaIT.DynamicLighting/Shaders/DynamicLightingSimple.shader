@@ -70,15 +70,17 @@ Shader "Dynamic Lighting/Simple"
 
 #else
 
-            fixed4 frag (v2f i) : SV_Target
+            fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
             {
-                // iterate over every dynamic light in the scene:
+                // iterate over every dynamic light affecting this triangle:
+                uint triangle_light_count = dynamic_triangles_light_count(triangle_index);
+                
                 float3 light_final = dynamic_ambient_color;
-                for (uint k = 0; k < dynamic_lights_count; k++)
+                for (uint k = 0; k < triangle_light_count; k++)
                 {
                     // get the current light from memory.
-                    DynamicLight light = dynamic_lights[k];
-
+                    DynamicLight light = dynamic_lights[dynamic_triangles_light_index(triangle_index, k)];
+                    
                     // this generates the light with shadows and effects calculation declaring:
                     // 
                     // required: DynamicLight light; the current dynamic light source.

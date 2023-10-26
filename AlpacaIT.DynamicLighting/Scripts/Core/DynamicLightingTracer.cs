@@ -72,6 +72,11 @@ namespace AlpacaIT.DynamicLighting
                 pointLights = DynamicLightManager.FindDynamicLightsInScene().ToArray();
                 AssignPointLightChannels();
 
+                // assign the dynamic lights in the scene to the dynamic light manager.
+                DynamicLightManager.Instance.raycastedDynamicLights.Clear();
+                for (int i = 0; i < pointLights.Length; i++)
+                    DynamicLightManager.Instance.raycastedDynamicLights.Add(new RaycastedDynamicLight() { light = pointLights[i] });
+
                 var meshFilters = Object.FindObjectsOfType<MeshFilter>();
                 for (int i = 0; i < meshFilters.Length; i++)
                 {
@@ -181,6 +186,7 @@ namespace AlpacaIT.DynamicLighting
 #if UNITY_EDITOR
             var progressTitle = "Raytracing Scene " + meshBuilder.surfaceArea.ToString("0.00") + "m² (" + lightmapSize + "x" + lightmapSize + ")";
             var progressDescription = "Raytracing " + meshFilter.name;
+#endif
             if (meshBuilder.meshUv1.Length == 0)
             {
                 Debug.LogWarning("Raytracer skipping " + meshFilter.name + " because it does not have uv1 lightmap coordinates!");
@@ -194,15 +200,16 @@ namespace AlpacaIT.DynamicLighting
 
                 Debug.Log(meshFilter.name + " surface area: " + meshBuilder.surfaceArea.ToString("0.00") + "m² lightmap size: " + lightmapSize + "x" + lightmapSize + " VRAM: " + BytesToUnitString(vramLightmap), meshFilter);
             }
-#endif
 
             var tt1 = Time.realtimeSinceStartup;
+            var dynamic_triangles = new DynamicTrianglesBuilder(meshBuilder.triangleCount);
             var pixels_lightmap = new uint[lightmapSize * lightmapSize];
             var pixels_visited = new uint[lightmapSize * lightmapSize];
             {
                 var vertices = meshBuilder.worldVertices;
                 var uv1 = meshBuilder.meshUv1;
                 var triangles = meshBuilder.meshTriangles;
+                var triangle_index = 0;
 
                 for (int i = 0; i < triangles.Length; i += 3)
                 {
@@ -225,7 +232,9 @@ namespace AlpacaIT.DynamicLighting
                     var t2 = uv1[triangles[i + 1]];
                     var t3 = uv1[triangles[i + 2]];
 
-                    RaycastTriangle(ref pixels_lightmap, ref pixels_visited, v1, v2, v3, t1, t2, t3);
+                    RaycastTriangle(triangle_index, dynamic_triangles, ref pixels_lightmap, ref pixels_visited, v1, v2, v3, t1, t2, t3);
+
+                    triangle_index++;
                 }
             }
             tracingTime += Time.realtimeSinceStartup - tt1;
@@ -362,15 +371,19 @@ namespace AlpacaIT.DynamicLighting
             seamTime += Time.realtimeSinceStartup - tt1;
 
             // store the scene reference renderer in the dynamic light manager with lightmap metadata.
-            var lightmap = new Lightmap();
+            var lightmap = new RaycastedMeshRenderer();
             lightmap.renderer = meshFilter.GetComponent<MeshRenderer>();
             lightmap.resolution = lightmapSize;
             lightmap.identifier = uniqueIdentifier++;
-            DynamicLightManager.Instance.lightmaps.Add(lightmap);
+            DynamicLightManager.Instance.raycastedMeshRenderers.Add(lightmap);
 
             // write the lightmap shadow bits to disk.
-            if (!Utilities.WriteLightmapData(lightmap.identifier, pixels_lightmap))
+            if (!Utilities.WriteLightmapData(lightmap.identifier, "Lightmap", pixels_lightmap))
                 Debug.LogError($"Unable to write the lightmap {lightmap.identifier} file in the active scene resources directory!");
+
+            // write the dynamic triangles to disk.
+            if (!Utilities.WriteLightmapData(lightmap.identifier, "Triangles", dynamic_triangles.BuildDynamicTrianglesData().ToArray()))
+                Debug.LogError($"Unable to write the triangles {lightmap.identifier} file in the active scene resources directory!");
         }
 
         private uint GetPixel(ref uint[] pixels, int x, int y)
@@ -400,11 +413,46 @@ namespace AlpacaIT.DynamicLighting
             return a1 * v1 + a2 * v2 + a3 * v3;
         }
 
-        private void RaycastTriangle(ref uint[] pixels_lightmap, ref uint[] pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        private void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, ref uint[] pixels_lightmap, ref uint[] pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
+            // calculate the triangle normal (this may fail when degenerate or very small).
+            var trianglePlane = new Plane(v1, v2, v3);
+            var triangleNormal = trianglePlane.normal;
+            var triangleCenter = (v1 + v2 + v3) / 3.0f;
+
+            // calculate a bounding box encapsulating the triangle.
+            var triangleBounds = new Bounds(v1, Vector3.zero);
+            triangleBounds.Encapsulate(v2);
+            triangleBounds.Encapsulate(v3);
+
+            // first we associate lights to triangles that can potentially be affected by them. the
+            // uv space may skip triangles when there's no direct point on the triangle and it may
+            // also have a point outside the range of the light leaving jagged edges, thus we only
+            // go by triangle normal and light radius to determine whether the light can be affected.
+            for (int i = 0; i < pointLights.Length; i++)
+            {
+                var light = pointLights[i];
+                var lightPosition = light.transform.position;
+                var lightRadius = light.largestLightRadius;
+
+                // calculate a bounding box encapsulating the light.
+                Bounds lightBounds = new Bounds(lightPosition, Vector3.one * lightRadius * 2.0f);
+
+                // ensure the triangle bounding box intersects with the light bounding box.
+                if (!lightBounds.Intersects(triangleBounds))
+                    continue;
+
+                // if we have the triangle normal then exclude triangles facing away from the light.
+                if (!triangleNormal.Equals(Vector3.zero))
+                    if (math.dot(triangleNormal, (lightPosition - triangleCenter).normalized) <= -0.1f)
+                        continue;
+
+                // this light can affect the triangle.
+                dynamic_triangles.AssociateLightWithTriangle(triangle_index, i);
+            }
+
             // skip degenerate triangles.
-            Vector3 normal = new Plane(v1, v2, v3).normal;
-            if (normal.Equals(Vector3.zero)) { return; };
+            if (triangleNormal.Equals(Vector3.zero)) { return; };
 
             // calculate the bounding box of the polygon in UV space.
             // we only have to raycast these pixels and can skip the rest.
@@ -428,7 +476,7 @@ namespace AlpacaIT.DynamicLighting
                     for (int i = 0; i < pointLights.Length; i++)
                     {
                         var pointLight = pointLights[i];
-                        px |= Raycast(pointLight, world, normal);
+                        px |= Raycast(pointLight, world, triangleNormal);
                     }
 
                     // write this pixel into the visited map.

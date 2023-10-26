@@ -84,7 +84,7 @@ namespace AlpacaIT.DynamicLighting.Internal
         /// </param>
         /// <param name="pixels">The raytraced shadow bits data.</param>
         /// <returns>True when the file has been successfully written else false.</returns>
-        public static bool WriteLightmapData(int identifier, uint[] pixels)
+        public static bool WriteLightmapData(int identifier, string name, uint[] pixels)
         {
             var scene = SceneManager.GetActiveScene();
 
@@ -107,7 +107,7 @@ namespace AlpacaIT.DynamicLighting.Internal
                     memory.CopyTo(gzip);
                     gzip.Close();
 
-                    var lightmapFilePath = resourcesPath + Path.DirectorySeparatorChar + sceneName + "-Lightmap" + identifier + ".bytes";
+                    var lightmapFilePath = resourcesPath + Path.DirectorySeparatorChar + sceneName + "-" + name + identifier + ".bytes";
                     File.WriteAllBytes(lightmapFilePath, compressed.ToArray());
 #if UNITY_EDITOR
                     UnityEditor.AssetDatabase.ImportAsset(lightmapFilePath);
@@ -123,16 +123,16 @@ namespace AlpacaIT.DynamicLighting.Internal
             }
         }
 
-        public static bool ReadLightmapData(int identifier, out uint[] pixels)
+        public static bool ReadLightmapData(int identifier, string name, out uint[] pixels)
         {
             try
             {
                 string scene = Path.GetFileNameWithoutExtension(SceneManager.GetActiveScene().path);
 
-                var lightmap = Resources.Load<TextAsset>(scene + "-Lightmap" + identifier);
+                var lightmap = Resources.Load<TextAsset>(scene + "-" + name + identifier);
                 if (lightmap == null)
                 {
-                    Debug.LogError("Cannot find '" + scene + "-Lightmap" + identifier + ".bytes" + "'!");
+                    Debug.LogError("Cannot find '" + scene + "-" + name + identifier + ".bytes" + "'!");
                     pixels = null;
                     return false;
                 }
@@ -170,7 +170,7 @@ namespace AlpacaIT.DynamicLighting.Internal
         /// unsaved scene and missing resources directory. Returns false only when there was an
         /// exception during file deletion.
         /// </returns>
-        public static bool DeleteLightmapData()
+        public static bool DeleteLightmapData(string name)
         {
             var scene = SceneManager.GetActiveScene();
 
@@ -187,9 +187,9 @@ namespace AlpacaIT.DynamicLighting.Internal
             try
             {
                 var directoryInfo = new DirectoryInfo(resourcesPath);
-                foreach (var lightmapFile in directoryInfo.EnumerateFiles(sceneName + "-Lightmap*.bytes"))
+                foreach (var lightmapFile in directoryInfo.EnumerateFiles(sceneName + "-" + name + "*.bytes"))
                     lightmapFile.Delete();
-                foreach (var lightmapFile in directoryInfo.EnumerateFiles(sceneName + "-Lightmap*.bytes.meta"))
+                foreach (var lightmapFile in directoryInfo.EnumerateFiles(sceneName + "-" + name + "*.bytes.meta"))
                     lightmapFile.Delete();
             }
             catch (Exception ex)
