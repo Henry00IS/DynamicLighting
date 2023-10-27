@@ -118,7 +118,7 @@ namespace AlpacaIT.DynamicLighting.Internal
             }
             catch (Exception ex)
             {
-                Debug.LogError("Error writing lightmap " + identifier + " data file: " + ex.Message);
+                Debug.LogError("Error writing " + name + " " + identifier + " data file: " + ex.Message);
                 return false;
             }
         }
@@ -132,7 +132,7 @@ namespace AlpacaIT.DynamicLighting.Internal
                 var lightmap = Resources.Load<TextAsset>(scene + "-" + name + identifier);
                 if (lightmap == null)
                 {
-                    Debug.LogError("Cannot find '" + scene + "-" + name + identifier + ".bytes" + "'!");
+                    Debug.LogError("Cannot find '" + scene + "-" + name + identifier + ".bytes'!");
                     pixels = null;
                     return false;
                 }

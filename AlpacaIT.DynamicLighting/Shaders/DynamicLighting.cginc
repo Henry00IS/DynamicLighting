@@ -394,6 +394,30 @@ float lightmap_sample_bilinear(float2 uv, uint channel)
     return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y);
 }
 
+// [dynamic triangles technique]
+//
+// instead of iterating over all light sources in the scene per fragment,
+// a lookup table is used to associate dynamic light indices per triangle.
+// 
+// +---------------+     +-----------------+
+// |SV_PrimitiveID |--+->|Light Data Offset|
+// |(TriangleIndex)|  |  +-----------------+
+// +---------------+  +->|Light Data Offset|
+//                    |  +-----------------+
+//                    +->|...              |
+//                       +--------+--------+
+//                                |
+//                                v
+//                       +------------------+
+// Light Data Offset --> |Light Count       |
+//                       +------------------+
+//                       |Light Index 1     | --> dynamic_lights[Light Index 1]
+//                       +------------------+
+//                       |Light Index 2     | --> dynamic_lights[Light Index 2]
+//                       +------------------+
+//                       |Light Index ...   | --> dynamic_lights[Light Index ...]
+//                       +------------------+
+//
 StructuredBuffer<uint> dynamic_triangles;
 
 // for a triangle gets the light count affecting it.

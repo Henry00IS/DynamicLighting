@@ -286,7 +286,7 @@ namespace AlpacaIT.DynamicLighting
                     materialPropertyBlock.SetInt("lightmap_resolution", lightmap.resolution);
                     meshRenderer.SetPropertyBlock(materialPropertyBlock);
                 }
-                else Debug.LogError("Unable to read the lightmap " + lightmap.identifier + " data file!");
+                else Debug.LogError("Unable to read the lightmap " + lightmap.identifier + " data file! Please raytrace your scene again.");
 
                 // assign the dynamic triangles data to the material property block.
                 if (Utilities.ReadLightmapData(lightmap.identifier, "Triangles", out uint[] triangles))
@@ -296,7 +296,7 @@ namespace AlpacaIT.DynamicLighting
                     materialPropertyBlock.SetBuffer("dynamic_triangles", lightmap.trianglebuffer);
                     meshRenderer.SetPropertyBlock(materialPropertyBlock);
                 }
-                else Debug.LogError("Unable to read the triangles " + lightmap.identifier + " data file!");
+                else Debug.LogError("Unable to read the triangles " + lightmap.identifier + " data file! Probably because you upgraded from an older version. Please raytrace your scene again.");
             }
         }
 
@@ -605,6 +605,14 @@ namespace AlpacaIT.DynamicLighting
 
         private void SetShaderDynamicLight(int idx, DynamicLight light)
         {
+            // destroyed raycasted lights in the scene, must still exist in the shader. we can make
+            // the radius negative causing an early out whenever a fragment tries to use it.
+            if (!light)
+            {
+                shaderDynamicLights[idx].radiusSqr = -1.0f;
+                return;
+            }
+
             // the light intensity is set by the effects update step.
             shaderDynamicLights[idx].position = light.transform.position;
             shaderDynamicLights[idx].color = new Vector3(light.lightColor.r, light.lightColor.g, light.lightColor.b);
@@ -689,6 +697,9 @@ namespace AlpacaIT.DynamicLighting
 
         private void UpdateLightEffects(int idx, DynamicLight light)
         {
+            // destroyed raycasted lights in the scene, must still exist in the shader.
+            if (!light) return;
+
             // continuous light effects:
 
             switch (light.lightEffect)

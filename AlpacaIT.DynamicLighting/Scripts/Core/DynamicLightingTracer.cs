@@ -454,6 +454,10 @@ namespace AlpacaIT.DynamicLighting
             var maxX = Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSizeMin1);
             var maxY = Mathf.CeilToInt(triangleBoundingBox.yMax * lightmapSizeMin1);
 
+            // prepare to only iterate over lights potentially affecting the current triangle.
+            var triangleLightIndices = dynamic_triangles.GetAssociatedLightIndices(triangle_index);
+            var triangleLightIndicesCount = triangleLightIndices.Count;
+
             for (int x = minX; x < maxX; x++)
             {
                 for (int y = minY; y < maxY; y++)
@@ -464,10 +468,8 @@ namespace AlpacaIT.DynamicLighting
                     var world = UvTo3d(new Vector2(xx, yy), v1, v2, v3, t1, t2, t3);
                     if (world.Equals(Vector3.zero)) continue;
 
-                    // only iterate over the lights potentially affecting the triangle.
+                    // iterate over the lights potentially affecting this triangle.
                     uint px = 0;
-                    var triangleLightIndices = dynamic_triangles.GetAssociatedLightIndices(triangle_index);
-                    var triangleLightIndicesCount = triangleLightIndices.Count;
                     for (int i = 0; i < triangleLightIndicesCount; i++)
                     {
                         var pointLight = pointLights[triangleLightIndices[i]];
@@ -495,7 +497,7 @@ namespace AlpacaIT.DynamicLighting
             if (distance > radius) return 0; // early out by distance.
 
             var direction = (position - world).normalized;
-            if (math.dot(normal, direction) < 0f) return 0; // early out by normal.
+            if (math.dot(normal, direction) < -0.1f) return 0; // early out by normal.
 
             // trace from the light to the world position and check whether we hit close to it.
             traces++;
