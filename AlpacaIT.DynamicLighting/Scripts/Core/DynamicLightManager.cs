@@ -67,18 +67,6 @@ namespace AlpacaIT.DynamicLighting
         public Color ambientColor = Color.black;
 
         /// <summary>
-        /// The number of dynamic lights that can be active at the same time. If this budget is
-        /// exceeded, lights that are out of view or furthest away from the camera will
-        /// automatically fade out in a way that the player will hopefully not notice. A
-        /// conservative budget as required by the level design will help older graphics hardware
-        /// when there are hundreds of lights in the scene. Budgeting does not begin until the
-        /// number of active dynamic lights actually exceeds this number.
-        /// </summary>
-        [Tooltip("The number of dynamic lights that can be active at the same time. If this budget is exceeded, lights that are out of view or furthest away from the camera will automatically fade out in a way that the player will hopefully not notice. A conservative budget as required by the level design will help older graphics hardware when there are hundreds of lights in the scene. Budgeting does not begin until the number of active dynamic lights actually exceeds this number.")]
-        [Min(0)]
-        public int dynamicLightBudget = 64;
-
-        /// <summary>
         /// The number of realtime dynamic lights that can be active at the same time. Realtime
         /// lights have no shadows and can move around the scene. They are useful for glowing
         /// particles, car headlights, etc. If this budget is exceeded, lights that are out of view
@@ -143,7 +131,6 @@ namespace AlpacaIT.DynamicLighting
         private ShaderDynamicLight[] shaderDynamicLights;
         private ComputeBuffer dynamicLightsBuffer;
 
-        private Vector3 lastCameraMetricGridPosition = new Vector3(float.NegativeInfinity, float.NegativeInfinity, float.NegativeInfinity);
         [System.NonSerialized]
         private bool isInitialized = false;
 
@@ -240,9 +227,6 @@ namespace AlpacaIT.DynamicLighting
 
         private void Initialize(bool reload = false)
         {
-            // always immediately force an update in case we are budgeting.
-            lastCameraMetricGridPosition = new Vector3(float.NegativeInfinity, float.NegativeInfinity, float.NegativeInfinity);
-
             // only execute the rest if not initialized yet.
             if (isInitialized) return;
             isInitialized = true;
@@ -428,7 +412,6 @@ namespace AlpacaIT.DynamicLighting
                 }
             }
 #endif
-
             var raycastedDynamicLightsCount = raycastedDynamicLights.Count;
 
             // if the budget changed we must recreate the shader buffers.
@@ -436,19 +419,6 @@ namespace AlpacaIT.DynamicLighting
             if (totalLightBudget == 0) return; // sanity check.
             if (shaderDynamicLights.Length != totalLightBudget)
                 ReallocateShaderLightBuffer();
-
-            // calculate the camera frustum planes.
-            Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(camera);
-
-            // if we exceed the dynamic light budget then whenever the camera moves more than a
-            // meter in the scene we sort all dynamic lights by distance from the camera and the
-            // closest lights will appear first in the lists.
-            var cameraPosition = camera.transform.position;
-            //if (sceneDynamicLights.Count > dynamicLightBudget && Vector3.Distance(lastCameraMetricGridPosition, cameraPosition) > 1f)
-            //{
-            //    lastCameraMetricGridPosition = cameraPosition;
-            //    SortSceneDynamicLights(lastCameraMetricGridPosition);
-            //}
 
             // always process the raycasted dynamic lights.
             for (int i = 0; i < raycastedDynamicLightsCount; i++)
@@ -468,7 +438,7 @@ namespace AlpacaIT.DynamicLighting
             // frame, as we will assume they are moving around.
             if (sceneRealtimeLights.Count > realtimeLightBudget)
             {
-                SortSceneRealtimeLights(cameraPosition);
+                SortSceneRealtimeLights(camera.transform.position);
             }
 
             // fill the active realtime lights back up with the closest lights.
@@ -481,6 +451,9 @@ namespace AlpacaIT.DynamicLighting
 
                 if (activeRealtimeLights.Count < realtimeLightBudget)
                 {
+                    // calculate the camera frustum planes.
+                    Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(camera);
+
 #if UNITY_EDITOR    // optimization: only add lights that are within the camera frustum.
                     if (!Application.isPlaying || MathEx.CheckSphereIntersectsFrustum(frustumPlanes, sceneRealtimeLights[i].transform.position, sceneRealtimeLights[i].lightRadius))
 #else
