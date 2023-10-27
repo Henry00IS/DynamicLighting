@@ -49,6 +49,86 @@ namespace AlpacaIT.DynamicLighting
             return true;
         }
 
+        /// <summary>Checks whether a sphere intersects with a triangle.</summary>
+        /// <param name="center">The center position of the sphere.</param>
+        /// <param name="radius">The radius of the sphere.</param>
+        /// <param name="a">The first vertex position of the triangle.</param>
+        /// <param name="b">The second vertex position of the triangle.</param>
+        /// <param name="c">The third vertex position of the triangle.</param>
+        /// <returns>True when there was an intersection else false.</returns>
+        public static bool CheckSphereIntersectsTriangle(Vector3 center, float radius, Vector3 a, Vector3 b, Vector3 c)
+        {
+            // shoutouts to Zode (https://github.com/Zode)!
+
+            // find point on triangle surface closest to the center of the sphere.
+            var closestPointOnTriangle = ClosestPointOnTriangle(center, a, b, c);
+
+            // the sphere and triangle intersect if the (squared) distance from the sphere center to
+            // the closest point on the triangle is less than the (squared) sphere radius.
+            Vector3 v = closestPointOnTriangle - center;
+            return Vector3.Dot(v, v) <= radius * radius;
+        }
+
+        /// <summary>Finds the closest point to the given point on the surface of the triangle.</summary>
+        /// <param name="p">The point to find on the triangle.</param>
+        /// <param name="a">The first vertex position of the triangle.</param>
+        /// <param name="b">The second vertex position of the triangle.</param>
+        /// <param name="c">The third vertex position of the triangle.</param>
+        /// <returns>The closest point on the surface of the triangle.</returns>
+        // special thanks to Christer Ericson, taken from the book Real-Time Collision Detection.
+        public static Vector3 ClosestPointOnTriangle(Vector3 p, Vector3 a, Vector3 b, Vector3 c)
+        {
+            // check if p is in vertex region outside a.
+            var ab = b - a;
+            var ac = c - a;
+            var ap = p - a;
+            float d1 = Vector3.Dot(ab, ap);
+            float d2 = Vector3.Dot(ac, ap);
+            if (d1 <= 0.0f && d2 <= 0.0f) return a; // barycentric coordinates (1,0,0).
+
+            // check if p in vertex region outside b.
+            var bp = p - b;
+            float d3 = Vector3.Dot(ab, bp);
+            float d4 = Vector3.Dot(ac, bp);
+            if (d3 >= 0.0f && d4 <= d3) return b; // barycentric coordinates (0,1,0).
+
+            // check if p in edge region of ab, if so return projection of p onto ab.
+            float vc = d1 * d4 - d3 * d2;
+            if (vc <= 0.0f && d1 >= 0.0f && d3 <= 0.0f)
+            {
+                float v = d1 / (d1 - d3);
+                return a + v * ab; // barycentric coordinates (1-v,v,0).
+            }
+
+            // check if p in vertex region outside c.
+            var cp = p - c;
+            float d5 = Vector3.Dot(ab, cp);
+            float d6 = Vector3.Dot(ac, cp);
+            if (d6 >= 0.0f && d5 <= d6) return c; // barycentric coordinates (0,0,1).
+
+            // check if p in edge region of ac, if so return projection of p onto ac.
+            float vb = d5 * d2 - d1 * d6;
+            if (vb <= 0.0f && d2 >= 0.0f && d6 <= 0.0f)
+            {
+                float w = d2 / (d2 - d6);
+                return a + w * ac; // barycentric coordinates (1-w,0,w).
+            }
+
+            // check if p in edge region of bc, if so return projection of p onto bc.
+            float va = d3 * d6 - d5 * d4;
+            if (va <= 0.0f && (d4 - d3) >= 0.0f && (d5 - d6) >= 0.0f)
+            {
+                float w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+                return b + w * (c - b); // barycentric coordinates (0,1-w,w).
+            }
+
+            // p inside face region. compute q through its barycentric coordinates (u,v,w).
+            float denom = 1.0f / (va + vb + vc);
+            float v2 = vb * denom;
+            float w2 = vc * denom;
+            return a + ab * v2 + ac * w2; // = u*a + v*b + w*c, u = va * denom = 1.0f-v-w.
+        }
+
         /// <summary>
         /// Calculates a framerate independent fixed timestep.
         /// </summary>

@@ -50,6 +50,17 @@ namespace AlpacaIT.DynamicLighting
         }
 
         /// <summary>
+        /// Gets the list of raycasted light indices associated with a triangle.
+        /// <para>Do not modify this collection!</para>
+        /// </summary>
+        /// <param name="triangleIndex">The triangle index in the mesh.</param>
+        /// <returns>The list of raycasted light indices in the scene.</returns>
+        public List<uint> GetAssociatedLightIndices(int triangleIndex)
+        {
+            return triangles[triangleIndex].dynamicLightIndices;
+        }
+
+        /// <summary>
         /// Builds an acceleration structure for the graphics card, containing pre-calculated
         /// raycasted light and shadow data for the scene.
         /// </summary>

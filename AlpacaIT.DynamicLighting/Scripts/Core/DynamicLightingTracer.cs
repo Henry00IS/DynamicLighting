@@ -420,11 +420,6 @@ namespace AlpacaIT.DynamicLighting
             var triangleNormal = trianglePlane.normal;
             var triangleCenter = (v1 + v2 + v3) / 3.0f;
 
-            // calculate a bounding box encapsulating the triangle.
-            var triangleBounds = new Bounds(v1, Vector3.zero);
-            triangleBounds.Encapsulate(v2);
-            triangleBounds.Encapsulate(v3);
-
             // first we associate lights to triangles that can potentially be affected by them. the
             // uv space may skip triangles when there's no direct point on the triangle and it may
             // also have a point outside the range of the light leaving jagged edges, thus we only
@@ -435,11 +430,8 @@ namespace AlpacaIT.DynamicLighting
                 var lightPosition = light.transform.position;
                 var lightRadius = light.largestLightRadius;
 
-                // calculate a bounding box encapsulating the light.
-                Bounds lightBounds = new Bounds(lightPosition, Vector3.one * lightRadius * 2.0f);
-
-                // ensure the triangle bounding box intersects with the light bounding box.
-                if (!lightBounds.Intersects(triangleBounds))
+                // ensure the triangle intersects with the light sphere.
+                if (!MathEx.CheckSphereIntersectsTriangle(lightPosition, lightRadius, v1, v2, v3))
                     continue;
 
                 // if we have the triangle normal then exclude triangles facing away from the light.
@@ -472,10 +464,13 @@ namespace AlpacaIT.DynamicLighting
                     var world = UvTo3d(new Vector2(xx, yy), v1, v2, v3, t1, t2, t3);
                     if (world.Equals(Vector3.zero)) continue;
 
+                    // only iterate over the lights potentially affecting the triangle.
                     uint px = 0;
-                    for (int i = 0; i < pointLights.Length; i++)
+                    var triangleLightIndices = dynamic_triangles.GetAssociatedLightIndices(triangle_index);
+                    var triangleLightIndicesCount = triangleLightIndices.Count;
+                    for (int i = 0; i < triangleLightIndicesCount; i++)
                     {
-                        var pointLight = pointLights[i];
+                        var pointLight = pointLights[triangleLightIndices[i]];
                         px |= Raycast(pointLight, world, triangleNormal);
                     }
 
