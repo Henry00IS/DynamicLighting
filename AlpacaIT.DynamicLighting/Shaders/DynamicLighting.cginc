@@ -424,12 +424,20 @@ StructuredBuffer<uint> dynamic_triangles;
 // for a triangle gets the light count affecting it.
 uint dynamic_triangles_light_count(uint triangle_index)
 {
+    // if we are dealing with a dynamic object then we iterate over all light indices.
+    if (lightmap_resolution == 0)
+        return dynamic_lights_count + realtime_lights_count;
+    
     return dynamic_triangles[dynamic_triangles[triangle_index]];
 }
 
 // for a triangle gets a light index affecting it.
 uint dynamic_triangles_light_index(uint triangle_index, uint triangle_light_count, uint light_index)
 {
+    // if we are dealing with a dynamic object then we iterate over all light indices.
+    if (lightmap_resolution == 0)
+        return light_index;
+    
     // light indices within the triangle light count return the associated light indices.
     if (light_index < triangle_light_count)
         return dynamic_triangles[dynamic_triangles[triangle_index] + 1 + light_index];
