@@ -279,6 +279,7 @@ struct DynamicLight
 
 StructuredBuffer<DynamicLight> dynamic_lights;
 uint dynamic_lights_count;
+uint realtime_lights_count;
 
 StructuredBuffer<uint> lightmap;
 uint lightmap_resolution;
@@ -427,7 +428,12 @@ uint dynamic_triangles_light_count(uint triangle_index)
 }
 
 // for a triangle gets a light index affecting it.
-uint dynamic_triangles_light_index(uint triangle_index, uint light_index)
+uint dynamic_triangles_light_index(uint triangle_index, uint triangle_light_count, uint light_index)
 {
-    return dynamic_triangles[dynamic_triangles[triangle_index] + 1 + light_index];
+    // light indices within the triangle light count return the associated light indices.
+    if (light_index < triangle_light_count)
+        return dynamic_triangles[dynamic_triangles[triangle_index] + 1 + light_index];
+    
+    // light indices beyond the triangle light count are used for realtime light sources.
+    return dynamic_lights_count + light_index - triangle_light_count;
 }
