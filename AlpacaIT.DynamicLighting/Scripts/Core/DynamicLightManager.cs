@@ -216,7 +216,7 @@ namespace AlpacaIT.DynamicLighting
         {
             var dynamicPointLights = new List<DynamicLight>(FindObjectsOfType<DynamicLight>());
 
-            // remove all of the realtime lights from our collection.
+            // remove all of the raycasted lights from our collection.
             var dynamicPointLightsCount = dynamicPointLights.Count;
             for (int i = dynamicPointLightsCount; i-- > 0;)
                 if (!dynamicPointLights[i].realtime || IsRaycastedDynamicLight(dynamicPointLights[i]))
@@ -343,7 +343,7 @@ namespace AlpacaIT.DynamicLighting
         {
             Initialize();
 
-            // we only care about new realtime lights.
+            // we only store realtime lights.
             if (!IsRaycastedDynamicLight(light))
                 sceneRealtimeLights.Add(light);
 
@@ -423,12 +423,37 @@ namespace AlpacaIT.DynamicLighting
             // always process the raycasted dynamic lights.
             for (int i = 0; i < raycastedDynamicLightsCount; i++)
             {
-                // destroyed raycasted lights in the scene, must still exist in the shader.
-                if (!raycastedDynamicLights[i].light) continue;
+                var raycastedLight = raycastedDynamicLights[i];
 
-                // we must always update the fixed timestep calculator as it relies on Time.deltaTime.
-                raycastedDynamicLights[i].light.cache.fixedTimestep.timePerStep = raycastedDynamicLights[i].light.lightEffectTimestepFrequency;
-                raycastedDynamicLights[i].light.cache.fixedTimestep.Update();
+                // destroyed raycasted lights in the scene, must still exist in the shader.
+                if (!raycastedLight.light) continue;
+
+                // when a raycasted light position has been moved away from the origin:
+                if (raycastedLight.light.transform.position != raycastedLight.origin)
+                {
+                    if (!raycastedLight.light.cache.movedFromOrigin)
+                    {
+                        // add it to the realtime lights and disable the raycasted light.
+                        sceneRealtimeLights.Add(raycastedLight.light);
+                        raycastedLight.light.cache.movedFromOrigin = true;
+                    }
+
+                    // we skip the update here as that's done for realtime lights later.
+                }
+                else
+                {
+                    // when a raycasted light position has been restored to the origin:
+                    if (raycastedLight.light.cache.movedFromOrigin)
+                    {
+                        // remove it from the realtime lights and enable the raycasted light.
+                        sceneRealtimeLights.Remove(raycastedLight.light);
+                        raycastedLight.light.cache.movedFromOrigin = false;
+                    }
+
+                    // we must always update the fixed timestep calculator as it relies on Time.deltaTime.
+                    raycastedLight.light.cache.fixedTimestep.timePerStep = raycastedLight.light.lightEffectTimestepFrequency;
+                    raycastedLight.light.cache.fixedTimestep.Update();
+                }
             }
 
             // clear as many active lights as possible.
@@ -436,18 +461,20 @@ namespace AlpacaIT.DynamicLighting
 
             // if we exceed the realtime light budget we sort the realtime lights by distance every
             // frame, as we will assume they are moving around.
-            if (sceneRealtimeLights.Count > realtimeLightBudget)
+            var sceneRealtimeLightsCount = sceneRealtimeLights.Count;
+            if (sceneRealtimeLightsCount > realtimeLightBudget)
             {
                 SortSceneRealtimeLights(camera.transform.position);
             }
 
             // fill the active realtime lights back up with the closest lights.
-            var sceneRealtimeLightsCount = sceneRealtimeLights.Count;
             for (int i = 0; i < sceneRealtimeLightsCount; i++)
             {
+                var realtimeLight = sceneRealtimeLights[i];
+
                 // we must always update the fixed timestep calculator as it relies on Time.deltaTime.
-                sceneRealtimeLights[i].cache.fixedTimestep.timePerStep = sceneRealtimeLights[i].lightEffectTimestepFrequency;
-                sceneRealtimeLights[i].cache.fixedTimestep.Update();
+                realtimeLight.cache.fixedTimestep.timePerStep = realtimeLight.lightEffectTimestepFrequency;
+                realtimeLight.cache.fixedTimestep.Update();
 
                 if (activeRealtimeLights.Count < realtimeLightBudget)
                 {
@@ -455,12 +482,12 @@ namespace AlpacaIT.DynamicLighting
                     Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(camera);
 
 #if UNITY_EDITOR    // optimization: only add lights that are within the camera frustum.
-                    if (!Application.isPlaying || MathEx.CheckSphereIntersectsFrustum(frustumPlanes, sceneRealtimeLights[i].transform.position, sceneRealtimeLights[i].lightRadius))
+                    if (!Application.isPlaying || MathEx.CheckSphereIntersectsFrustum(frustumPlanes, realtimeLight.transform.position, realtimeLight.lightRadius))
 #else
-                    if (MathEx.CheckSphereIntersectsFrustum(frustumPlanes, sceneRealtimeLights[i].transform.position, sceneRealtimeLights[i].lightRadius))
+                    if (MathEx.CheckSphereIntersectsFrustum(frustumPlanes, realtimeLight.transform.position, realtimeLight.lightRadius))
 #endif
                     {
-                        activeRealtimeLights.Add(sceneRealtimeLights[i]);
+                        activeRealtimeLights.Add(realtimeLight);
                     }
                 }
             }
@@ -526,7 +553,7 @@ namespace AlpacaIT.DynamicLighting
         {
             // destroyed raycasted lights in the scene, must still exist in the shader. we can make
             // the radius negative causing an early out whenever a fragment tries to use it.
-            if (!light || !light.isActiveAndEnabled)
+            if (!light || !light.isActiveAndEnabled || (!realtime && light.cache.movedFromOrigin))
             {
                 shaderDynamicLights[idx].radiusSqr = -1.0f;
                 return;

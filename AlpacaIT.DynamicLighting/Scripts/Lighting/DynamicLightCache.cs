@@ -25,5 +25,11 @@
         /// [<see cref="DynamicLightEffect.Strobe"/>] whether the strobe light is active or not.
         /// </summary>
         public bool strobeActive;
+
+        /// <summary>
+        /// Used by raycasted lights to remember whether they already acted on changing the position
+        /// away from the origin or back to the origin.
+        /// </summary>
+        public bool movedFromOrigin;
     }
 }

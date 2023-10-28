@@ -62,20 +62,24 @@ namespace AlpacaIT.DynamicLighting
         {
             try
             {
+                // fetch the dynamic light manager instance once.
+                var dynamicLightManager = DynamicLightManager.Instance;
+
                 // reset the internal state.
                 Prepare();
+
 #if UNITY_EDITOR
                 // delete all of the old lightmap data in the scene and on disk.
-                DynamicLightManager.Instance.EditorDeleteLightmaps();
+                dynamicLightManager.EditorDeleteLightmaps();
 #endif
                 // find all of the dynamic lights in the scene and assign channels.
                 pointLights = DynamicLightManager.FindDynamicLightsInScene().ToArray();
                 AssignPointLightChannels();
 
                 // assign the dynamic lights in the scene to the dynamic light manager.
-                DynamicLightManager.Instance.raycastedDynamicLights.Clear();
+                dynamicLightManager.raycastedDynamicLights.Clear();
                 for (int i = 0; i < pointLights.Length; i++)
-                    DynamicLightManager.Instance.raycastedDynamicLights.Add(new RaycastedDynamicLight() { light = pointLights[i] });
+                    dynamicLightManager.raycastedDynamicLights.Add(new RaycastedDynamicLight() { light = pointLights[i], origin = pointLights[i].transform.position });
 
                 var meshFilters = Object.FindObjectsOfType<MeshFilter>();
                 for (int i = 0; i < meshFilters.Length; i++)
@@ -94,7 +98,7 @@ namespace AlpacaIT.DynamicLighting
                 }
 
                 Debug.Log("Raytracing Finished: " + traces + " traces in " + tracingTime + "s! Seams padding in " + seamTime + "s! VRAM estimation: " + BytesToUnitString(vramTotal));
-                DynamicLightManager.Instance.Reload();
+                dynamicLightManager.Reload();
 #if UNITY_EDITOR
                 UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
 #endif

@@ -12,5 +12,8 @@ namespace AlpacaIT.DynamicLighting
     {
         /// <summary>The reference dynamic light in the scene that this metadata is for.</summary>
         public DynamicLight light;
+
+        /// <summary>The original position the immovable dynamic light was raycasted at.</summary>
+        public Vector3 origin = Vector3.positiveInfinity;
     }
 }
