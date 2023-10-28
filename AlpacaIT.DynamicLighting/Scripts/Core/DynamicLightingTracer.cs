@@ -432,7 +432,7 @@ namespace AlpacaIT.DynamicLighting
             {
                 var light = pointLights[i];
                 var lightPosition = light.transform.position;
-                var lightRadius = light.largestLightRadius;
+                var lightRadius = light.lightRadius;
 
                 // ensure the triangle intersects with the light sphere.
                 if (!MathEx.CheckSphereIntersectsTriangle(lightPosition, lightRadius, v1, v2, v3))

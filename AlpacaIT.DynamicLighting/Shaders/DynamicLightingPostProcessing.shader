@@ -71,13 +71,16 @@
 				// iterate over every dynamic light in the scene:
 				float4 fog_final = float4(0.0, 0.0, 0.0, 0.0);
 				float fog_final_t = 0.0;
-				for (uint k = 0; k < dynamic_lights_count; k++)
+				for (uint k = 0; k < dynamic_lights_count + realtime_lights_count; k++)
 				{
 					// get the current light from memory.
 					DynamicLight light = dynamic_lights[k];
 		
 					// only process volumetric lights.
 					if (!light.is_volumetric()) continue;
+		
+					// ignore raycasted lights that got disabled by radius.
+					if (light.radiusSqr <= -1.0) continue;
 					
 					float4 fog_color = float4(light.color, 1.0);
 					float3 fog_center = light.position;

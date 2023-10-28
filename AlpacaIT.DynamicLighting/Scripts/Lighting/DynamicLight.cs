@@ -257,6 +257,98 @@ namespace AlpacaIT.DynamicLighting
             Gizmos.color = lightColor;
 
             Gizmos.DrawWireSphere(transform.position, largestLightRadius);
+
+            switch (lightType)
+            {
+                case DynamicLightType.Spot:
+                    GizmosDrawArrow(true, true, false);
+                    break;
+
+                case DynamicLightType.Discoball:
+                    GizmosDrawArrow(true, false, true);
+                    break;
+
+                case DynamicLightType.Interference:
+                    GizmosDrawArrow(false, true, true);
+                    break;
+
+                case DynamicLightType.Rotor:
+                case DynamicLightType.Disco:
+                    GizmosDrawArrow(false, false, true);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Draws an arrow gizmo for dynamic light sources in the editor. It will try to hit the
+        /// surface it's pointing at or if there's no obstacle it will point all the way to the
+        /// light radius.
+        /// </summary>
+        /// <param name="forward">Whether this arrow points forwards or upwards.</param>
+        /// <param name="twistable">
+        /// Whether this arrow can be twisted (e.g. rotating a spotlight makes no difference so it's
+        /// not twistable).
+        /// </param>
+        /// <param name="bidirectional">
+        /// Whether the effect looks the same in both directions (e.g. a spotlight is one-directional).
+        /// </param>
+        private void GizmosDrawArrow(bool forward, bool twistable, bool bidirectional)
+        {
+            var raytraceLayers = DynamicLightManager.Instance.raytraceLayers;
+            var root = transform.position;
+            var f = transform.forward;
+            var u = transform.up;
+            var r = transform.right;
+
+            // when not facing forwards we swap the up and forward directions.
+            if (!forward)
+                (u, f) = (f, u);
+
+            // trace the forwards direction.
+            Vector3 head;
+            if (Physics.Raycast(root, f, out var hit1, lightRadius, raytraceLayers, QueryTriggerInteraction.Ignore))
+                head = hit1.point;
+            else
+                head = root + f * lightRadius;
+
+            // trace the backwards direction.
+            if (bidirectional)
+            {
+                if (Physics.Raycast(root, -f, out var hit2, lightRadius, raytraceLayers, QueryTriggerInteraction.Ignore))
+                    root = hit2.point;
+                else
+                    root -= f * lightRadius;
+            }
+
+            // blue direction line.
+            Gizmos.color = Color.blue;
+            Gizmos.DrawLine(root, head);
+
+            // only draw the orientation lines when the effect is twistable.
+            if (twistable) return;
+
+            // green upwards line.
+            {
+                Gizmos.color = Color.green;
+                var a = (forward ? 1.0f : -1.0f) * 0.25f * u;
+                Gizmos.DrawLine(head, head + a);
+                if (bidirectional)
+                    Gizmos.DrawLine(root, root + a);
+            }
+
+            // red arrow lines.
+            {
+                Gizmos.color = Color.red;
+                var a = (f - r) * 0.25f;
+                var b = (f + r) * 0.25f;
+                Gizmos.DrawLine(head, head - a);
+                Gizmos.DrawLine(head, head - b);
+                if (bidirectional)
+                {
+                    Gizmos.DrawLine(root, root + a);
+                    Gizmos.DrawLine(root, root + b);
+                }
+            }
         }
 
 #endif
