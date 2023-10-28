@@ -551,8 +551,8 @@ namespace AlpacaIT.DynamicLighting
 
             // trace from the world to the light position and check whether we didn't hit anything.
             traces++;
-            if (!Physics.CheckBox(world, Vector3.zero, Quaternion.identity, raycastLayermask, QueryTriggerInteraction.Ignore))
-                if (!Physics.Linecast(world, position, out var _, raycastLayermask, QueryTriggerInteraction.Ignore))
+            if (!Physics.Linecast(world, position, out var _, raycastLayermask, QueryTriggerInteraction.Ignore))
+                if (!Physics.CheckBox(world, Vector3.zero, Quaternion.identity, raycastLayermask, QueryTriggerInteraction.Ignore))
                     return (uint)1 << ((int)pointLight.lightChannel);
 
             return 0;
