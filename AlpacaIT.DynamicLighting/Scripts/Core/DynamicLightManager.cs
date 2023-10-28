@@ -64,7 +64,7 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         [Tooltip("The ambient lighting color is added to the whole scene, thus making it look like there is always some scattered light, even when there no direct light source. This prevents absolute black, dark patches from appearing in the scene that are impossible to see through (unless this is desired). This color should be very dark to achieve the best effect.")]
         [ColorUsage(showAlpha: false)]
-        public Color ambientColor = Color.black;
+        public Color ambientColor = new Color(0.01568628f, 0.01568628f, 0.01568628f);
 
         /// <summary>
         /// The number of realtime dynamic lights that can be active at the same time. Realtime
@@ -110,6 +110,7 @@ namespace AlpacaIT.DynamicLighting
         /// Higher details require more VRAM (exponentially)!
         /// </summary>
         [Tooltip("The desired pixel density (e.g. 128 for 128x128 per meter squared). This lighting system does not require \"power of two\" textures. You may have heard this term before because graphics cards can render textures in such sizes much faster. This system relies on binary data on the GPU using compute buffers and it's quite different. Without going into too much detail, this simply means that we can choose any texture size. An intelligent algorithm calculates the surface area of the meshes and determines exactly how many pixels are needed to cover them evenly with shadow pixels, regardless of the ray tracing resolution (unless it exceeds that maximum ray tracing resolution, of course, then those shadow pixels will start to increase in size). Here you can set how many pixels should cover a square meter. It can result in a 47x47 texture or 328x328, exactly the amount needed to cover all polygons with the same amount of shadow pixels. Higher details require more VRAM (exponentially)!")]
+        [Min(1)]
         public int pixelDensityPerSquareMeter = 128;
 
         /// <summary>The collection of raycasted mesh renderers in the scene.</summary>
