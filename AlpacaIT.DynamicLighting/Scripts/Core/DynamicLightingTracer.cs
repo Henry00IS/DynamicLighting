@@ -10,6 +10,10 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>The maximum size of the lightmap to be baked (defaults to 2048x2048).</summary>
         public int maximumLightmapSize { get; set; } = 2048;
 
+        /// <summary>The raytracing engine to be utilized.</summary>
+        public DynamicLightingTracerEngine raytracingEngine { get; set; } = DynamicLightingTracerEngine.Default;
+        private delegate uint RaycastHandler(DynamicLight pointLight, Vector3 world, Vector3 normal);
+
         /// <summary>Called when this tracer instance has been cancelled.</summary>
 #pragma warning disable CS0067
 
@@ -27,6 +31,7 @@ namespace AlpacaIT.DynamicLighting
         private int uniqueIdentifier = 0;
         private LayerMask raycastLayermask = ~0;
         private int pixelDensityPerSquareMeter = 128;
+        private RaycastHandler raycastHandlerMethod;
 
 #if UNITY_EDITOR
         private float progressBarLastUpdate = 0f;
@@ -51,6 +56,15 @@ namespace AlpacaIT.DynamicLighting
             uniqueIdentifier = 0;
             raycastLayermask = DynamicLightManager.Instance.raytraceLayers;
             pixelDensityPerSquareMeter = DynamicLightManager.Instance.pixelDensityPerSquareMeter;
+            switch (raytracingEngine)
+            {
+                case DynamicLightingTracerEngine.Default:
+                    raycastHandlerMethod = RaycastDefault;
+                    break;
+                case DynamicLightingTracerEngine.Adaptive:
+                    raycastHandlerMethod = RaycastAdaptive;
+                    break;
+            }
 #if UNITY_EDITOR
             progressBarLastUpdate = 0f;
             progressBarCancel = false;
@@ -60,10 +74,16 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Starts raytracing the world.</summary>
         public void StartRaytracing()
         {
+            var queriesHitBackfacesPrevious = Physics.queriesHitBackfaces;
+
             try
             {
                 // fetch the dynamic light manager instance once.
                 var dynamicLightManager = DynamicLightManager.Instance;
+
+                // we require this for linecasts starting inside of objects (e.g. the floor under a box).
+                // it also prevents light from shining through one-sided walls (inverted world workflow).
+                Physics.queriesHitBackfaces = true;
 
                 // reset the internal state.
                 Prepare();
@@ -109,6 +129,8 @@ namespace AlpacaIT.DynamicLighting
             }
             finally
             {
+                // always make sure we reset this setting.
+                Physics.queriesHitBackfaces = queriesHitBackfacesPrevious;
 #if UNITY_EDITOR
                 UnityEditor.EditorUtility.ClearProgressBar();
 #endif
@@ -477,7 +499,7 @@ namespace AlpacaIT.DynamicLighting
                     for (int i = 0; i < triangleLightIndicesCount; i++)
                     {
                         var pointLight = pointLights[triangleLightIndices[i]];
-                        px |= Raycast(pointLight, world, triangleNormal);
+                        px |= raycastHandlerMethod(pointLight, world, triangleNormal);
                     }
 
                     // write this pixel into the visited map.
@@ -491,7 +513,7 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
-        private uint Raycast(DynamicLight pointLight, Vector3 world, Vector3 normal)
+        private uint RaycastDefault(DynamicLight pointLight, Vector3 world, Vector3 normal)
         {
             var radius = pointLight.lightRadius;
             if (radius == 0.0f) return 0; // early out by radius.
@@ -507,6 +529,30 @@ namespace AlpacaIT.DynamicLighting
             traces++;
             if (Physics.Raycast(position, -direction, out var hit, radius, raycastLayermask, QueryTriggerInteraction.Ignore))
                 if (Vector3.Distance(hit.point, world) < 0.01f)
+                    return (uint)1 << ((int)pointLight.lightChannel);
+
+            return 0;
+        }
+
+        private uint RaycastAdaptive(DynamicLight pointLight, Vector3 world, Vector3 normal)
+        {
+            var radius = pointLight.lightRadius;
+            if (radius == 0.0f) return 0; // early out by radius.
+
+            var position = pointLight.transform.position;
+            float distance = Vector3.Distance(world, position);
+            if (distance > radius) return 0; // early out by distance.
+
+            var direction = (position - world).normalized;
+            if (math.dot(normal, direction) < -0.1f) return 0; // early out by normal.
+
+            // offset the world position and try to correct for floating point inaccuracy.
+            world += normal * (world.magnitude * 0.001f);
+
+            // trace from the world to the light position and check whether we didn't hit anything.
+            traces++;
+            if (!Physics.CheckBox(world, Vector3.zero, Quaternion.identity, raycastLayermask, QueryTriggerInteraction.Ignore))
+                if (!Physics.Linecast(world, position, out var _, raycastLayermask, QueryTriggerInteraction.Ignore))
                     return (uint)1 << ((int)pointLight.lightChannel);
 
             return 0;
