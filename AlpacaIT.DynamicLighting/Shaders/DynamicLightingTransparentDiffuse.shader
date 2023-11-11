@@ -1,16 +1,21 @@
-Shader "Dynamic Lighting/Simple"
+Shader "Dynamic Lighting/Transparent"
 {
     Properties
     {
-        _MainTex("Texture", 2D) = "white" {}
+        _Color("Main Color", Color) = (1,1,1,1)
+        _MainTex("Base (RGB)", 2D) = "white" {}
     }
     SubShader
     {
-        Tags { "RenderType" = "Opaque" }
+        Tags { "Queue"="Transparent" "IgnoreProjector"="True" "RenderType"="Transparent" }
         LOD 100
 
         Pass
         {
+            // enable regular alpha blending for this pass.
+            Blend SrcAlpha OneMinusSrcAlpha
+            ZWrite Off
+            
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
@@ -44,6 +49,7 @@ Shader "Dynamic Lighting/Simple"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
+            fixed4 _Color;
 
             v2f vert (appdata v)
             {
@@ -103,7 +109,7 @@ Shader "Dynamic Lighting/Simple"
                 light_final += DecodeLightmap(UNITY_SAMPLE_TEX2D(unity_Lightmap, i.uv2));
 
                 // sample the main texture, multiply by the light and add vertex colors.
-                fixed4 col = tex2D(_MainTex, i.uv0) * half4(light_final, 1) * i.color;
+                fixed4 col = tex2D(_MainTex, i.uv0) * half4(_Color) * half4(light_final, 1) * i.color;
                 
                 // apply fog.
                 UNITY_APPLY_FOG(i.fogCoord, col);
@@ -115,5 +121,5 @@ Shader "Dynamic Lighting/Simple"
             ENDCG
         }
     }
-    Fallback "Diffuse"
+    Fallback "Legacy Shaders/Transparent/Diffuse"
 }

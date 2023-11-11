@@ -1,9 +1,10 @@
-Shader "Dynamic Lighting/Metallic PBR"
+Shader "Dynamic Lighting/Metallic"
 {
     // special thanks to https://learnopengl.com/PBR/Lighting
 
     Properties
     {
+        _Color("Main Color", Color) = (1,1,1,1)
         _MainTex("Albedo", 2D) = "white" {}
         [NoScaleOffset] _MetallicGlossMap("Metallic", 2D) = "black" {}
         _Metallic("Metallic (Fallback)", Range(0,1)) = 0
@@ -60,6 +61,7 @@ Shader "Dynamic Lighting/Metallic PBR"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
+            fixed4 _Color;
             sampler2D _MetallicGlossMap;
             float _Metallic;
             float _GlossMapScale;
@@ -106,7 +108,7 @@ Shader "Dynamic Lighting/Metallic PBR"
             fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
             {
                 // material parameters
-                float3 albedo = tex2D(_MainTex, i.uv0).rgb;
+                float3 albedo = tex2D(_MainTex, i.uv0).rgb * _Color.rgb;
                 
 #if METALLIC_TEXTURE_UNASSIGNED
                 float metallic = _Metallic;
