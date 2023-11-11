@@ -108,7 +108,7 @@ Shader "Dynamic Lighting/Metallic"
             fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
             {
                 // material parameters
-                float3 albedo = tex2D(_MainTex, i.uv0).rgb * _Color.rgb;
+                float3 albedo = tex2D(_MainTex, i.uv0).rgb * _Color.rgb * i.color;
                 
 #if METALLIC_TEXTURE_UNASSIGNED
                 float metallic = _Metallic;
