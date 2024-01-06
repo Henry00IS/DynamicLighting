@@ -7,6 +7,8 @@ namespace AlpacaIT.DynamicLighting.Editor
     {
         public override void OnGUI(MaterialEditor materialEditor, MaterialProperty[] properties)
         {
+            DefaultShaderGUI.SuggestPresenceOfDynamicLightManager();
+
             base.OnGUI(materialEditor, properties);
 
             foreach (var target in materialEditor.targets)

@@ -8,7 +8,7 @@ using Random = UnityEngine.Random;
 namespace AlpacaIT.DynamicLighting
 {
     [ExecuteInEditMode]
-    public class DynamicLightManager : MonoBehaviour
+    public partial class DynamicLightManager : MonoBehaviour
     {
         /// <summary>Called when a <see cref="DynamicLight"/> gets registered (i.e. enabled).</summary>
         public event EventHandler<DynamicLightRegisteredEventArgs> lightRegistered;
@@ -139,6 +139,18 @@ namespace AlpacaIT.DynamicLighting
         private ShaderDynamicLight[] shaderDynamicLights;
         private ComputeBuffer dynamicLightsBuffer;
 
+        /// <summary>
+        /// Stores the value last assigned with:
+        /// <code>Shader.SetGlobalInt("dynamic_lights_count", ...);</code>
+        /// </summary>
+        private int shaderLastDynamicLightsCount;
+
+        /// <summary>
+        /// Stores the value last assigned with:
+        /// <code>Shader.SetGlobalInt("realtime_lights_count", ...);</code>
+        /// </summary>
+        private int shaderLastRealtimeLightsCount;
+
         [System.NonSerialized]
         private bool isInitialized = false;
 
@@ -239,6 +251,12 @@ namespace AlpacaIT.DynamicLighting
             if (isInitialized) return;
             isInitialized = true;
 
+#if UNITY_EDITOR
+            // in the editor, subscribe to the camera rendering functions to repair preview cameras.
+            Camera.onPreRender += EditorOnPreRenderCallback;
+            Camera.onPostRender += EditorOnPostRenderCallback;
+#endif
+
             dynamicLightStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(ShaderDynamicLight));
 
             // prepare to store realtime dynamic lights that will register themselves to us.
@@ -255,8 +273,8 @@ namespace AlpacaIT.DynamicLighting
             shaderDynamicLights = new ShaderDynamicLight[totalLightBudget];
             dynamicLightsBuffer = new ComputeBuffer(shaderDynamicLights.Length, dynamicLightStride, ComputeBufferType.Default);
             Shader.SetGlobalBuffer("dynamic_lights", dynamicLightsBuffer);
-            Shader.SetGlobalInt("dynamic_lights_count", 0);
-            Shader.SetGlobalInt("realtime_lights_count", 0);
+            Shader.SetGlobalInt("dynamic_lights_count", shaderLastDynamicLightsCount = 0);
+            Shader.SetGlobalInt("realtime_lights_count", shaderLastRealtimeLightsCount = 0);
 
             // prepare the scene for dynamic lighting.
             var raycastedMeshRenderersCount = raycastedMeshRenderers.Count;
@@ -303,6 +321,12 @@ namespace AlpacaIT.DynamicLighting
         {
             if (!isInitialized) return;
             isInitialized = false;
+
+#if UNITY_EDITOR
+            // in the editor, unsubscribe from the camera rendering functions that repair preview cameras.
+            Camera.onPreRender -= EditorOnPreRenderCallback;
+            Camera.onPostRender -= EditorOnPostRenderCallback;
+#endif
 
             if (dynamicLightsBuffer != null && dynamicLightsBuffer.IsValid())
             {
@@ -524,8 +548,8 @@ namespace AlpacaIT.DynamicLighting
             var activeDynamicLightsCount = raycastedDynamicLightsCount + activeRealtimeLightsCount;
             if (dynamicLightsBuffer != null && dynamicLightsBuffer.IsValid())
                 dynamicLightsBuffer.SetData(shaderDynamicLights, 0, 0, activeDynamicLightsCount);
-            Shader.SetGlobalInt("dynamic_lights_count", raycastedDynamicLightsCount);
-            Shader.SetGlobalInt("realtime_lights_count", activeRealtimeLightsCount);
+            Shader.SetGlobalInt("dynamic_lights_count", shaderLastDynamicLightsCount = raycastedDynamicLightsCount);
+            Shader.SetGlobalInt("realtime_lights_count", shaderLastRealtimeLightsCount = activeRealtimeLightsCount);
 
             // update the ambient lighting color.
             Shader.SetGlobalColor("dynamic_ambient_color", ambientColor);
