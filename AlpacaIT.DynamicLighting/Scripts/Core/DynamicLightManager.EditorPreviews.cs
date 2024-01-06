@@ -19,6 +19,9 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         private ComputeBuffer editorPreviewsDynamicLightsBuffer;
 
+        /// <summary>Stores the original value of the shader keyword state "DYNAMIC_LIGHTING_UNLIT".</summary>
+        private bool editorPreviewsShaderUnlitEnabled;
+
         /// <summary>Executes before a camera starts rendering.</summary>
         /// <param name="camera">The camera that is about to render.</param>
         private void EditorOnPreRenderCallback(Camera camera)
@@ -47,6 +50,10 @@ namespace AlpacaIT.DynamicLighting
             Shader.SetGlobalInt("dynamic_lights_count", 0);
             Shader.SetGlobalInt("realtime_lights_count", 2);
             Shader.SetGlobalColor("dynamic_ambient_color", new Color(0.01568628f, 0.01568628f, 0.01568628f));
+
+            // apply shader keywords.
+            editorPreviewsShaderUnlitEnabled = Shader.IsKeywordEnabled("DYNAMIC_LIGHTING_UNLIT");
+            Shader.DisableKeyword("DYNAMIC_LIGHTING_UNLIT");
         }
 
         /// <summary>Executes after a camera stops rendering.</summary>
@@ -75,6 +82,10 @@ namespace AlpacaIT.DynamicLighting
             Shader.SetGlobalInt("dynamic_lights_count", shaderLastDynamicLightsCount);
             Shader.SetGlobalInt("realtime_lights_count", shaderLastRealtimeLightsCount);
             Shader.SetGlobalColor("dynamic_ambient_color", ambientColor);
+
+            // restore shader keywords.
+            if (editorPreviewsShaderUnlitEnabled)
+                Shader.EnableKeyword("DYNAMIC_LIGHTING_UNLIT");
         }
 
         /// <summary>
