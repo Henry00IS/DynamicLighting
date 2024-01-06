@@ -53,7 +53,8 @@ namespace AlpacaIT.DynamicLighting
 
             // apply shader keywords.
             editorPreviewsShaderUnlitEnabled = Shader.IsKeywordEnabled("DYNAMIC_LIGHTING_UNLIT");
-            Shader.DisableKeyword("DYNAMIC_LIGHTING_UNLIT");
+            if (editorPreviewsShaderUnlitEnabled)
+                Shader.DisableKeyword("DYNAMIC_LIGHTING_UNLIT");
         }
 
         /// <summary>Executes after a camera stops rendering.</summary>
