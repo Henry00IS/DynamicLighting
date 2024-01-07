@@ -27,8 +27,8 @@ Shader "Dynamic Lighting/Metallic"
             #pragma vertex vert
             #pragma fragment frag
             #pragma multi_compile_fog
-            #pragma multi_compile DYNAMIC_LIGHTING_SHADOW_SOFT DYNAMIC_LIGHTING_SHADOW_HARD
-            #pragma shader_feature DYNAMIC_LIGHTING_UNLIT
+            #pragma multi_compile __ DYNAMIC_LIGHTING_SHADOW_SOFT
+            #pragma multi_compile __ DYNAMIC_LIGHTING_LIT
             #pragma shader_feature METALLIC_TEXTURE_UNASSIGNED
 
             #include "UnityCG.cginc"
@@ -96,14 +96,7 @@ Shader "Dynamic Lighting/Metallic"
                 return o;
             }
 
-#if DYNAMIC_LIGHTING_UNLIT
-
-            fixed4 frag(v2f i) : SV_Target
-            {
-                return tex2D(_MainTex, i.uv0);
-            }
-
-#else
+#if DYNAMIC_LIGHTING_LIT
 
             fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
             {
@@ -225,6 +218,12 @@ Shader "Dynamic Lighting/Metallic"
                 // apply fog.
                 UNITY_APPLY_FOG(i.fogCoord, color);
                 return fixed4(color, 1.0);
+            }
+#else
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                return tex2D(_MainTex, i.uv0);
             }
 
 #endif

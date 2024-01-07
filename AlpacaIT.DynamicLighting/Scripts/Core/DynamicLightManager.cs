@@ -256,6 +256,8 @@ namespace AlpacaIT.DynamicLighting
             Camera.onPreRender += EditorOnPreRenderCallback;
             Camera.onPostRender += EditorOnPostRenderCallback;
 #endif
+            // -> partial class DynamicLightManager.Shaders initialize.
+            ShadersInitialize();
 
             dynamicLightStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(ShaderDynamicLight));
 
@@ -434,15 +436,21 @@ namespace AlpacaIT.DynamicLighting
                 var sceneView = UnityEditor.SceneView.lastActiveSceneView;
                 if (sceneView)
                 {
-                    var sceneLighting = sceneView.sceneLighting;
-                    var shaderUnlit = Shader.IsKeywordEnabled("DYNAMIC_LIGHTING_UNLIT");
-
-                    if (sceneLighting && shaderUnlit)
-                        Shader.DisableKeyword("DYNAMIC_LIGHTING_UNLIT");
-                    else if (!sceneLighting && !shaderUnlit)
-                        Shader.EnableKeyword("DYNAMIC_LIGHTING_UNLIT");
+                    // apply the unlit rendering property.
+                    if (renderUnlit)
+                        shadersKeywordLitEnabled = false;
+                    else
+                        shadersKeywordLitEnabled = sceneView.sceneLighting;
+                }
+                else
+                {
+                    // apply the unlit rendering property.
+                    shadersKeywordLitEnabled = !renderUnlit;
                 }
             }
+#else
+            // apply the unlit rendering property.
+            shadersKeywordLitEnabled = !renderUnlit;
 #endif
             var raycastedDynamicLightsCount = raycastedDynamicLights.Count;
 
@@ -559,13 +567,11 @@ namespace AlpacaIT.DynamicLighting
             {
                 case ShadowQuality.Disable:
                 case ShadowQuality.HardOnly:
-                    Shader.DisableKeyword("DYNAMIC_LIGHTING_SHADOW_SOFT");
-                    Shader.EnableKeyword("DYNAMIC_LIGHTING_SHADOW_HARD");
+                    shadersKeywordShadowSoftEnabled = false;
                     break;
 
                 case ShadowQuality.All:
-                    Shader.EnableKeyword("DYNAMIC_LIGHTING_SHADOW_SOFT");
-                    Shader.DisableKeyword("DYNAMIC_LIGHTING_SHADOW_HARD");
+                    shadersKeywordShadowSoftEnabled = true;
                     break;
             }
         }

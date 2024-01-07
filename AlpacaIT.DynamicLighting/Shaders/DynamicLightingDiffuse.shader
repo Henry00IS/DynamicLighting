@@ -18,8 +18,8 @@ Shader "Dynamic Lighting/Diffuse"
             #pragma vertex vert
             #pragma fragment frag
             #pragma multi_compile_fog
-            #pragma multi_compile DYNAMIC_LIGHTING_SHADOW_SOFT DYNAMIC_LIGHTING_SHADOW_HARD
-            #pragma shader_feature DYNAMIC_LIGHTING_UNLIT
+            #pragma multi_compile __ DYNAMIC_LIGHTING_SHADOW_SOFT
+            #pragma multi_compile __ DYNAMIC_LIGHTING_LIT
 
             #include "UnityCG.cginc"
             #include "DynamicLighting.cginc"
@@ -65,14 +65,7 @@ Shader "Dynamic Lighting/Diffuse"
                 return o;
             }
 
-#if DYNAMIC_LIGHTING_UNLIT
-
-            fixed4 frag(v2f i) : SV_Target
-            {
-                return tex2D(_MainTex, i.uv0);
-            }
-
-#else
+#if DYNAMIC_LIGHTING_LIT
 
             fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
             {
@@ -112,6 +105,13 @@ Shader "Dynamic Lighting/Diffuse"
                 // apply fog.
                 UNITY_APPLY_FOG(i.fogCoord, col);
                 return col;
+            }
+
+#else
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                return tex2D(_MainTex, i.uv0);
             }
 
 #endif
