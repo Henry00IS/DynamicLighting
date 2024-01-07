@@ -8,6 +8,29 @@ namespace AlpacaIT.DynamicLighting
 
     public partial class DynamicLightManager
     {
+#if !UNITY_2021_2_OR_NEWER
+        /// <summary>
+        /// Fallback for Unity 2021.1.0 and below that do not have the GlobalKeyword struct yet.
+        /// Simply uses the name as a string using an implicit operator.
+        /// </summary>
+        private struct GlobalKeyword
+        {
+            public string name;
+
+            public GlobalKeyword(string name)
+            {
+                this.name = name;
+            }
+
+            public static GlobalKeyword Create(string name)
+            {
+                return new GlobalKeyword(name);
+            }
+
+            public static implicit operator string(GlobalKeyword gk) => gk.name;
+        }
+#endif
+
         /// <summary>
         /// Gets or sets whether the shaders should be rendered unlit (no lighting and shadows; only
         /// the diffuse texture will be shown).
