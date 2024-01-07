@@ -426,7 +426,7 @@ uint dynamic_triangles_light_count(uint triangle_index)
 {
     // if we are dealing with a dynamic object then we iterate over all light indices.
     if (lightmap_resolution == 0)
-        return dynamic_lights_count + realtime_lights_count;
+        return dynamic_lights_count;
     
     return dynamic_triangles[dynamic_triangles[triangle_index]];
 }
