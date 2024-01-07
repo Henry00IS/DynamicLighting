@@ -139,18 +139,6 @@ namespace AlpacaIT.DynamicLighting
         private ShaderDynamicLight[] shaderDynamicLights;
         private ComputeBuffer dynamicLightsBuffer;
 
-        /// <summary>
-        /// Stores the value last assigned with:
-        /// <code>Shader.SetGlobalInt("dynamic_lights_count", ...);</code>
-        /// </summary>
-        private int shaderLastDynamicLightsCount;
-
-        /// <summary>
-        /// Stores the value last assigned with:
-        /// <code>Shader.SetGlobalInt("realtime_lights_count", ...);</code>
-        /// </summary>
-        private int shaderLastRealtimeLightsCount;
-
         [System.NonSerialized]
         private bool isInitialized = false;
 
@@ -274,9 +262,10 @@ namespace AlpacaIT.DynamicLighting
             activeRealtimeLights = new List<DynamicLight>(realtimeLightBudget);
             shaderDynamicLights = new ShaderDynamicLight[totalLightBudget];
             dynamicLightsBuffer = new ComputeBuffer(shaderDynamicLights.Length, dynamicLightStride, ComputeBufferType.Default);
-            Shader.SetGlobalBuffer("dynamic_lights", dynamicLightsBuffer);
-            Shader.SetGlobalInt("dynamic_lights_count", shaderLastDynamicLightsCount = 0);
-            Shader.SetGlobalInt("realtime_lights_count", shaderLastRealtimeLightsCount = 0);
+
+            ShadersSetGlobalDynamicLights(dynamicLightsBuffer);
+            ShadersSetGlobalDynamicLightsCount(shadersLastDynamicLightsCount = 0);
+            ShadersSetGlobalRealtimeLightsCount(shadersLastRealtimeLightsCount = 0);
 
             // prepare the scene for dynamic lighting.
             var raycastedMeshRenderersCount = raycastedMeshRenderers.Count;
@@ -409,7 +398,7 @@ namespace AlpacaIT.DynamicLighting
 
             shaderDynamicLights = new ShaderDynamicLight[totalLightBudget];
             dynamicLightsBuffer = new ComputeBuffer(shaderDynamicLights.Length, dynamicLightStride, ComputeBufferType.Default);
-            Shader.SetGlobalBuffer("dynamic_lights", dynamicLightsBuffer);
+            ShadersSetGlobalDynamicLights(dynamicLightsBuffer);
         }
 
         /// <summary>Gets the total light budget to be reserved on the graphics card.</summary>
@@ -556,11 +545,11 @@ namespace AlpacaIT.DynamicLighting
             var activeDynamicLightsCount = raycastedDynamicLightsCount + activeRealtimeLightsCount;
             if (dynamicLightsBuffer != null && dynamicLightsBuffer.IsValid())
                 dynamicLightsBuffer.SetData(shaderDynamicLights, 0, 0, activeDynamicLightsCount);
-            Shader.SetGlobalInt("dynamic_lights_count", shaderLastDynamicLightsCount = raycastedDynamicLightsCount);
-            Shader.SetGlobalInt("realtime_lights_count", shaderLastRealtimeLightsCount = activeRealtimeLightsCount);
+            ShadersSetGlobalDynamicLightsCount(shadersLastDynamicLightsCount = raycastedDynamicLightsCount);
+            ShadersSetGlobalRealtimeLightsCount(shadersLastRealtimeLightsCount = activeRealtimeLightsCount);
 
             // update the ambient lighting color.
-            Shader.SetGlobalColor("dynamic_ambient_color", ambientColor);
+            ShadersSetGlobalDynamicAmbientColor(ambientColor);
 
             // update the shadow filtering algorithm.
             switch (QualitySettings.shadows)

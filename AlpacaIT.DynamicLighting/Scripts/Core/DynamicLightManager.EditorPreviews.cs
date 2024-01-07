@@ -44,12 +44,12 @@ namespace AlpacaIT.DynamicLighting
             // upload the preview light sources to the graphics card.
             editorPreviewsDynamicLightsBuffer = new ComputeBuffer(previewShaderDynamicLights.Length, dynamicLightStride, ComputeBufferType.Default);
             editorPreviewsDynamicLightsBuffer.SetData(previewShaderDynamicLights);
-            Shader.SetGlobalBuffer("dynamic_lights", editorPreviewsDynamicLightsBuffer);
+            ShadersSetGlobalDynamicLights(editorPreviewsDynamicLightsBuffer);
 
             // upload shader values to the graphics card.
-            Shader.SetGlobalInt("dynamic_lights_count", 0);
-            Shader.SetGlobalInt("realtime_lights_count", 2);
-            Shader.SetGlobalColor("dynamic_ambient_color", new Color(0.01568628f, 0.01568628f, 0.01568628f));
+            ShadersSetGlobalDynamicLightsCount(0);
+            ShadersSetGlobalRealtimeLightsCount(2);
+            ShadersSetGlobalDynamicAmbientColor(new Color(0.01568628f, 0.01568628f, 0.01568628f));
 
             // apply shader keywords.
             editorPreviewsShaderLitEnabled = shadersKeywordLitEnabled;
@@ -72,7 +72,7 @@ namespace AlpacaIT.DynamicLighting
             editorPreviewsRendered = false;
 
             // delete the preview light sources from the graphics card.
-            Shader.SetGlobalBuffer("dynamic_lights", dynamicLightsBuffer);
+            ShadersSetGlobalDynamicLights(dynamicLightsBuffer);
             if (editorPreviewsDynamicLightsBuffer.IsValid())
             {
                 editorPreviewsDynamicLightsBuffer.Dispose();
@@ -80,9 +80,9 @@ namespace AlpacaIT.DynamicLighting
             }
 
             // restore shader values on the graphics card.
-            Shader.SetGlobalInt("dynamic_lights_count", shaderLastDynamicLightsCount);
-            Shader.SetGlobalInt("realtime_lights_count", shaderLastRealtimeLightsCount);
-            Shader.SetGlobalColor("dynamic_ambient_color", ambientColor);
+            ShadersSetGlobalDynamicLightsCount(shadersLastDynamicLightsCount);
+            ShadersSetGlobalRealtimeLightsCount(shadersLastRealtimeLightsCount);
+            ShadersSetGlobalDynamicAmbientColor(ambientColor);
 
             // restore shader keywords.
             if (!editorPreviewsShaderLitEnabled)
