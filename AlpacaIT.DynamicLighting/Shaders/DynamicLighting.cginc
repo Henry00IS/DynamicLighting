@@ -319,7 +319,7 @@ float lightmap_sample3x3(uint2 uv, uint channel)
 // x x x
 float lightmap_sample_gaussian3(uint2 uv, uint channel)
 {
-    const float weights[3][3] = {
+    const uint weights[3][3] = {
         {1, 2, 1},
         {2, 4, 2},
         {1, 2, 1}
@@ -332,7 +332,7 @@ float lightmap_sample_gaussian3(uint2 uv, uint channel)
         }
     }
 
-    return map / 16.0; // normalize by the sum of the weights.
+    return map * 0.0625; // "map / 16.0" normalize by the sum of the weights.
 }
 
 // x x x x x
@@ -342,7 +342,7 @@ float lightmap_sample_gaussian3(uint2 uv, uint channel)
 // x x x x x
 float lightmap_sample_gaussian5(uint2 uv, uint channel)
 {
-    const float weights[5][5] = {
+    const uint weights[5][5] = {
         {1, 4,  6,  4, 1},
         {4, 16, 24, 16, 4},
         {6, 24, 36, 24, 6},
@@ -357,7 +357,7 @@ float lightmap_sample_gaussian5(uint2 uv, uint channel)
         }
     }
 
-    return map / 256.0; // normalize by the sum of the weights.
+    return map * 0.00390625; // "map / 256.0" normalize by the sum of the weights.
 }
 
 // adds triangle wedges between jagged shadow bits to round the physical appearance.
@@ -385,9 +385,35 @@ float lightmap_sample_triangulated(float2 uv, uint channel)
 }
 
 // x x x
-// x   x apply 4x 3x3 sampling with interpolation to get bilinear filtered shadow bits.
+// x   x apply a 3x3 gaussian blur with bilinear filtering to the shadow bits.
 // x x x
-float lightmap_sample_bilinear_gaussian(float2 uv, uint channel)
+float lightmap_sample_bilinear_gaussian3(float2 uv, uint channel)
+{
+    // huge shoutout to neu_graphic for their software bilinear filter shader.
+    // https://www.shadertoy.com/view/4sBSRK
+
+    // we are sample center, so it's the same as point sample.
+    float2 pos = uv - 0.5;
+    float2 f = frac(pos);
+    uint2 pos_top_left = floor(pos);
+
+    // we wish to do the following but with as few instructions as possible:
+    //
+    float tl = lightmap_sample_gaussian3(pos_top_left, channel);
+    float tr = lightmap_sample_gaussian3(pos_top_left + uint2(1, 0), channel);
+    float bl = lightmap_sample_gaussian3(pos_top_left + uint2(0, 1), channel);
+    float br = lightmap_sample_gaussian3(pos_top_left + uint2(1, 1), channel);
+    
+    // bilinear interpolation.
+    return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y);
+}
+
+// x x x x x
+// x x x x x apply a 5x5 gaussian blur with bilinear filtering to the shadow bits.
+// x x   x x
+// x x x x x
+// x x x x x
+float lightmap_sample_bilinear_gaussian5(float2 uv, uint channel)
 {
     // huge shoutout to neu_graphic for their software bilinear filter shader.
     // https://www.shadertoy.com/view/4sBSRK
