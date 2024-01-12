@@ -315,6 +315,100 @@ float lightmap_sample3x3(uint2 uv, uint channel)
 }
 
 // x x x
+// x   x apply a simple 3x3 gaussian blur to the shadow bits.
+// x x x
+float lightmap_sample_gaussian3(uint2 uv, uint channel)
+{
+    const float weights[3][3] = {
+        {1, 2, 1},
+        {2, 4, 2},
+        {1, 2, 1}
+    };
+
+    float map = 0.0;
+    for (int i = -1; i <= 1; ++i) {
+        for (int j = -1; j <= 1; ++j) {
+            map += weights[i + 1][j + 1] * lightmap_sample(uv + uint2(i, j), channel);
+        }
+    }
+
+    return map / 16.0; // normalize by the sum of the weights.
+}
+
+// x x x x x
+// x x x x x apply a 5x5 Gaussian blur to the shadow bits.
+// x x   x x
+// x x x x x
+// x x x x x
+float lightmap_sample_gaussian5(uint2 uv, uint channel)
+{
+    const float weights[5][5] = {
+        {1, 4,  6,  4, 1},
+        {4, 16, 24, 16, 4},
+        {6, 24, 36, 24, 6},
+        {4, 16, 24, 16, 4},
+        {1, 4,  6,  4, 1}
+    };
+
+    float map = 0.0;
+    for (int i = -2; i <= 2; ++i) {
+        for (int j = -2; j <= 2; ++j) {
+            map += weights[i + 2][j + 2] * lightmap_sample(uv + uint2(i, j), channel);
+        }
+    }
+
+    return map / 256.0; // normalize by the sum of the weights.
+}
+
+// adds triangle wedges between jagged shadow bits to round the physical appearance.
+float lightmap_sample_triangulated(float2 uv, uint channel)
+{
+    float2 dc = floor(uv - 0.5);
+    float current = lightmap_sample(dc, channel);
+
+    // early out when the sample is already fully in shadow.
+    if (current == 0) return 0.0;
+
+    float2 ddl = dc + float2(-1, -1);
+    float2 dur = dc + float2(1, 1);
+    float2 ddr2 = dc + float2(2, 0);
+
+    float left  = lightmap_sample(dc + float2(-1,  0), channel);
+    float right = lightmap_sample(dc + float2( 1,  0), channel);
+    float up    = lightmap_sample(dc + float2( 0,  1), channel);
+    float down  = lightmap_sample(dc + float2( 0, -1), channel);
+    
+    current *= (right != 0 || ((point_is_left_of_line(ddl, dur, uv) || down != 0) && (point_is_left_of_line(ddr2, dur, uv) || up != 0)));
+    current *= (left != 0 || ((!point_is_left_of_line(ddr2, dur, uv) || down != 0) && (!point_is_left_of_line(ddl, dur, uv) || up != 0)));
+    
+    return current;
+}
+
+// x x x
+// x   x apply 4x 3x3 sampling with interpolation to get bilinear filtered shadow bits.
+// x x x
+float lightmap_sample_bilinear_gaussian(float2 uv, uint channel)
+{
+    // huge shoutout to neu_graphic for their software bilinear filter shader.
+    // https://www.shadertoy.com/view/4sBSRK
+
+    // we are sample center, so it's the same as point sample.
+    float2 pos = uv - 0.5;
+    float2 f = frac(pos);
+    uint2 pos_top_left = floor(pos);
+
+    // we wish to do the following but with as few instructions as possible:
+    //
+    float tl = lightmap_sample_gaussian5(pos_top_left, channel);
+    float tr = lightmap_sample_gaussian5(pos_top_left + uint2(1, 0), channel);
+    float bl = lightmap_sample_gaussian5(pos_top_left + uint2(0, 1), channel);
+    float br = lightmap_sample_gaussian5(pos_top_left + uint2(1, 1), channel);
+    
+    // bilinear interpolation.
+    return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y);
+}
+
+// x x x
 // x   x apply 4x 3x3 sampling with interpolation to get bilinear filtered shadow bits.
 // x x x
 float lightmap_sample_bilinear(float2 uv, uint channel)

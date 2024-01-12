@@ -58,6 +58,11 @@ float3 nearest_point_on_finite_line(float3 start, float3 end, float3 pnt)
     return start + linex * d;
 }
 
+// returns a positive number if c is to the left of the line going from a to b.
+bool point_is_left_of_line(float2 a, float2 b, float2 c) {
+    return (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y)) > 0.0;
+}
+
 // looks at each channel's color information and multiplies the inverse of the blend and
 // base colors. the result color is always a lighter color. screening with black leaves the
 // color unchanged. screening with white produces white. the effect is similar to projecting
