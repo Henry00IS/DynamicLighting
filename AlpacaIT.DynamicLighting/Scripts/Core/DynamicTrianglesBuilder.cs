@@ -1,5 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
@@ -47,6 +47,17 @@ namespace AlpacaIT.DynamicLighting
             // fixme: contains sucks for speed.
             if (!triangles[triangleIndex].dynamicLightIndices.Contains((uint)lightIndex))
                 triangles[triangleIndex].dynamicLightIndices.Add((uint)lightIndex);
+        }
+
+        /// <summary>
+        /// Associates the specified light index with a triangle (fast version- does not check
+        /// whether the light index has already been associated with the triangle).
+        /// </summary>
+        /// <param name="triangleIndex">The triangle index in the mesh.</param>
+        /// <param name="lightIndex">The raycasted light index in the scene.</param>
+        public void AssociateLightWithTriangleFast(int triangleIndex, int lightIndex)
+        {
+            triangles[triangleIndex].dynamicLightIndices.Add((uint)lightIndex);
         }
 
         /// <summary>

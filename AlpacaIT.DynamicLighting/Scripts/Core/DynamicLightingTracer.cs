@@ -355,7 +355,6 @@ namespace AlpacaIT.DynamicLighting
             using (var nativeRaycastCommands = new NativeArray<RaycastCommand>(raycastCommands.ToArray(), Allocator.TempJob))
             {
                 var handle = RaycastCommand.ScheduleBatch(nativeRaycastCommands, nativeRaycastResults, nativeRaycastCommands.Length / JobsUtility.JobWorkerMaximumCount);
-                //JobHandle.ScheduleBatchedJobs();
                 handle.Complete();
             }
 
@@ -427,6 +426,7 @@ namespace AlpacaIT.DynamicLighting
             var trianglePlane = new Plane(v1, v2, v3);
             var triangleNormal = trianglePlane.normal;
             var triangleCenter = (v1 + v2 + v3) / 3.0f;
+            var triangleNormalValid = !triangleNormal.Equals(Vector3.zero);
 
             // first we associate lights to triangles that can potentially be affected by them. the
             // uv space may skip triangles when there's no direct point on the triangle and it may
@@ -436,23 +436,22 @@ namespace AlpacaIT.DynamicLighting
             {
                 var light = pointLights[i];
                 var lightPosition = light.transform.position;
-                var lightRadius = light.lightRadius;
-
-                // ensure the triangle intersects with the light sphere.
-                if (!MathEx.CheckSphereIntersectsTriangle(lightPosition, lightRadius, v1, v2, v3))
-                    continue;
 
                 // if we have the triangle normal then exclude triangles facing away from the light.
-                if (!triangleNormal.Equals(Vector3.zero))
+                if (triangleNormalValid)
                     if (math.dot(triangleNormal, (lightPosition - triangleCenter).normalized) <= -0.1f)
                         continue;
 
+                // ensure the triangle intersects with the light sphere.
+                if (!MathEx.CheckSphereIntersectsTriangle(lightPosition, light.lightRadius, v1, v2, v3))
+                    continue;
+
                 // this light can affect the triangle.
-                dynamic_triangles.AssociateLightWithTriangle(triangle_index, i);
+                dynamic_triangles.AssociateLightWithTriangleFast(triangle_index, i);
             }
 
             // skip degenerate triangles.
-            if (triangleNormal.Equals(Vector3.zero)) { return; };
+            if (!triangleNormalValid) return;
 
             // calculate the bounding box of the polygon in UV space.
             // we only have to raycast these pixels and can skip the rest.
@@ -486,20 +485,21 @@ namespace AlpacaIT.DynamicLighting
                     for (int i = 0; i < triangleLightIndicesCount; i++)
                     {
                         var pointLight = pointLights[triangleLightIndices[i]];
+                        var lightPosition = pointLight.transform.position;
+                        var lightRadius = pointLight.lightRadius;
 
-                        var radius = pointLight.lightRadius;
-                        if (radius == 0.0f) continue; // early out by radius.
+                        // early out by distance.
+                        if (Vector3.Distance(lightPosition, world) > lightRadius)
+                            continue;
 
-                        var position = pointLight.transform.position;
-                        float distance = Vector3.Distance(world, position);
-                        if (distance > radius) continue; // early out by distance.
-
-                        var direction = (position - world).normalized;
-                        if (math.dot(triangleNormal, direction) < -0.1f) continue; // early out by normal.
+                        // early out by normal.
+                        var lightDirection = (lightPosition - world).normalized;
+                        if (math.dot(triangleNormal, lightDirection) < -0.1f)
+                            continue;
 
                         // prepare to trace from the light to the world position.
                         traces++;
-                        raycastCommands.Add(new RaycastCommand(position, -direction, radius, raycastLayermask));
+                        raycastCommands.Add(new RaycastCommand(lightPosition, -lightDirection, lightRadius, raycastLayermask));
                         raycastCommandsMeta.Add(new RaycastCommandMeta(x, y, world, pointLight.lightChannel));
                     }
 
