@@ -1,4 +1,7 @@
 using AlpacaIT.DynamicLighting.Internal;
+using System.Collections.Generic;
+using Unity.Collections;
+using Unity.Jobs.LowLevel.Unsafe;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -9,9 +12,6 @@ namespace AlpacaIT.DynamicLighting
     {
         /// <summary>The maximum size of the lightmap to be baked (defaults to 2048x2048).</summary>
         public int maximumLightmapSize { get; set; } = 2048;
-
-        /// <summary>The raytracing engine to be utilized.</summary>
-        public DynamicLightingTracerEngine raytracingEngine { get; set; } = DynamicLightingTracerEngine.Default;
 
         private delegate uint RaycastHandler(DynamicLight pointLight, Vector3 world, Vector3 normal);
 
@@ -32,7 +32,6 @@ namespace AlpacaIT.DynamicLighting
         private int uniqueIdentifier = 0;
         private LayerMask raycastLayermask = ~0;
         private int pixelDensityPerSquareMeter = 128;
-        private RaycastHandler raycastHandlerMethod;
         private DynamicLightManager dynamicLightManager;
 
 #if UNITY_EDITOR
@@ -63,16 +62,6 @@ namespace AlpacaIT.DynamicLighting
             uniqueIdentifier = 0;
             raycastLayermask = dynamicLightManager.raytraceLayers;
             pixelDensityPerSquareMeter = dynamicLightManager.pixelDensityPerSquareMeter;
-            switch (raytracingEngine)
-            {
-                case DynamicLightingTracerEngine.Default:
-                    raycastHandlerMethod = RaycastDefault;
-                    break;
-
-                case DynamicLightingTracerEngine.Adaptive:
-                    raycastHandlerMethod = RaycastAdaptive;
-                    break;
-            }
 #if UNITY_EDITOR
             progressBarLastUpdate = 0f;
             progressBarCancel = false;
@@ -83,12 +72,16 @@ namespace AlpacaIT.DynamicLighting
         public void StartRaytracing()
         {
             var queriesHitBackfacesPrevious = Physics.queriesHitBackfaces;
+            var queriesHitTriggersPrevious = Physics.queriesHitTriggers;
 
             try
             {
                 // we require this for linecasts starting inside of objects (e.g. the floor under a box).
                 // it also prevents light from shining through one-sided walls (inverted world workflow).
                 Physics.queriesHitBackfaces = true;
+
+                // due to a missing parameter in the unity job system we must ignore triggers globally.
+                Physics.queriesHitTriggers = false;
 
                 // reset the internal state and collect required scene information.
                 Prepare();
@@ -133,8 +126,9 @@ namespace AlpacaIT.DynamicLighting
             }
             finally
             {
-                // always make sure we reset this setting.
+                // always make sure we reset these settings.
                 Physics.queriesHitBackfaces = queriesHitBackfacesPrevious;
+                Physics.queriesHitTriggers = queriesHitTriggersPrevious;
 #if UNITY_EDITOR
                 UnityEditor.EditorUtility.ClearProgressBar();
 #endif
@@ -172,6 +166,10 @@ namespace AlpacaIT.DynamicLighting
             var pixels_lightmap = new uint[lightmapSize * lightmapSize];
             var pixels_visited = new uint[lightmapSize * lightmapSize];
 
+            // prepare to raycast the entire mesh using multi-threading.
+            var raycastCommands = new List<RaycastCommand>(lightmapSize * lightmapSize);
+            var raycastCommandsMeta = new List<RaycastCommandMeta>(raycastCommands.Capacity);
+
             // iterate over all triangles in the mesh.
             for (int i = 0; i < meshBuilder.triangleCount; i++)
             {
@@ -189,8 +187,18 @@ namespace AlpacaIT.DynamicLighting
                 var (v1, v2, v3) = meshBuilder.GetTriangleVertices(i);
                 var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
 
-                RaycastTriangle(i, dynamic_triangles, ref pixels_lightmap, ref pixels_visited, v1, v2, v3, t1, t2, t3);
+                RaycastTriangle(i, dynamic_triangles, ref pixels_lightmap, ref pixels_visited, raycastCommands, raycastCommandsMeta, v1, v2, v3, t1, t2, t3);
+
+                // we must sometimes process the raycasts as to not run out of memory.
+                if (raycastCommands.Count > 1024 * 1024) // assuming we need 64 bytes per entry or alike this is roughly 64MiB of data.
+                {
+                    ProcessPendingRaycasts(ref pixels_lightmap, raycastCommands, raycastCommandsMeta);
+                }
             }
+
+            // finish any remaining work.
+            ProcessPendingRaycasts(ref pixels_lightmap, raycastCommands, raycastCommandsMeta);
+
             tracingTime.Stop();
 
             seamTime.Begin();
@@ -340,6 +348,32 @@ namespace AlpacaIT.DynamicLighting
                 Debug.LogError($"Unable to write the triangles {lightmap.identifier} file in the active scene resources directory!");
         }
 
+        private void ProcessPendingRaycasts(ref uint[] pixels_lightmap, List<RaycastCommand> raycastCommands, List<RaycastCommandMeta> raycastCommandsMeta)
+        {
+            // we traced from the light position to the world position and check whether we hit close to it.
+
+            using var nativeRaycastResults = new NativeArray<RaycastHit>(raycastCommands.Count, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+            using (var nativeRaycastCommands = new NativeArray<RaycastCommand>(raycastCommands.ToArray(), Allocator.TempJob))
+            {
+                var handle = RaycastCommand.ScheduleBatch(nativeRaycastCommands, nativeRaycastResults, nativeRaycastCommands.Length / JobsUtility.JobWorkerMaximumCount);
+                //JobHandle.ScheduleBatchedJobs();
+                handle.Complete();
+            }
+
+            for (int i = 0; i < nativeRaycastResults.Length; i++)
+            {
+                var meta = raycastCommandsMeta[i];
+                var hit = nativeRaycastResults[i];
+
+                if (Vector3.Distance(hit.point, meta.world) < 0.01f)
+                    BitOrPixel(ref pixels_lightmap, meta.x, meta.y, (uint)1 << ((int)meta.lightChannel));
+            }
+
+            // clear memory.
+            raycastCommands.Clear();
+            raycastCommandsMeta.Clear();
+        }
+
         private uint GetPixel(ref uint[] pixels, int x, int y)
         {
             if (x < 0 || y < 0 || x >= lightmapSize || y >= lightmapSize) return 0;
@@ -352,7 +386,29 @@ namespace AlpacaIT.DynamicLighting
             pixels[y * lightmapSize + x] = color;
         }
 
-        private void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, ref uint[] pixels_lightmap, ref uint[] pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        private void BitOrPixel(ref uint[] pixels, int x, int y, uint color)
+        {
+            if (x < 0 || y < 0 || x >= lightmapSize || y >= lightmapSize) return;
+            pixels[y * lightmapSize + x] |= color;
+        }
+
+        private struct RaycastCommandMeta
+        {
+            public int x;
+            public int y;
+            public Vector3 world;
+            public uint lightChannel;
+
+            public RaycastCommandMeta(int x, int y, Vector3 world, uint lightChannel)
+            {
+                this.x = x;
+                this.y = y;
+                this.world = world;
+                this.lightChannel = lightChannel;
+            }
+        }
+
+        private void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, ref uint[] pixels_lightmap, ref uint[] pixels_visited, List<RaycastCommand> raycastCommands, List<RaycastCommandMeta> raycastCommandsMeta, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // calculate the triangle normal (this may fail when degenerate or very small).
             var trianglePlane = new Plane(v1, v2, v3);
@@ -408,67 +464,56 @@ namespace AlpacaIT.DynamicLighting
                     if (world.Equals(Vector3.zero)) continue;
 
                     // iterate over the lights potentially affecting this triangle.
-                    uint px = 0;
                     for (int i = 0; i < triangleLightIndicesCount; i++)
                     {
                         var pointLight = pointLights[triangleLightIndices[i]];
-                        px |= raycastHandlerMethod(pointLight, world, triangleNormal);
+
+                        var radius = pointLight.lightRadius;
+                        if (radius == 0.0f) continue; // early out by radius.
+
+                        var position = pointLight.transform.position;
+                        float distance = Vector3.Distance(world, position);
+                        if (distance > radius) continue; // early out by distance.
+
+                        var direction = (position - world).normalized;
+                        if (math.dot(triangleNormal, direction) < -0.1f) continue; // early out by normal.
+
+                        // prepare to trace from the light to the world position.
+                        traces++;
+                        raycastCommands.Add(new RaycastCommand(position, -direction, radius, raycastLayermask));
+                        raycastCommandsMeta.Add(new RaycastCommandMeta(x, y, world, pointLight.lightChannel));
                     }
 
                     // write this pixel into the visited map.
                     SetPixel(ref pixels_visited, x, y, 1);
-
-                    if (px > 0)
-                    {
-                        SetPixel(ref pixels_lightmap, x, y, px);
-                    }
                 }
             }
         }
 
-        private uint RaycastDefault(DynamicLight pointLight, Vector3 world, Vector3 normal)
-        {
-            var radius = pointLight.lightRadius;
-            if (radius == 0.0f) return 0; // early out by radius.
-
-            var position = pointLight.transform.position;
-            float distance = Vector3.Distance(world, position);
-            if (distance > radius) return 0; // early out by distance.
-
-            var direction = (position - world).normalized;
-            if (math.dot(normal, direction) < -0.1f) return 0; // early out by normal.
-
-            // trace from the light to the world position and check whether we hit close to it.
-            traces++;
-            if (Physics.Raycast(position, -direction, out var hit, radius, raycastLayermask, QueryTriggerInteraction.Ignore))
-                if (Vector3.Distance(hit.point, world) < 0.01f)
-                    return (uint)1 << ((int)pointLight.lightChannel);
-
-            return 0;
-        }
-
-        private uint RaycastAdaptive(DynamicLight pointLight, Vector3 world, Vector3 normal)
-        {
-            var radius = pointLight.lightRadius;
-            if (radius == 0.0f) return 0; // early out by radius.
-
-            var position = pointLight.transform.position;
-            float distance = Vector3.Distance(world, position);
-            if (distance > radius) return 0; // early out by distance.
-
-            var direction = (position - world).normalized;
-            if (math.dot(normal, direction) < -0.1f) return 0; // early out by normal.
-
-            // offset the world position and try to correct for floating point inaccuracy.
-            world += normal * (world.magnitude * 0.001f);
-
-            // trace from the world to the light position and check whether we didn't hit anything.
-            traces++;
-            if (!Physics.Linecast(world, position, out var _, raycastLayermask, QueryTriggerInteraction.Ignore))
-                if (!Physics.CheckBox(world, Vector3.zero, Quaternion.identity, raycastLayermask, QueryTriggerInteraction.Ignore))
-                    return (uint)1 << ((int)pointLight.lightChannel);
-
-            return 0;
-        }
+        // unable to do this with the job system (?).
+        //
+        // private uint RaycastAdaptive(DynamicLight pointLight, Vector3 world, Vector3 normal)
+        // {
+        //     var radius = pointLight.lightRadius;
+        //     if (radius == 0.0f) return 0; // early out by radius.
+        //
+        //     var position = pointLight.transform.position;
+        //     float distance = Vector3.Distance(world, position);
+        //     if (distance > radius) return 0; // early out by distance.
+        //
+        //     var direction = (position - world).normalized;
+        //     if (math.dot(normal, direction) < -0.1f) return 0; // early out by normal.
+        //
+        //     // offset the world position and try to correct for floating point inaccuracy.
+        //     world += normal * (world.magnitude * 0.001f);
+        //
+        //     // trace from the world to the light position and check whether we didn't hit anything.
+        //     traces++;
+        //     if (!Physics.Linecast(world, position, out var _, raycastLayermask, QueryTriggerInteraction.Ignore))
+        //         if (!Physics.CheckBox(world, Vector3.zero, Quaternion.identity, raycastLayermask, QueryTriggerInteraction.Ignore))
+        //             return (uint)1 << ((int)pointLight.lightChannel);
+        //
+        //     return 0;
+        // }
     }
 }

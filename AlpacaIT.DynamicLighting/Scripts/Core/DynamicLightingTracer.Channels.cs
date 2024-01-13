@@ -1,6 +1,4 @@
-﻿using AlpacaIT.DynamicLighting.Internal;
-using Unity.Mathematics;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {

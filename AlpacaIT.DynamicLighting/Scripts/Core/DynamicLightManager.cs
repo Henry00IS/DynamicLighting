@@ -113,13 +113,6 @@ namespace AlpacaIT.DynamicLighting
         [Min(1)]
         public int pixelDensityPerSquareMeter = 128;
 
-        /// <summary>
-        /// The raytracing engine to be utilized. If you encounter any issues, feel free to switch
-        /// between them, and kindly share your feedback on Discord.
-        /// </summary>
-        [Tooltip("The raytracing engine to be utilized. If you encounter any issues, feel free to switch between them, and kindly share your feedback on Discord.")]
-        public DynamicLightingTracerEngine raytracingEngine = DynamicLightingTracerEngine.Default;
-
         /// <summary>The collection of raycasted mesh renderers in the scene.</summary>
         [SerializeField]
         [HideInInspector]
@@ -762,7 +755,6 @@ namespace AlpacaIT.DynamicLighting
 #endif
             var tracer = new DynamicLightingTracer();
             tracer.maximumLightmapSize = maximumLightmapSize;
-            tracer.raytracingEngine = raytracingEngine;
 
             bool cancelled = false;
             tracer.cancelled += (s, e) => { cancelled = true; traceCancelled?.Invoke(this, null); };
