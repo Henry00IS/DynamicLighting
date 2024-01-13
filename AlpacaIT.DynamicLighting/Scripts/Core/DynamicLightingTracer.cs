@@ -5,13 +5,14 @@ using UnityEngine;
 namespace AlpacaIT.DynamicLighting
 {
     /// <summary>The raytracer that calculates shadows for all dynamic lights.</summary>
-    internal class DynamicLightingTracer
+    internal partial class DynamicLightingTracer
     {
         /// <summary>The maximum size of the lightmap to be baked (defaults to 2048x2048).</summary>
         public int maximumLightmapSize { get; set; } = 2048;
 
         /// <summary>The raytracing engine to be utilized.</summary>
         public DynamicLightingTracerEngine raytracingEngine { get; set; } = DynamicLightingTracerEngine.Default;
+
         private delegate uint RaycastHandler(DynamicLight pointLight, Vector3 world, Vector3 normal);
 
         /// <summary>Called when this tracer instance has been cancelled.</summary>
@@ -22,9 +23,9 @@ namespace AlpacaIT.DynamicLighting
 #pragma warning restore CS0067
 
         private int traces = 0;
-        private float tracingTime = 0f;
-        private float seamTime = 0f;
-        private long vramTotal = 0;
+        private BenchmarkTimer tracingTime;
+        private BenchmarkTimer seamTime;
+        private ulong vramTotal = 0;
         private DynamicLight[] pointLights;
         private int lightmapSize = 2048;
         private float lightmapSizeMin1;
@@ -32,6 +33,7 @@ namespace AlpacaIT.DynamicLighting
         private LayerMask raycastLayermask = ~0;
         private int pixelDensityPerSquareMeter = 128;
         private RaycastHandler raycastHandlerMethod;
+        private DynamicLightManager dynamicLightManager;
 
 #if UNITY_EDITOR
         private float progressBarLastUpdate = 0f;
@@ -47,20 +49,26 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Resets the internal state so that it's ready for raytracing.</summary>
         private void Prepare()
         {
+            // fetch the dynamic light manager instance once.
+            dynamicLightManager = DynamicLightManager.Instance;
+
+            // find all of the dynamic lights in the scene.
+            pointLights = DynamicLightManager.FindDynamicLightsInScene().ToArray();
+
             traces = 0;
-            tracingTime = 0f;
-            seamTime = 0f;
+            tracingTime = new BenchmarkTimer();
+            seamTime = new BenchmarkTimer();
             vramTotal = 0;
-            pointLights = null;
             lightmapSizeMin1 = lightmapSize - 1;
             uniqueIdentifier = 0;
-            raycastLayermask = DynamicLightManager.Instance.raytraceLayers;
-            pixelDensityPerSquareMeter = DynamicLightManager.Instance.pixelDensityPerSquareMeter;
+            raycastLayermask = dynamicLightManager.raytraceLayers;
+            pixelDensityPerSquareMeter = dynamicLightManager.pixelDensityPerSquareMeter;
             switch (raytracingEngine)
             {
                 case DynamicLightingTracerEngine.Default:
                     raycastHandlerMethod = RaycastDefault;
                     break;
+
                 case DynamicLightingTracerEngine.Adaptive:
                     raycastHandlerMethod = RaycastAdaptive;
                     break;
@@ -78,28 +86,24 @@ namespace AlpacaIT.DynamicLighting
 
             try
             {
-                // fetch the dynamic light manager instance once.
-                var dynamicLightManager = DynamicLightManager.Instance;
-
                 // we require this for linecasts starting inside of objects (e.g. the floor under a box).
                 // it also prevents light from shining through one-sided walls (inverted world workflow).
                 Physics.queriesHitBackfaces = true;
 
-                // reset the internal state.
+                // reset the internal state and collect required scene information.
                 Prepare();
 
 #if UNITY_EDITOR
                 // delete all of the old lightmap data in the scene and on disk.
                 dynamicLightManager.EditorDeleteLightmaps();
 #endif
-                // find all of the dynamic lights in the scene and assign channels.
-                pointLights = DynamicLightManager.FindDynamicLightsInScene().ToArray();
-                AssignPointLightChannels();
+                // assign channels to all dynamic lights in the scene.
+                ChannelsUpdatePointLightsInScene();
 
                 // assign the dynamic lights in the scene to the dynamic light manager.
                 dynamicLightManager.raycastedDynamicLights.Clear();
                 for (int i = 0; i < pointLights.Length; i++)
-                    dynamicLightManager.raycastedDynamicLights.Add(new RaycastedDynamicLight() { light = pointLights[i], origin = pointLights[i].transform.position });
+                    dynamicLightManager.raycastedDynamicLights.Add(new RaycastedDynamicLight(pointLights[i]));
 
                 var meshFilters = Object.FindObjectsOfType<MeshFilter>();
                 for (int i = 0; i < meshFilters.Length; i++)
@@ -117,7 +121,7 @@ namespace AlpacaIT.DynamicLighting
                     }
                 }
 
-                Debug.Log("Raytracing Finished: " + traces + " traces in " + tracingTime + "s! Seams padding in " + seamTime + "s! VRAM estimation: " + BytesToUnitString(vramTotal));
+                Debug.Log("Raytracing Finished: " + traces + " traces in " + tracingTime + "! Seams padding in " + seamTime + "! VRAM estimation: " + MathEx.BytesToUnitString(vramTotal));
                 dynamicLightManager.Reload();
 #if UNITY_EDITOR
                 UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
@@ -137,70 +141,6 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
-        private static string BytesToUnitString(long bytes)
-        {
-            if (bytes < (long)1024) return bytes + "B";
-            if (bytes < (long)1024 * 1024) return bytes / 1024 + "KiB";
-            if (bytes < (long)1024 * 1024 * 1024) return bytes / 1024 / 1024 + "MiB";
-            if (bytes < (long)1024 * 1024 * 1024 * 1024) return bytes / 1024 / 1024 / 1024 + "GiB";
-            if (bytes < (long)1024 * 1024 * 1024 * 1024 * 1024) return bytes / 1024 / 1024 / 1024 / 1024 + "TiB"; // the future!
-            return bytes + "B";
-        }
-
-        private void AssignPointLightChannels()
-        {
-            // first reset all the channels to an invalid value.
-            for (int i = 0; i < pointLights.Length; i++)
-            {
-                var light = pointLights[i];
-                light.lightChannel = 255;
-            }
-
-            for (int i = 0; i < pointLights.Length; i++)
-            {
-                var light = pointLights[i];
-
-                if (TryFindFreeLightChannelAt(light.transform.position, light.lightRadius, out var channel))
-                {
-#if UNITY_EDITOR
-                    // required to use serialized object to override fields in prefabs:
-                    // this does: light.lightChannel = channel;
-                    var serializedObject = new UnityEditor.SerializedObject(light);
-                    var lightChannelProperty = serializedObject.FindProperty(nameof(DynamicLight.lightChannel));
-                    lightChannelProperty.intValue = (int)channel;
-                    serializedObject.ApplyModifiedProperties();
-#else
-                    light.lightChannel = channel;
-#endif
-                }
-                else
-                {
-                    Debug.LogError("More than 32 lights intersect at the same position! This is not supported! Please spread your light sources further apart or reduce their radius.");
-                }
-            }
-        }
-
-        private bool TryFindFreeLightChannelAt(Vector3 position, float radius, out uint channel)
-        {
-            // find all used channels that intersect our radius.
-            var channels = new bool[32];
-            for (int i = 0; i < pointLights.Length; i++)
-            {
-                var light = pointLights[i];
-                if (light.lightChannel == 255) continue;
-
-                if (MathEx.SpheresIntersect(light.transform.position, light.lightRadius, position, radius))
-                    channels[light.lightChannel] = true;
-            }
-
-            // find a free channel.
-            for (channel = 0; channel < channels.Length; channel++)
-                if (!channels[channel])
-                    return true;
-
-            return false;
-        }
-
         private void Raytrace(MeshFilter meshFilter, float progressMin, float progressMax)
         {
             var meshBuilder = new MeshBuilder(meshFilter.transform.localToWorldMatrix, meshFilter.sharedMesh);
@@ -213,7 +153,7 @@ namespace AlpacaIT.DynamicLighting
             var progressTitle = "Raytracing Scene " + meshBuilder.surfaceArea.ToString("0.00") + "m² (" + lightmapSize + "x" + lightmapSize + ")";
             var progressDescription = "Raytracing " + meshFilter.name;
 #endif
-            if (meshBuilder.meshUv1.Length == 0)
+            if (!meshBuilder.hasLightmapCoordinates)
             {
                 Debug.LogWarning("Raytracer skipping " + meshFilter.name + " because it does not have uv1 lightmap coordinates!");
                 return;
@@ -221,51 +161,39 @@ namespace AlpacaIT.DynamicLighting
             else
             {
                 // estimate the amount of vram required (purely statistical).
-                long vramLightmap = lightmapSize * lightmapSize * 4; // uint32
+                ulong vramLightmap = (ulong)(lightmapSize * lightmapSize * 4); // uint32
                 vramTotal += vramLightmap;
 
-                Debug.Log(meshFilter.name + " surface area: " + meshBuilder.surfaceArea.ToString("0.00") + "m² lightmap size: " + lightmapSize + "x" + lightmapSize + " VRAM: " + BytesToUnitString(vramLightmap), meshFilter);
+                Debug.Log(meshFilter.name + " surface area: " + meshBuilder.surfaceArea.ToString("0.00") + "m² lightmap size: " + lightmapSize + "x" + lightmapSize + " VRAM: " + MathEx.BytesToUnitString(vramLightmap), meshFilter);
             }
 
-            var tt1 = Time.realtimeSinceStartup;
+            tracingTime.Begin();
             var dynamic_triangles = new DynamicTrianglesBuilder(meshBuilder.triangleCount);
             var pixels_lightmap = new uint[lightmapSize * lightmapSize];
             var pixels_visited = new uint[lightmapSize * lightmapSize];
+
+            // iterate over all triangles in the mesh.
+            for (int i = 0; i < meshBuilder.triangleCount; i++)
             {
-                var vertices = meshBuilder.worldVertices;
-                var uv1 = meshBuilder.meshUv1;
-                var triangles = meshBuilder.meshTriangles;
-                var triangle_index = 0;
-
-                for (int i = 0; i < triangles.Length; i += 3)
-                {
 #if UNITY_EDITOR
-                    if (Time.realtimeSinceStartup - progressBarLastUpdate > 0.25f)
+                if (Time.realtimeSinceStartup - progressBarLastUpdate > 0.25f)
+                {
+                    progressBarLastUpdate = Time.realtimeSinceStartup;
+                    if (UnityEditor.EditorUtility.DisplayCancelableProgressBar(progressTitle, progressDescription, Mathf.Lerp(progressMin, progressMax, i / (float)meshBuilder.triangleCount)))
                     {
-                        progressBarLastUpdate = Time.realtimeSinceStartup;
-                        if (UnityEditor.EditorUtility.DisplayCancelableProgressBar(progressTitle, progressDescription, Mathf.Lerp(progressMin, progressMax, i / (float)triangles.Length)))
-                        {
-                            progressBarCancel = true;
-                            break;
-                        }
+                        progressBarCancel = true;
+                        break;
                     }
-#endif
-                    var v1 = vertices[triangles[i]];
-                    var v2 = vertices[triangles[i + 1]];
-                    var v3 = vertices[triangles[i + 2]];
-
-                    var t1 = uv1[triangles[i]];
-                    var t2 = uv1[triangles[i + 1]];
-                    var t3 = uv1[triangles[i + 2]];
-
-                    RaycastTriangle(triangle_index, dynamic_triangles, ref pixels_lightmap, ref pixels_visited, v1, v2, v3, t1, t2, t3);
-
-                    triangle_index++;
                 }
-            }
-            tracingTime += Time.realtimeSinceStartup - tt1;
+#endif
+                var (v1, v2, v3) = meshBuilder.GetTriangleVertices(i);
+                var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
 
-            tt1 = Time.realtimeSinceStartup;
+                RaycastTriangle(i, dynamic_triangles, ref pixels_lightmap, ref pixels_visited, v1, v2, v3, t1, t2, t3);
+            }
+            tracingTime.Stop();
+
+            seamTime.Begin();
             {
                 for (int x = 0; x < lightmapSize; x++)
                 {
@@ -394,14 +322,14 @@ namespace AlpacaIT.DynamicLighting
                     }
                 }
             }
-            seamTime += Time.realtimeSinceStartup - tt1;
+            seamTime.Stop();
 
             // store the scene reference renderer in the dynamic light manager with lightmap metadata.
             var lightmap = new RaycastedMeshRenderer();
             lightmap.renderer = meshFilter.GetComponent<MeshRenderer>();
             lightmap.resolution = lightmapSize;
             lightmap.identifier = uniqueIdentifier++;
-            DynamicLightManager.Instance.raycastedMeshRenderers.Add(lightmap);
+            dynamicLightManager.raycastedMeshRenderers.Add(lightmap);
 
             // write the lightmap shadow bits to disk.
             if (!Utilities.WriteLightmapData(lightmap.identifier, "Lightmap", pixels_lightmap))
@@ -422,21 +350,6 @@ namespace AlpacaIT.DynamicLighting
         {
             if (x < 0 || y < 0 || x >= lightmapSize || y >= lightmapSize) return;
             pixels[y * lightmapSize + x] = color;
-        }
-
-        private static Vector3 UvTo3d(Vector2 uv, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
-        {
-            // calculate triangle area - if zero, skip it.
-            var a = Area(t1, t2, t3); if (a == 0f) return Vector3.zero;
-
-            // calculate barycentric coordinates of u1, u2 and u3.
-            // if anyone is negative, point is outside the triangle: skip it.
-            var a1 = Area(t2, t3, uv) / a; if (a1 < 0f) return Vector3.zero;
-            var a2 = Area(t3, t1, uv) / a; if (a2 < 0f) return Vector3.zero;
-            var a3 = Area(t1, t2, uv) / a; if (a3 < 0f) return Vector3.zero;
-
-            // point inside the triangle - find mesh position by interpolation.
-            return a1 * v1 + a2 * v2 + a3 * v3;
         }
 
         private void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, ref uint[] pixels_lightmap, ref uint[] pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
@@ -474,7 +387,7 @@ namespace AlpacaIT.DynamicLighting
 
             // calculate the bounding box of the polygon in UV space.
             // we only have to raycast these pixels and can skip the rest.
-            var triangleBoundingBox = ComputeTriangleBoundingBox(t1, t2, t3);
+            var triangleBoundingBox = MathEx.ComputeTriangleBoundingBox(t1, t2, t3);
             var minX = Mathf.FloorToInt(triangleBoundingBox.xMin * lightmapSizeMin1);
             var minY = Mathf.FloorToInt(triangleBoundingBox.yMin * lightmapSizeMin1);
             var maxX = Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSizeMin1);
@@ -491,7 +404,7 @@ namespace AlpacaIT.DynamicLighting
                     float xx = x / lightmapSizeMin1;
                     float yy = y / lightmapSizeMin1;
 
-                    var world = UvTo3d(new Vector2(xx, yy), v1, v2, v3, t1, t2, t3);
+                    var world = MathEx.UvTo3dFast(new Vector2(xx, yy), v1, v2, v3, t1, t2, t3);
                     if (world.Equals(Vector3.zero)) continue;
 
                     // iterate over the lights potentially affecting this triangle.
@@ -556,31 +469,6 @@ namespace AlpacaIT.DynamicLighting
                     return (uint)1 << ((int)pointLight.lightChannel);
 
             return 0;
-        }
-
-        // calculate signed triangle area using a kind of "2D cross product":
-        private static float Area(Vector2 p1, Vector2 p2, Vector2 p3)
-        {
-            var v1 = p1 - p3;
-            var v2 = p2 - p3;
-            return (v1.x * v2.y - v1.y * v2.x) / 2f;
-        }
-
-        private static Rect ComputeTriangleBoundingBox(Vector2 a, Vector2 b, Vector2 c)
-        {
-            float sx1 = a.x;
-            float sx2 = b.x;
-            float sx3 = c.x;
-            float sy1 = a.y;
-            float sy2 = b.y;
-            float sy3 = c.y;
-
-            float xmax = sx1 > sx2 ? (sx1 > sx3 ? sx1 : sx3) : (sx2 > sx3 ? sx2 : sx3);
-            float ymax = sy1 > sy2 ? (sy1 > sy3 ? sy1 : sy3) : (sy2 > sy3 ? sy2 : sy3);
-            float xmin = sx1 < sx2 ? (sx1 < sx3 ? sx1 : sx3) : (sx2 < sx3 ? sx2 : sx3);
-            float ymin = sy1 < sy2 ? (sy1 < sy3 ? sy1 : sy3) : (sy2 < sy3 ? sy2 : sy3);
-
-            return new Rect(xmin, ymin, xmax - xmin, ymax - ymin);
         }
     }
 }
