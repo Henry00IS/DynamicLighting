@@ -1,5 +1,6 @@
 using AlpacaIT.DynamicLighting.Internal;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Jobs.LowLevel.Unsafe;
 using Unity.Mathematics;
@@ -12,8 +13,6 @@ namespace AlpacaIT.DynamicLighting
     {
         /// <summary>The maximum size of the lightmap to be baked (defaults to 2048x2048).</summary>
         public int maximumLightmapSize { get; set; } = 2048;
-
-        private delegate uint RaycastHandler(DynamicLight pointLight, Vector3 world, Vector3 normal);
 
         /// <summary>Called when this tracer instance has been cancelled.</summary>
 #pragma warning disable CS0067
@@ -208,7 +207,7 @@ namespace AlpacaIT.DynamicLighting
                     for (int y = 0; y < lightmapSize; y++)
                     {
                         // if we find an unvisited pixel it will appear as a black seam in the scene.
-                        var visited = GetPixel(ref pixels_visited, x, y);
+                        var visited = GetPixelFast(ref pixels_visited, x, y);
                         if (visited == 0)
                         {
                             uint res = 0;
@@ -325,7 +324,7 @@ namespace AlpacaIT.DynamicLighting
                             if (!p23 && p24)
                                 res |= l24;
 
-                            SetPixel(ref pixels_lightmap, x, y, res);
+                            SetPixelFast(ref pixels_lightmap, x, y, res);
                         }
                     }
                 }
@@ -366,7 +365,7 @@ namespace AlpacaIT.DynamicLighting
                 var hit = nativeRaycastResults[i];
 
                 if (Vector3.Distance(hit.point, meta.world) < 0.01f)
-                    BitOrPixel(ref pixels_lightmap, meta.x, meta.y, (uint)1 << ((int)meta.lightChannel));
+                    BitOrPixelFast(ref pixels_lightmap, meta.x, meta.y, (uint)1 << ((int)meta.lightChannel));
             }
 
             // clear memory.
@@ -374,21 +373,35 @@ namespace AlpacaIT.DynamicLighting
             raycastCommandsMeta.Clear();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private uint GetPixel(ref uint[] pixels, int x, int y)
         {
             if (x < 0 || y < 0 || x >= lightmapSize || y >= lightmapSize) return 0;
+            return GetPixelFast(ref pixels, x, y);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private uint GetPixelFast(ref uint[] pixels, int x, int y)
+        {
             return pixels[y * lightmapSize + x];
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void SetPixel(ref uint[] pixels, int x, int y, uint color)
         {
             if (x < 0 || y < 0 || x >= lightmapSize || y >= lightmapSize) return;
+            SetPixelFast(ref pixels, x, y, color);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void SetPixelFast(ref uint[] pixels, int x, int y, uint color)
+        {
             pixels[y * lightmapSize + x] = color;
         }
 
-        private void BitOrPixel(ref uint[] pixels, int x, int y, uint color)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void BitOrPixelFast(ref uint[] pixels, int x, int y, uint color)
         {
-            if (x < 0 || y < 0 || x >= lightmapSize || y >= lightmapSize) return;
             pixels[y * lightmapSize + x] |= color;
         }
 
@@ -449,6 +462,12 @@ namespace AlpacaIT.DynamicLighting
             var maxX = Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSizeMin1);
             var maxY = Mathf.CeilToInt(triangleBoundingBox.yMax * lightmapSizeMin1);
 
+            // clamp the pixel coordinates so that we can safely write to our arrays.
+            minX = Mathf.Clamp(minX, 0, (int)lightmapSizeMin1);
+            minY = Mathf.Clamp(minY, 0, (int)lightmapSizeMin1);
+            maxX = Mathf.Clamp(maxX, 0, (int)lightmapSizeMin1);
+            maxY = Mathf.Clamp(maxY, 0, (int)lightmapSizeMin1);
+
             // prepare to only iterate over lights potentially affecting the current triangle.
             var triangleLightIndices = dynamic_triangles.GetAssociatedLightIndices(triangle_index);
             var triangleLightIndicesCount = triangleLightIndices.Count;
@@ -485,7 +504,7 @@ namespace AlpacaIT.DynamicLighting
                     }
 
                     // write this pixel into the visited map.
-                    SetPixel(ref pixels_visited, x, y, 1);
+                    SetPixelFast(ref pixels_visited, x, y, 1);
                 }
             }
         }
