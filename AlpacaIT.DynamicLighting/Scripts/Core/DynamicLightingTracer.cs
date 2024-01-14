@@ -357,7 +357,7 @@ namespace AlpacaIT.DynamicLighting
 
         private void ProcessPendingRaycasts(ref uint[] pixels_lightmap, List<RaycastCommand> raycastCommands, List<RaycastCommandMeta> raycastCommandsMeta)
         {
-            // we traced from the light position to the world position and check whether we hit close to it.
+            // we traced from the world position to the light position and check whether we hit nothing on our way there.
 
             using var nativeRaycastResults = new NativeArray<RaycastHit>(raycastCommands.Count, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
             using (var nativeRaycastCommands = new NativeArray<RaycastCommand>(raycastCommands.ToArray(), Allocator.TempJob))
@@ -371,8 +371,14 @@ namespace AlpacaIT.DynamicLighting
                 var meta = raycastCommandsMeta[i];
                 var hit = nativeRaycastResults[i];
 
-                if (Vector3.Distance(hit.point, meta.world) < 0.01f)
+#if !UNITY_2021_2_OR_NEWER
+                if (hit.distance == 0f && hit.point.Equals(Vector3.zero))
+#else
+                if (hit.colliderInstanceID == 0)
+#endif
+                {
                     BitOrPixelFast(ref pixels_lightmap, meta.x, meta.y, (uint)1 << ((int)meta.lightChannel));
+                }
             }
 
             // clear memory.
@@ -480,9 +486,10 @@ namespace AlpacaIT.DynamicLighting
                         var pointLightCache = pointLightsCache[triangleLightIndices[i]];
                         var lightPosition = pointLightCache.position;
                         var lightRadius = pointLight.lightRadius;
+                        var lightDistanceToWorld = Vector3.Distance(lightPosition, world);
 
                         // early out by distance.
-                        if (Vector3.Distance(lightPosition, world) > lightRadius)
+                        if (lightDistanceToWorld > lightRadius)
                             continue;
 
                         // early out by normal.
@@ -490,9 +497,9 @@ namespace AlpacaIT.DynamicLighting
                         if (math.dot(triangleNormal, lightDirection) < -0.1f)
                             continue;
 
-                        // prepare to trace from the light to the world position.
+                        // prepare to trace from the world to the light position.
                         traces++;
-                        raycastCommands.Add(new RaycastCommand(lightPosition, -lightDirection, lightRadius, raycastLayermask));
+                        raycastCommands.Add(new RaycastCommand(world + (triangleNormal * 0.001f), lightDirection, lightDistanceToWorld, raycastLayermask));
                         raycastCommandsMeta.Add(new RaycastCommandMeta(x, y, world, pointLight.lightChannel));
                     }
 
@@ -501,31 +508,5 @@ namespace AlpacaIT.DynamicLighting
                 }
             }
         }
-
-        // unable to do this with the job system (?).
-        //
-        // private uint RaycastAdaptive(DynamicLight pointLight, Vector3 world, Vector3 normal)
-        // {
-        //     var radius = pointLight.lightRadius;
-        //     if (radius == 0.0f) return 0; // early out by radius.
-        //
-        //     var position = pointLight.transform.position;
-        //     float distance = Vector3.Distance(world, position);
-        //     if (distance > radius) return 0; // early out by distance.
-        //
-        //     var direction = (position - world).normalized;
-        //     if (math.dot(normal, direction) < -0.1f) return 0; // early out by normal.
-        //
-        //     // offset the world position and try to correct for floating point inaccuracy.
-        //     world += normal * (world.magnitude * 0.001f);
-        //
-        //     // trace from the world to the light position and check whether we didn't hit anything.
-        //     traces++;
-        //     if (!Physics.Linecast(world, position, out var _, raycastLayermask, QueryTriggerInteraction.Ignore))
-        //         if (!Physics.CheckBox(world, Vector3.zero, Quaternion.identity, raycastLayermask, QueryTriggerInteraction.Ignore))
-        //             return (uint)1 << ((int)pointLight.lightChannel);
-        //
-        //     return 0;
-        // }
     }
 }
