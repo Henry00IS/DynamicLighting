@@ -286,7 +286,7 @@ uint lightmap_resolution;
 
 float3 dynamic_ambient_color;
 
-// fetches a shadow bit as the specified uv coordinates from the lightmap data.
+// fetches a shadow bit at the specified uv coordinates from the lightmap data.
 float lightmap_sample(uint2 uv, uint channel)
 {
     return (lightmap[uv.y * lightmap_resolution + uv.x] & (1 << channel)) > 0;

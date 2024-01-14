@@ -129,6 +129,87 @@ namespace AlpacaIT.DynamicLighting
             return a + ab * v2 + ac * w2; // = u*a + v*b + w*c, u = va * denom = 1.0f-v-w.
         }
 
+        /// <summary>Calculates a bounding box for the given triangle.</summary>
+        /// <param name="a">The first vertex position of the triangle.</param>
+        /// <param name="b">The second vertex position of the triangle.</param>
+        /// <param name="c">The third vertex position of the triangle.</param>
+        /// <returns>The <see cref="Rect"/> encompassing the triangle.</returns>
+        public static Rect ComputeTriangleBoundingBox(Vector2 a, Vector2 b, Vector2 c)
+        {
+            float sx1 = a.x;
+            float sx2 = b.x;
+            float sx3 = c.x;
+            float sy1 = a.y;
+            float sy2 = b.y;
+            float sy3 = c.y;
+
+            float xmax = sx1 > sx2 ? (sx1 > sx3 ? sx1 : sx3) : (sx2 > sx3 ? sx2 : sx3);
+            float ymax = sy1 > sy2 ? (sy1 > sy3 ? sy1 : sy3) : (sy2 > sy3 ? sy2 : sy3);
+            float xmin = sx1 < sx2 ? (sx1 < sx3 ? sx1 : sx3) : (sx2 < sx3 ? sx2 : sx3);
+            float ymin = sy1 < sy2 ? (sy1 < sy3 ? sy1 : sy3) : (sy2 < sy3 ? sy2 : sy3);
+
+            return new Rect(xmin, ymin, xmax - xmin, ymax - ymin);
+        }
+
+        /// <summary>Calculates a signed triangle area using a kind of "2D cross product".</summary>
+        /// <param name="a">The first vertex position of the triangle.</param>
+        /// <param name="b">The second vertex position of the triangle.</param>
+        /// <param name="c">The third vertex position of the triangle.</param>
+        /// <returns>The signed triangle area.</returns>
+        public static float SignedTriangleArea(Vector2 a, Vector2 b, Vector2 c)
+        {
+            var v1 = a - c;
+            var v2 = b - c;
+            return (v1.x * v2.y - v1.y * v2.x) / 2f;
+        }
+
+        /// <summary>
+        /// Using the vertices and associated uv-coordinates of a triangle, converts the given point
+        /// in uv-space to vertex-space. For example, if the vertices are in world-space then the
+        /// given point in uv-space will be converted to world-space. It will return <see
+        /// cref="Vector3.zero"/> when the given point lies outside of the triangle's uv-coordinates.
+        /// </summary>
+        /// <param name="uv">The point in uv-space to be converted to vertex-space.</param>
+        /// <param name="v1">The first vertex position of the triangle.</param>
+        /// <param name="v2">The second vertex position of the triangle.</param>
+        /// <param name="v3">The third vertex position of the triangle.</param>
+        /// <param name="t1">The first vertex uv-coordinate of the triangle.</param>
+        /// <param name="t2">The second vertex uv-coordinate of the triangle.</param>
+        /// <param name="t3">The third vertex uv-coordinate of the triangle.</param>
+        /// <returns>
+        /// The point converted to vertex-space or else <see cref="Vector3.zero"/> when outside of
+        /// the triangle's uv-coordinates.
+        /// </returns>
+        public static Vector3 UvTo3dFast(Vector2 uv, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        {
+            // calculate triangle area - if zero, skip it.
+            var a = SignedTriangleArea(t1, t2, t3); if (a == 0f) return Vector3.zero;
+
+            // calculate barycentric coordinates of u1, u2 and u3.
+            // if anyone is negative, point is outside the triangle: skip it.
+            var a1 = SignedTriangleArea(t2, t3, uv) / a; if (a1 < 0f) return Vector3.zero;
+            var a2 = SignedTriangleArea(t3, t1, uv) / a; if (a2 < 0f) return Vector3.zero;
+            var a3 = SignedTriangleArea(t1, t2, uv) / a; if (a3 < 0f) return Vector3.zero;
+
+            // point inside the triangle - find mesh position by interpolation.
+            return a1 * v1 + a2 * v2 + a3 * v3;
+        }
+
+        /// <summary>
+        /// Rounds a size in bytes into a human-readable format of unit sizes (20B, 128KiB, 32MiB, ...).
+        /// </summary>
+        /// <param name="bytes">The amount of bytes as an unsigned 64-bit integer.</param>
+        /// <returns>The rounded unit size as a string.</returns>
+        public static string BytesToUnitString(ulong bytes)
+        {
+            if (bytes < (ulong)1024) return bytes + "B";
+            if (bytes < (ulong)1024 * 1024) return bytes / 1024 + "KiB";
+            if (bytes < (ulong)1024 * 1024 * 1024) return bytes / 1024 / 1024 + "MiB";
+            if (bytes < (ulong)1024 * 1024 * 1024 * 1024) return bytes / 1024 / 1024 / 1024 + "GiB";
+            if (bytes < (ulong)1024 * 1024 * 1024 * 1024 * 1024) return bytes / 1024 / 1024 / 1024 / 1024 + "TiB"; // the future!
+            return bytes + "B";
+        }
+
         /// <summary>
         /// Calculates a framerate independent fixed timestep.
         /// </summary>
