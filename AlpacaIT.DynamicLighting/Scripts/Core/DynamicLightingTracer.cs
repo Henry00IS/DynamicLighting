@@ -26,6 +26,7 @@ namespace AlpacaIT.DynamicLighting
         private BenchmarkTimer seamTime;
         private ulong vramTotal = 0;
         private DynamicLight[] pointLights;
+        private CachedLightData[] pointLightsCache;
         private int lightmapSize = 2048;
         private float lightmapSizeMin1;
         private int uniqueIdentifier = 0;
@@ -92,10 +93,17 @@ namespace AlpacaIT.DynamicLighting
                 // assign channels to all dynamic lights in the scene.
                 ChannelsUpdatePointLightsInScene();
 
+                // cache the light properties.
+                pointLightsCache = new CachedLightData[pointLights.Length];
+
                 // assign the dynamic lights in the scene to the dynamic light manager.
                 dynamicLightManager.raycastedDynamicLights.Clear();
                 for (int i = 0; i < pointLights.Length; i++)
-                    dynamicLightManager.raycastedDynamicLights.Add(new RaycastedDynamicLight(pointLights[i]));
+                {
+                    var light = pointLights[i];
+                    dynamicLightManager.raycastedDynamicLights.Add(new RaycastedDynamicLight(light));
+                    pointLightsCache[i] = new CachedLightData(light);
+                }
 
                 var meshFilters = Object.FindObjectsOfType<MeshFilter>();
                 for (int i = 0; i < meshFilters.Length; i++)
@@ -404,22 +412,6 @@ namespace AlpacaIT.DynamicLighting
             pixels[y * lightmapSize + x] |= color;
         }
 
-        private struct RaycastCommandMeta
-        {
-            public int x;
-            public int y;
-            public Vector3 world;
-            public uint lightChannel;
-
-            public RaycastCommandMeta(int x, int y, Vector3 world, uint lightChannel)
-            {
-                this.x = x;
-                this.y = y;
-                this.world = world;
-                this.lightChannel = lightChannel;
-            }
-        }
-
         private void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, ref uint[] pixels_lightmap, ref uint[] pixels_visited, List<RaycastCommand> raycastCommands, List<RaycastCommandMeta> raycastCommandsMeta, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // calculate the triangle normal (this may fail when degenerate or very small).
@@ -435,7 +427,7 @@ namespace AlpacaIT.DynamicLighting
             for (int i = 0; i < pointLights.Length; i++)
             {
                 var light = pointLights[i];
-                var lightPosition = light.transform.position;
+                var lightPosition = pointLightsCache[i].position;
 
                 // if we have the triangle normal then exclude triangles facing away from the light.
                 if (triangleNormalValid)
@@ -485,7 +477,8 @@ namespace AlpacaIT.DynamicLighting
                     for (int i = 0; i < triangleLightIndicesCount; i++)
                     {
                         var pointLight = pointLights[triangleLightIndices[i]];
-                        var lightPosition = pointLight.transform.position;
+                        var pointLightCache = pointLightsCache[triangleLightIndices[i]];
+                        var lightPosition = pointLightCache.position;
                         var lightRadius = pointLight.lightRadius;
 
                         // early out by distance.
