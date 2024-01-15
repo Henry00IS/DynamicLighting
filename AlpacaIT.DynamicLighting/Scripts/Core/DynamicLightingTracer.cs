@@ -182,10 +182,8 @@ namespace AlpacaIT.DynamicLighting
             var pixels_visited = new uint[lightmapSize * lightmapSize];
 
             // prepare to raycast the entire mesh using multi-threading.
-            raycastProcessor.processRaycastResult = meta =>
-            {
-                BitOrPixelFast(pixels_lightmap, meta.x, meta.y, (uint)1 << ((int)meta.lightChannel));
-            };
+            raycastProcessor.pixelsLightmap = pixels_lightmap;
+            raycastProcessor.lightmapSize = lightmapSize;
 
             // iterate over all triangles in the mesh.
             for (int i = 0; i < meshBuilder.triangleCount; i++)
@@ -219,7 +217,12 @@ namespace AlpacaIT.DynamicLighting
                     for (int y = 0; y < lightmapSize; y++)
                     {
                         // if we find an unvisited pixel it will appear as a black seam in the scene.
-                        var visited = GetPixelFast(pixels_visited, x, y);
+                        uint visited;
+                        unsafe
+                        {
+                            fixed (uint* p = pixels_visited)
+                                visited = p[y * lightmapSize + x];
+                        }
                         if (visited == 0)
                         {
                             uint res = 0;
@@ -336,7 +339,11 @@ namespace AlpacaIT.DynamicLighting
                             if (!p23 && p24)
                                 res |= l24;
 
-                            SetPixelFast(pixels_lightmap, x, y, res);
+                            unsafe
+                            {
+                                fixed (uint* p = pixels_lightmap)
+                                    p[y * lightmapSize + x] = res;
+                            }
                         }
                     }
                 }
@@ -360,35 +367,11 @@ namespace AlpacaIT.DynamicLighting
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private uint GetPixel(uint[] pixels, int x, int y)
+        private unsafe uint GetPixel(uint[] pixels, int x, int y)
         {
             if (x < 0 || y < 0 || x >= lightmapSize || y >= lightmapSize) return 0;
-            return GetPixelFast(pixels, x, y);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private uint GetPixelFast(uint[] pixels, int x, int y)
-        {
-            return pixels[y * lightmapSize + x];
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void SetPixel(uint[] pixels, int x, int y, uint color)
-        {
-            if (x < 0 || y < 0 || x >= lightmapSize || y >= lightmapSize) return;
-            SetPixelFast(pixels, x, y, color);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void SetPixelFast(uint[] pixels, int x, int y, uint color)
-        {
-            pixels[y * lightmapSize + x] = color;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void BitOrPixelFast(uint[] pixels, int x, int y, uint color)
-        {
-            pixels[y * lightmapSize + x] |= color;
+            fixed (uint* p = pixels)
+                return p[y * lightmapSize + x];
         }
 
         private void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, uint[] pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
@@ -424,6 +407,10 @@ namespace AlpacaIT.DynamicLighting
             // skip degenerate triangles.
             if (!triangleNormalValid) return;
 
+            // do some initial uv to 3d work here and also determine whether we can early out.
+            if (!MathEx.UvTo3dFastPrerequisite(t1, t2, t3, out float triangleSurfaceArea))
+                return;
+
             // calculate the bounding box of the polygon in UV space.
             // we only have to raycast these pixels and can skip the rest.
             var triangleBoundingBox = MathEx.ComputeTriangleBoundingBox(t1, t2, t3);
@@ -442,6 +429,9 @@ namespace AlpacaIT.DynamicLighting
             var triangleLightIndices = dynamic_triangles.GetAssociatedLightIndices(triangle_index);
             var triangleLightIndicesCount = triangleLightIndices.Count;
 
+            // calculate some values in advance.
+            var triangleNormalOffset = triangleNormal * 0.001f;
+
             for (int x = minX; x < maxX; x++)
             {
                 for (int y = minY; y < maxY; y++)
@@ -449,7 +439,7 @@ namespace AlpacaIT.DynamicLighting
                     float xx = x / lightmapSizeMin1;
                     float yy = y / lightmapSizeMin1;
 
-                    var world = MathEx.UvTo3dFast(new Vector2(xx, yy), v1, v2, v3, t1, t2, t3);
+                    var world = MathEx.UvTo3dFast(triangleSurfaceArea, new Vector2(xx, yy), v1, v2, v3, t1, t2, t3);
                     if (world.Equals(Vector3.zero)) continue;
 
                     // iterate over the lights potentially affecting this triangle.
@@ -473,13 +463,17 @@ namespace AlpacaIT.DynamicLighting
                         // prepare to trace from the world to the light position.
                         traces++;
                         raycastProcessor.Add(
-                            new RaycastCommand(world + (triangleNormal * 0.001f), lightDirection, lightDistanceToWorld, raycastLayermask),
+                            new RaycastCommand(world + triangleNormalOffset, lightDirection, lightDistanceToWorld, raycastLayermask),
                             new RaycastCommandMeta(x, y, world, pointLight.lightChannel)
                         );
                     }
 
                     // write this pixel into the visited map.
-                    SetPixelFast(pixels_visited, x, y, 1);
+                    unsafe
+                    {
+                        fixed (uint* p = pixels_visited)
+                            p[y * lightmapSize + x] = 1;
+                    }
                 }
             }
         }

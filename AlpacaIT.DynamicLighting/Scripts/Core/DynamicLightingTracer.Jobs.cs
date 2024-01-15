@@ -48,8 +48,9 @@ namespace AlpacaIT.DynamicLighting
             /// <summary>Whether the <see cref="jobHandle"/> has been scheduled.</summary>
             private bool wasActive = false;
 
-            /// <summary>Called whenever a raycast hit nothing.</summary>
-            public Action<RaycastCommandMeta> processRaycastResult;
+            /// <summary>Contains the pixels of the lightmap.</summary>
+            public uint[] pixelsLightmap;
+            public int lightmapSize;
 
             public void Add(RaycastCommand raycastCommand, RaycastCommandMeta raycastCommandMeta)
             {
@@ -129,7 +130,7 @@ namespace AlpacaIT.DynamicLighting
                 }
             }
 
-            private void ProcessResults()
+            private unsafe void ProcessResults()
             {
                 for (int i = 0; i < nativeRaycastResults.Length; i++)
                 {
@@ -142,7 +143,10 @@ namespace AlpacaIT.DynamicLighting
                     if (hit.colliderInstanceID == 0)
 #endif
                     {
-                        processRaycastResult(meta);
+                        fixed (uint* p = pixelsLightmap)
+                        {
+                            p[meta.y * lightmapSize + meta.x] |= (uint)1 << ((int)meta.lightChannel);
+                        }
                     }
                 }
             }
