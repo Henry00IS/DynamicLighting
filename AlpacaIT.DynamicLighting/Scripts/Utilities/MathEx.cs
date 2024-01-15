@@ -160,7 +160,25 @@ namespace AlpacaIT.DynamicLighting
         {
             var v1 = a - c;
             var v2 = b - c;
-            return (v1.x * v2.y - v1.y * v2.x) / 2f;
+            return (v1.x * v2.y - v1.y * v2.x) * 0.5f;
+        }
+
+        /// <summary>
+        /// Before <see cref="UvTo3dFast"/> can be used this function must return true. The out
+        /// <paramref name="triangleSurfaceArea"/> must be passed into that function.
+        /// </summary>
+        /// <param name="t1">The first vertex uv-coordinate of the triangle.</param>
+        /// <param name="t2">The second vertex uv-coordinate of the triangle.</param>
+        /// <param name="t3">The third vertex uv-coordinate of the triangle.</param>
+        /// <param name="triangleSurfaceArea">
+        /// The triangle area required for the <see cref="UvTo3dFast"/> function.
+        /// </param>
+        /// <returns>True when <see cref="UvTo3dFast"/> can be used else false.</returns>
+        public static bool UvTo3dFastPrerequisite(Vector2 t1, Vector2 t2, Vector2 t3, out float triangleSurfaceArea)
+        {
+            // calculate triangle area - if zero, skip it.
+            triangleSurfaceArea = SignedTriangleArea(t1, t2, t3);
+            return triangleSurfaceArea != 0f;
         }
 
         /// <summary>
@@ -168,7 +186,12 @@ namespace AlpacaIT.DynamicLighting
         /// in uv-space to vertex-space. For example, if the vertices are in world-space then the
         /// given point in uv-space will be converted to world-space. It will return <see
         /// cref="Vector3.zero"/> when the given point lies outside of the triangle's uv-coordinates.
+        /// <para>
+        /// Requires <see cref="UvTo3dFastPrerequisite"/> to return true and the <paramref
+        /// name="triangleSurfaceArea"/> result.
+        /// </para>
         /// </summary>
+        /// <param name="triangleSurfaceArea">Requires the result of <see cref="UvTo3dFastPrerequisite"/>.</param>
         /// <param name="uv">The point in uv-space to be converted to vertex-space.</param>
         /// <param name="v1">The first vertex position of the triangle.</param>
         /// <param name="v2">The second vertex position of the triangle.</param>
@@ -180,16 +203,13 @@ namespace AlpacaIT.DynamicLighting
         /// The point converted to vertex-space or else <see cref="Vector3.zero"/> when outside of
         /// the triangle's uv-coordinates.
         /// </returns>
-        public static Vector3 UvTo3dFast(Vector2 uv, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        public static Vector3 UvTo3dFast(float triangleSurfaceArea, Vector2 uv, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
-            // calculate triangle area - if zero, skip it.
-            var a = SignedTriangleArea(t1, t2, t3); if (a == 0f) return Vector3.zero;
-
             // calculate barycentric coordinates of u1, u2 and u3.
             // if anyone is negative, point is outside the triangle: skip it.
-            var a1 = SignedTriangleArea(t2, t3, uv) / a; if (a1 < 0f) return Vector3.zero;
-            var a2 = SignedTriangleArea(t3, t1, uv) / a; if (a2 < 0f) return Vector3.zero;
-            var a3 = SignedTriangleArea(t1, t2, uv) / a; if (a3 < 0f) return Vector3.zero;
+            var a1 = SignedTriangleArea(t2, t3, uv) / triangleSurfaceArea; if (a1 < 0f) return Vector3.zero;
+            var a2 = SignedTriangleArea(t3, t1, uv) / triangleSurfaceArea; if (a2 < 0f) return Vector3.zero;
+            var a3 = SignedTriangleArea(t1, t2, uv) / triangleSurfaceArea; if (a3 < 0f) return Vector3.zero;
 
             // point inside the triangle - find mesh position by interpolation.
             return a1 * v1 + a2 * v2 + a3 * v3;
