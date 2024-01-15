@@ -25,10 +25,12 @@ namespace AlpacaIT.DynamicLighting
         private struct CachedLightData
         {
             public Vector3 position;
+            public Bounds bounds;
 
             public CachedLightData(DynamicLight dynamicLight)
             {
                 position = dynamicLight.transform.position;
+                bounds = MathEx.GetSphereBounds(position, dynamicLight.lightRadius);
             }
         }
     }

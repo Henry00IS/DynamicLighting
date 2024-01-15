@@ -381,6 +381,7 @@ namespace AlpacaIT.DynamicLighting
             var triangleNormal = trianglePlane.normal;
             var triangleCenter = (v1 + v2 + v3) / 3.0f;
             var triangleNormalValid = !triangleNormal.Equals(Vector3.zero);
+            var triangleBounds = MathEx.GetTriangleBounds(v1, v2, v3);
 
             // first we associate lights to triangles that can potentially be affected by them. the
             // uv space may skip triangles when there's no direct point on the triangle and it may
@@ -395,6 +396,11 @@ namespace AlpacaIT.DynamicLighting
                 if (triangleNormalValid)
                     if (math.dot(triangleNormal, (lightPosition - triangleCenter).normalized) <= -0.1f)
                         continue;
+
+                // cheap test using bounding boxes whether the light intersects the triangle.
+                var lightBounds = pointLightsCache[i].bounds;
+                if (!lightBounds.Intersects(triangleBounds))
+                    continue;
 
                 // ensure the triangle intersects with the light sphere.
                 if (!MathEx.CheckSphereIntersectsTriangle(lightPosition, light.lightRadius, v1, v2, v3))

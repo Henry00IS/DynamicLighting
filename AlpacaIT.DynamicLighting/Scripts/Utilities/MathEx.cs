@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Runtime.CompilerServices;
+using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
@@ -47,6 +48,30 @@ namespace AlpacaIT.DynamicLighting
                     // ^ is the same as: if (planes[i].GetDistanceToPoint(center) < -radius)
                     return false;
             return true;
+        }
+
+        /// <summary>Gets a bounding box encompassing a triangle.</summary>
+        /// <param name="a">The first vertex position of the triangle.</param>
+        /// <param name="b">The second vertex position of the triangle.</param>
+        /// <param name="c">The third vertex position of the triangle.</param>
+        /// <returns>The bounding box encompassing the given triangle.</returns>
+        public static Bounds GetTriangleBounds(Vector3 a, Vector3 b, Vector3 c)
+        {
+            var min = Vector3.Min(Vector3.Min(a, b), c);
+            var max = Vector3.Max(Vector3.Max(a, b), c);
+            var center = (min + max) * 0.5f;
+            var size = max - min;
+            return new Bounds(center, size);
+        }
+
+        /// <summary>Gets a bounding box encompassing a sphere.</summary>
+        /// <param name="center">The center position of the sphere.</param>
+        /// <param name="radius">The radius of the sphere.</param>
+        /// <returns>The bounding box encompassing the given sphere.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Bounds GetSphereBounds(Vector3 center, float radius)
+        {
+            return new Bounds(center, Vector3.one * radius * 2f);
         }
 
         /// <summary>Checks whether a sphere intersects with a triangle.</summary>
