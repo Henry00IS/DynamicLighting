@@ -184,7 +184,7 @@ namespace AlpacaIT.DynamicLighting
             // prepare to raycast the entire mesh using multi-threading.
             raycastProcessor.processRaycastResult = meta =>
             {
-                BitOrPixelFast(ref pixels_lightmap, meta.x, meta.y, (uint)1 << ((int)meta.lightChannel));
+                BitOrPixelFast(pixels_lightmap, meta.x, meta.y, (uint)1 << ((int)meta.lightChannel));
             };
 
             // iterate over all triangles in the mesh.
@@ -204,7 +204,7 @@ namespace AlpacaIT.DynamicLighting
                 var (v1, v2, v3) = meshBuilder.GetTriangleVertices(i);
                 var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
 
-                RaycastTriangle(i, dynamic_triangles, ref pixels_visited, v1, v2, v3, t1, t2, t3);
+                RaycastTriangle(i, dynamic_triangles, pixels_visited, v1, v2, v3, t1, t2, t3);
             }
 
             // finish any remaining raycasting work.
@@ -219,7 +219,7 @@ namespace AlpacaIT.DynamicLighting
                     for (int y = 0; y < lightmapSize; y++)
                     {
                         // if we find an unvisited pixel it will appear as a black seam in the scene.
-                        var visited = GetPixelFast(ref pixels_visited, x, y);
+                        var visited = GetPixelFast(pixels_visited, x, y);
                         if (visited == 0)
                         {
                             uint res = 0;
@@ -228,30 +228,30 @@ namespace AlpacaIT.DynamicLighting
 
                             // bool p00 = GetPixel(ref pixels_visited, x - 2, y - 2) == 1;
                             // bool p10 = GetPixel(ref pixels_visited, x - 1, y - 2) == 1;
-                            bool p20 = GetPixel(ref pixels_visited, x, y - 2) == 1;
+                            bool p20 = GetPixel(pixels_visited, x, y - 2) == 1;
                             // bool p30 = GetPixel(ref pixels_visited, x + 1, y - 2) == 1;
                             // bool p40 = GetPixel(ref pixels_visited, x + 2, y - 2) == 1;
 
                             // bool p01 = GetPixel(ref pixels_visited, x - 2, y - 1) == 1;
                             // bool p11 = GetPixel(ref pixels_visited, x - 1, y - 1) == 1;
-                            bool p21 = GetPixel(ref pixels_visited, x, y - 1) == 1;
+                            bool p21 = GetPixel(pixels_visited, x, y - 1) == 1;
                             // bool p31 = GetPixel(ref pixels_visited, x + 1, y - 1) == 1;
                             // bool p41 = GetPixel(ref pixels_visited, x + 2, y - 1) == 1;
 
-                            bool p02 = GetPixel(ref pixels_visited, x - 2, y) == 1;
-                            bool p12 = GetPixel(ref pixels_visited, x - 1, y) == 1;
-                            bool p32 = GetPixel(ref pixels_visited, x + 1, y) == 1;
-                            bool p42 = GetPixel(ref pixels_visited, x + 2, y) == 1;
+                            bool p02 = GetPixel(pixels_visited, x - 2, y) == 1;
+                            bool p12 = GetPixel(pixels_visited, x - 1, y) == 1;
+                            bool p32 = GetPixel(pixels_visited, x + 1, y) == 1;
+                            bool p42 = GetPixel(pixels_visited, x + 2, y) == 1;
 
                             // bool p03 = GetPixel(ref pixels_visited, x - 2, y + 1) == 1;
                             // bool p13 = GetPixel(ref pixels_visited, x - 1, y + 1) == 1;
-                            bool p23 = GetPixel(ref pixels_visited, x, y + 1) == 1;
+                            bool p23 = GetPixel(pixels_visited, x, y + 1) == 1;
                             // bool p33 = GetPixel(ref pixels_visited, x + 1, y + 1) == 1;
                             // bool p43 = GetPixel(ref pixels_visited, x + 2, y + 1) == 1;
 
                             // bool p04 = GetPixel(ref pixels_visited, x - 2, y + 2) == 1;
                             // bool p14 = GetPixel(ref pixels_visited, x - 1, y + 2) == 1;
-                            bool p24 = GetPixel(ref pixels_visited, x, y + 2) == 1;
+                            bool p24 = GetPixel(pixels_visited, x, y + 2) == 1;
                             // bool p34 = GetPixel(ref pixels_visited, x + 1, y + 2) == 1;
                             // bool p44 = GetPixel(ref pixels_visited, x + 2, y + 2) == 1;
 
@@ -259,30 +259,30 @@ namespace AlpacaIT.DynamicLighting
 
                             // uint l00 = GetPixel(ref pixels_lightmap, x - 2, y - 2);
                             // uint l10 = GetPixel(ref pixels_lightmap, x - 1, y - 2);
-                            uint l20 = GetPixel(ref pixels_lightmap, x, y - 2);
+                            uint l20 = GetPixel(pixels_lightmap, x, y - 2);
                             // uint l30 = GetPixel(ref pixels_lightmap, x + 1, y - 2);
                             // uint l40 = GetPixel(ref pixels_lightmap, x + 2, y - 2);
 
                             // uint l01 = GetPixel(ref pixels_lightmap, x - 2, y - 1);
                             // uint l11 = GetPixel(ref pixels_lightmap, x - 1, y - 1);
-                            uint l21 = GetPixel(ref pixels_lightmap, x, y - 1);
+                            uint l21 = GetPixel(pixels_lightmap, x, y - 1);
                             // uint l31 = GetPixel(ref pixels_lightmap, x + 1, y - 1);
                             // uint l41 = GetPixel(ref pixels_lightmap, x + 2, y - 1);
 
-                            uint l02 = GetPixel(ref pixels_lightmap, x - 2, y);
-                            uint l12 = GetPixel(ref pixels_lightmap, x - 1, y);
-                            uint l32 = GetPixel(ref pixels_lightmap, x + 1, y);
-                            uint l42 = GetPixel(ref pixels_lightmap, x + 2, y);
+                            uint l02 = GetPixel(pixels_lightmap, x - 2, y);
+                            uint l12 = GetPixel(pixels_lightmap, x - 1, y);
+                            uint l32 = GetPixel(pixels_lightmap, x + 1, y);
+                            uint l42 = GetPixel(pixels_lightmap, x + 2, y);
 
                             // uint l03 = GetPixel(ref pixels_lightmap, x - 2, y + 1);
                             // uint l13 = GetPixel(ref pixels_lightmap, x - 1, y + 1);
-                            uint l23 = GetPixel(ref pixels_lightmap, x, y + 1);
+                            uint l23 = GetPixel(pixels_lightmap, x, y + 1);
                             // uint l33 = GetPixel(ref pixels_lightmap, x + 1, y + 1);
                             // uint l43 = GetPixel(ref pixels_lightmap, x + 2, y + 1);
 
                             // uint l04 = GetPixel(ref pixels_lightmap, x - 2, y + 2);
                             // uint l14 = GetPixel(ref pixels_lightmap, x - 1, y + 2);
-                            uint l24 = GetPixel(ref pixels_lightmap, x, y + 2);
+                            uint l24 = GetPixel(pixels_lightmap, x, y + 2);
                             // uint l34 = GetPixel(ref pixels_lightmap, x + 1, y + 2);
                             // uint l44 = GetPixel(ref pixels_lightmap, x + 2, y + 2);
 
@@ -336,7 +336,7 @@ namespace AlpacaIT.DynamicLighting
                             if (!p23 && p24)
                                 res |= l24;
 
-                            SetPixelFast(ref pixels_lightmap, x, y, res);
+                            SetPixelFast(pixels_lightmap, x, y, res);
                         }
                     }
                 }
@@ -360,38 +360,38 @@ namespace AlpacaIT.DynamicLighting
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private uint GetPixel(ref uint[] pixels, int x, int y)
+        private uint GetPixel(uint[] pixels, int x, int y)
         {
             if (x < 0 || y < 0 || x >= lightmapSize || y >= lightmapSize) return 0;
-            return GetPixelFast(ref pixels, x, y);
+            return GetPixelFast(pixels, x, y);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private uint GetPixelFast(ref uint[] pixels, int x, int y)
+        private uint GetPixelFast(uint[] pixels, int x, int y)
         {
             return pixels[y * lightmapSize + x];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void SetPixel(ref uint[] pixels, int x, int y, uint color)
+        private void SetPixel(uint[] pixels, int x, int y, uint color)
         {
             if (x < 0 || y < 0 || x >= lightmapSize || y >= lightmapSize) return;
-            SetPixelFast(ref pixels, x, y, color);
+            SetPixelFast(pixels, x, y, color);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void SetPixelFast(ref uint[] pixels, int x, int y, uint color)
+        private void SetPixelFast(uint[] pixels, int x, int y, uint color)
         {
             pixels[y * lightmapSize + x] = color;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void BitOrPixelFast(ref uint[] pixels, int x, int y, uint color)
+        private void BitOrPixelFast(uint[] pixels, int x, int y, uint color)
         {
             pixels[y * lightmapSize + x] |= color;
         }
 
-        private void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, ref uint[] pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        private void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, uint[] pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // calculate the triangle normal (this may fail when degenerate or very small).
             var trianglePlane = new Plane(v1, v2, v3);
@@ -479,7 +479,7 @@ namespace AlpacaIT.DynamicLighting
                     }
 
                     // write this pixel into the visited map.
-                    SetPixelFast(ref pixels_visited, x, y, 1);
+                    SetPixelFast(pixels_visited, x, y, 1);
                 }
             }
         }
