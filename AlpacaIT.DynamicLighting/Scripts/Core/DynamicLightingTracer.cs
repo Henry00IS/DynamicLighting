@@ -27,6 +27,7 @@ namespace AlpacaIT.DynamicLighting
         private ulong vramTotal = 0;
         private DynamicLight[] pointLights;
         private CachedLightData[] pointLightsCache;
+        private RaycastProcessor raycastProcessor;
         private int lightmapSize = 2048;
         private float lightmapSizeMin1;
         private int uniqueIdentifier = 0;
@@ -53,6 +54,9 @@ namespace AlpacaIT.DynamicLighting
 
             // find all of the dynamic lights in the scene.
             pointLights = DynamicLightManager.FindDynamicLightsInScene().ToArray();
+
+            // prepare to process raycasts on the job system.
+            raycastProcessor = new RaycastProcessor();
 
             traces = 0;
             tracingTime = new BenchmarkTimer();
@@ -174,8 +178,10 @@ namespace AlpacaIT.DynamicLighting
             var pixels_visited = new uint[lightmapSize * lightmapSize];
 
             // prepare to raycast the entire mesh using multi-threading.
-            var raycastCommands = new List<RaycastCommand>(lightmapSize * lightmapSize);
-            var raycastCommandsMeta = new List<RaycastCommandMeta>(raycastCommands.Capacity);
+            raycastProcessor.processRaycastResult = meta =>
+            {
+                BitOrPixelFast(ref pixels_lightmap, meta.x, meta.y, (uint)1 << ((int)meta.lightChannel));
+            };
 
             // iterate over all triangles in the mesh.
             for (int i = 0; i < meshBuilder.triangleCount; i++)
@@ -194,17 +200,11 @@ namespace AlpacaIT.DynamicLighting
                 var (v1, v2, v3) = meshBuilder.GetTriangleVertices(i);
                 var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
 
-                RaycastTriangle(i, dynamic_triangles, ref pixels_lightmap, ref pixels_visited, raycastCommands, raycastCommandsMeta, v1, v2, v3, t1, t2, t3);
-
-                // we must sometimes process the raycasts as to not run out of memory.
-                if (raycastCommands.Count > 1024 * 1024) // assuming we need 64 bytes per entry or alike this is roughly 64MiB of data.
-                {
-                    ProcessPendingRaycasts(ref pixels_lightmap, raycastCommands, raycastCommandsMeta);
-                }
+                RaycastTriangle(i, dynamic_triangles, ref pixels_visited, v1, v2, v3, t1, t2, t3);
             }
 
-            // finish any remaining work.
-            ProcessPendingRaycasts(ref pixels_lightmap, raycastCommands, raycastCommandsMeta);
+            // finish any remaining raycasting work.
+            raycastProcessor.Complete();
 
             tracingTime.Stop();
 
@@ -355,37 +355,6 @@ namespace AlpacaIT.DynamicLighting
                 Debug.LogError($"Unable to write the triangles {lightmap.identifier} file in the active scene resources directory!");
         }
 
-        private void ProcessPendingRaycasts(ref uint[] pixels_lightmap, List<RaycastCommand> raycastCommands, List<RaycastCommandMeta> raycastCommandsMeta)
-        {
-            // we traced from the world position to the light position and check whether we hit nothing on our way there.
-
-            using var nativeRaycastResults = new NativeArray<RaycastHit>(raycastCommands.Count, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
-            using (var nativeRaycastCommands = new NativeArray<RaycastCommand>(raycastCommands.ToArray(), Allocator.TempJob))
-            {
-                var handle = RaycastCommand.ScheduleBatch(nativeRaycastCommands, nativeRaycastResults, nativeRaycastCommands.Length / JobsUtility.JobWorkerMaximumCount);
-                handle.Complete();
-            }
-
-            for (int i = 0; i < nativeRaycastResults.Length; i++)
-            {
-                var meta = raycastCommandsMeta[i];
-                var hit = nativeRaycastResults[i];
-
-#if !UNITY_2021_2_OR_NEWER
-                if (hit.distance == 0f && hit.point.Equals(Vector3.zero))
-#else
-                if (hit.colliderInstanceID == 0)
-#endif
-                {
-                    BitOrPixelFast(ref pixels_lightmap, meta.x, meta.y, (uint)1 << ((int)meta.lightChannel));
-                }
-            }
-
-            // clear memory.
-            raycastCommands.Clear();
-            raycastCommandsMeta.Clear();
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private uint GetPixel(ref uint[] pixels, int x, int y)
         {
@@ -418,7 +387,7 @@ namespace AlpacaIT.DynamicLighting
             pixels[y * lightmapSize + x] |= color;
         }
 
-        private void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, ref uint[] pixels_lightmap, ref uint[] pixels_visited, List<RaycastCommand> raycastCommands, List<RaycastCommandMeta> raycastCommandsMeta, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        private void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, ref uint[] pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // calculate the triangle normal (this may fail when degenerate or very small).
             var trianglePlane = new Plane(v1, v2, v3);
@@ -499,8 +468,10 @@ namespace AlpacaIT.DynamicLighting
 
                         // prepare to trace from the world to the light position.
                         traces++;
-                        raycastCommands.Add(new RaycastCommand(world + (triangleNormal * 0.001f), lightDirection, lightDistanceToWorld, raycastLayermask));
-                        raycastCommandsMeta.Add(new RaycastCommandMeta(x, y, world, pointLight.lightChannel));
+                        raycastProcessor.Add(
+                            new RaycastCommand(world + (triangleNormal * 0.001f), lightDirection, lightDistanceToWorld, raycastLayermask),
+                            new RaycastCommandMeta(x, y, world, pointLight.lightChannel)
+                        );
                     }
 
                     // write this pixel into the visited map.
