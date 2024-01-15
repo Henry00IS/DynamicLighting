@@ -76,7 +76,8 @@ namespace AlpacaIT.DynamicLighting.Internal
         /// <summary>
         /// For the active scene, ensures the resources directory exists (or returns false and logs
         /// an error message to the Unity console) then tries to write the lightmap data file with
-        /// the specified identifier (or returns false when an exception occurs).
+        /// the specified identifier (or returns false when an exception occurs). Requires a call to
+        /// <see cref="UnityEditor.AssetDatabase.Refresh"/> afterwards.
         /// </summary>
         /// <param name="identifier">
         /// The lightmap identifier is an index stored in the scene and (using this function) to
@@ -109,9 +110,6 @@ namespace AlpacaIT.DynamicLighting.Internal
 
                     var lightmapFilePath = resourcesPath + Path.DirectorySeparatorChar + sceneName + "-" + name + identifier + ".bytes";
                     File.WriteAllBytes(lightmapFilePath, compressed.ToArray());
-#if UNITY_EDITOR
-                    UnityEditor.AssetDatabase.ImportAsset(lightmapFilePath);
-#endif
                 }
 
                 return true;

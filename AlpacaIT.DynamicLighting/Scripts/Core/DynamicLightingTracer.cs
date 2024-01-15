@@ -125,6 +125,10 @@ namespace AlpacaIT.DynamicLighting
                     }
                 }
 
+#if UNITY_EDITOR
+                // have unity editor reload the modified assets.
+                UnityEditor.AssetDatabase.Refresh();
+#endif
                 Debug.Log("Raytracing Finished: " + traces + " traces in " + tracingTime + "! Seams padding in " + seamTime + "! VRAM estimation: " + MathEx.BytesToUnitString(vramTotal));
                 dynamicLightManager.Reload();
 #if UNITY_EDITOR
