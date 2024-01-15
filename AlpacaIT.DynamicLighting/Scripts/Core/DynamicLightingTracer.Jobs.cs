@@ -98,7 +98,7 @@ namespace AlpacaIT.DynamicLighting
                     raycastCommandsMetaAccumulator.Clear();
 
                     // schedule the batched raycast commands on the job system but do not wait here.
-                    jobHandle = RaycastCommand.ScheduleBatch(nativeRaycastCommands, nativeRaycastResults, count / JobsUtility.JobWorkerMaximumCount);
+                    jobHandle = RaycastCommand.ScheduleBatch(nativeRaycastCommands, nativeRaycastResults, 256);
                     count = 0;
 
                     // the main thread will continue accumulating more work while we are busy processing
