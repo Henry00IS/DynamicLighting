@@ -83,25 +83,28 @@ namespace AlpacaIT.DynamicLighting
                     nativeRaycastCommands.Dispose();
                 }
 
-                // remember that we are active now.
-                wasActive = true;
+                if (count > 0)
+                {
+                    // remember that we are active now.
+                    wasActive = true;
 
-                // pass the raycast commands to native memory for the job system.
-                nativeRaycastResults = new NativeArray<RaycastHit>(count, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
-                nativeRaycastCommands = new NativeArray<RaycastCommand>(raycastCommands.ToArray(), Allocator.TempJob);
+                    // pass the raycast commands to native memory for the job system.
+                    nativeRaycastResults = new NativeArray<RaycastHit>(count, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+                    nativeRaycastCommands = new NativeArray<RaycastCommand>(raycastCommands.ToArray(), Allocator.TempJob);
 
-                // clear the managed memory and let it be used again to accumulate data.
-                raycastCommands.Clear();
-                raycastCommandsMeta = new List<RaycastCommandMeta>(raycastCommandsMetaAccumulator);
-                raycastCommandsMetaAccumulator.Clear();
+                    // clear the managed memory and let it be used again to accumulate data.
+                    raycastCommands.Clear();
+                    raycastCommandsMeta = new List<RaycastCommandMeta>(raycastCommandsMetaAccumulator);
+                    raycastCommandsMetaAccumulator.Clear();
 
-                // schedule the batched raycast commands on the job system but do not wait here.
-                jobHandle = RaycastCommand.ScheduleBatch(nativeRaycastCommands, nativeRaycastResults, count / JobsUtility.JobWorkerMaximumCount);
-                count = 0;
+                    // schedule the batched raycast commands on the job system but do not wait here.
+                    jobHandle = RaycastCommand.ScheduleBatch(nativeRaycastCommands, nativeRaycastResults, count / JobsUtility.JobWorkerMaximumCount);
+                    count = 0;
 
-                // the main thread will continue accumulating more work while we are busy processing
-                // raycasts. hopefully by the time we finish, new raycasts will already be prepared.
-                JobHandle.ScheduleBatchedJobs(); // this will begin executing the scheduled raycasts.
+                    // the main thread will continue accumulating more work while we are busy processing
+                    // raycasts. hopefully by the time we finish, new raycasts will already be prepared.
+                    JobHandle.ScheduleBatchedJobs(); // this will begin executing the scheduled raycasts.
+                }
             }
 
             public void Complete()
@@ -109,18 +112,21 @@ namespace AlpacaIT.DynamicLighting
                 // process any active work and begin scheduling remaining work.
                 Execute();
 
-                // finish the remaining work.
-                jobHandle.Complete();
+                if (wasActive)
+                {
+                    // finish the remaining work.
+                    jobHandle.Complete();
 
-                // process the results.
-                ProcessResults();
+                    // process the results.
+                    ProcessResults();
 
-                // clean up the native memory.
-                nativeRaycastResults.Dispose();
-                nativeRaycastCommands.Dispose();
+                    // clean up the native memory.
+                    nativeRaycastResults.Dispose();
+                    nativeRaycastCommands.Dispose();
 
-                // we are no longer active.
-                wasActive = false;
+                    // we are no longer active.
+                    wasActive = false;
+                }
             }
 
             private void ProcessResults()
