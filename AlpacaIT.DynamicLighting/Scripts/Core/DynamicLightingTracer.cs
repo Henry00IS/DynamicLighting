@@ -214,14 +214,16 @@ namespace AlpacaIT.DynamicLighting
 
             seamTime.Begin();
             {
-                for (int x = 0; x < lightmapSize; x++)
+                for (int y = 0; y < lightmapSize; y++)
                 {
-                    for (int y = 0; y < lightmapSize; y++)
-                    {
-                        // if we find an unvisited pixel it will appear as a black seam in the scene.
-                        uint visited;
+                    int yPtr = y * lightmapSize;
 
-                        visited = pixels_visited_ptr[y * lightmapSize + x];
+                    for (int x = 0; x < lightmapSize; x++)
+                    {
+                        int xyPtr = yPtr + x;
+
+                        // if we find an unvisited pixel it will appear as a black seam in the scene.
+                        uint visited = pixels_visited_ptr[xyPtr];
                         if (visited == 0)
                         {
                             uint res = 0;
@@ -338,7 +340,7 @@ namespace AlpacaIT.DynamicLighting
                             if (!p23 && p24)
                                 res |= l24;
 
-                            pixels_lightmap_ptr[y * lightmapSize + x] = res;
+                            pixels_lightmap_ptr[xyPtr] = res;
                         }
                     }
                 }
@@ -367,8 +369,9 @@ namespace AlpacaIT.DynamicLighting
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe uint GetPixel(uint* pixels, int x, int y)
         {
-            if (x < 0 || y < 0 || x >= lightmapSize || y >= lightmapSize) return 0;
-            return pixels[y * lightmapSize + x];
+            int offset = y * lightmapSize + x;
+            if ((uint)offset >= (uint)(lightmapSize * lightmapSize)) return 0;
+            return pixels[offset];
         }
 
         private unsafe void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, uint* pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
@@ -435,12 +438,13 @@ namespace AlpacaIT.DynamicLighting
             // calculate some values in advance.
             var triangleNormalOffset = triangleNormal * 0.001f;
 
-            for (int x = minX; x < maxX; x++)
+            for (int y = minY; y < maxY; y++)
             {
-                for (int y = minY; y < maxY; y++)
+                float yy = y / lightmapSizeMin1;
+
+                for (int x = minX; x < maxX; x++)
                 {
                     float xx = x / lightmapSizeMin1;
-                    float yy = y / lightmapSizeMin1;
 
                     var world = MathEx.UvTo3dFast(triangleSurfaceArea, new Vector2(xx, yy), v1, v2, v3, t1, t2, t3);
                     if (world.Equals(Vector3.zero)) continue;

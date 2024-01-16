@@ -10,13 +10,13 @@ namespace AlpacaIT.DynamicLighting
     internal class DynamicTrianglesBuilder
     {
         /// <summary>Represents a triangle of a static mesh in the scene.</summary>
-        private class DtbTriangle
+        private struct DtbTriangle
         {
             /// <summary>
             /// The collection of <see cref="DynamicLight"/> source indices in the <see
             /// cref="DynamicLightManager.raycastedDynamicLights"/> that affect this triangle.
             /// </summary>
-            public List<uint> dynamicLightIndices = new List<uint>();
+            public List<uint> dynamicLightIndices;
         }
 
         // <summary>
@@ -36,7 +36,7 @@ namespace AlpacaIT.DynamicLighting
             // create triangle data for every triangle in the mesh.
             triangles = new List<DtbTriangle>(triangleCount);
             for (int i = 0; i < triangleCount; i++)
-                triangles.Add(new DtbTriangle());
+                triangles.Add(new DtbTriangle() { dynamicLightIndices = new List<uint>() });
         }
 
         /// <summary>Associates the specified light index with a triangle.</summary>
