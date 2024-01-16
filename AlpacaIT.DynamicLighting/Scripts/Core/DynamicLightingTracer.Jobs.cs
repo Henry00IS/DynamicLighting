@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
@@ -21,23 +22,26 @@ namespace AlpacaIT.DynamicLighting
             private const int batchSize = 1024 * 1024; // 1 MiB per byte stored.
 
             /// <summary>The <see cref="RaycastCommand"/> to be scheduled on the job system.</summary>
-            private List<RaycastCommand> raycastCommands = new List<RaycastCommand>(batchSize); // 44 MiB
-
-            /// <summary>Additional information per <see cref="RaycastCommand"/> for the results.</summary>
-            private List<RaycastCommandMeta> raycastCommandsMeta = null;
-
-            /// <summary>Additional information per <see cref="RaycastCommand"/> for the results.</summary>
-            private List<RaycastCommandMeta> raycastCommandsMetaAccumulator = new List<RaycastCommandMeta>(batchSize); // 24 MiB
+            private NativeArray<RaycastCommand> nativeRaycastCommandsAccumulator = new NativeArray<RaycastCommand>(batchSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory); // 52 MiB
 
             /// <summary>Native collection used by the currently active jobs.</summary>
-            private NativeArray<RaycastHit> nativeRaycastResults;
+            private NativeArray<RaycastCommand> nativeRaycastCommands = new NativeArray<RaycastCommand>(batchSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory); // 52 MiB
 
             /// <summary>Native collection used by the currently active jobs.</summary>
-            private NativeArray<RaycastCommand> nativeRaycastCommands;
+            private NativeArray<RaycastHit> nativeRaycastHits = new NativeArray<RaycastHit>(batchSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory); // 44 MiB
+
+            /// <summary>Additional information per <see cref="RaycastCommand"/> for the results.</summary>
+            private RaycastCommandMeta[] raycastCommandsMeta = new RaycastCommandMeta[batchSize]; // 24 MiB
+
+            /// <summary>Additional information per <see cref="RaycastCommand"/> for the results.</summary>
+            private RaycastCommandMeta[] raycastCommandsMetaAccumulator = new RaycastCommandMeta[batchSize]; // 24 MiB
 
             /// <summary>
             /// The amount of items in our collections, so that we do not have to check <see cref="List{T}.Count"/>.
             /// </summary>
+            private int countAccumulator;
+
+            /// <summary>The amount of items in the active job collections.</summary>
             private int count;
 
             /// <summary>The <see cref="JobHandle"/> pointing towards an active job.</summary>
@@ -52,12 +56,12 @@ namespace AlpacaIT.DynamicLighting
 
             public void Add(RaycastCommand raycastCommand, RaycastCommandMeta raycastCommandMeta)
             {
-                raycastCommands.Add(raycastCommand);
-                raycastCommandsMetaAccumulator.Add(raycastCommandMeta);
-                count++;
+                nativeRaycastCommandsAccumulator[countAccumulator] = raycastCommand;
+                raycastCommandsMetaAccumulator[countAccumulator] = raycastCommandMeta;
+                countAccumulator++;
 
                 // wait until we filled up our internal lists.
-                if (count >= batchSize)
+                if (countAccumulator >= batchSize)
                 {
                     Execute();
                 }
@@ -76,29 +80,21 @@ namespace AlpacaIT.DynamicLighting
 
                     // process the results.
                     ProcessResults();
-
-                    // clean up the native memory.
-                    nativeRaycastResults.Dispose();
-                    nativeRaycastCommands.Dispose();
                 }
 
-                if (count > 0)
+                if (countAccumulator > 0)
                 {
                     // remember that we are active now.
                     wasActive = true;
 
-                    // pass the raycast commands to native memory for the job system.
-                    nativeRaycastResults = new NativeArray<RaycastHit>(count, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
-                    nativeRaycastCommands = new NativeArray<RaycastCommand>(raycastCommands.ToArray(), Allocator.TempJob);
-
-                    // clear the managed memory and let it be used again to accumulate data.
-                    raycastCommands.Clear();
-                    raycastCommandsMeta = new List<RaycastCommandMeta>(raycastCommandsMetaAccumulator);
-                    raycastCommandsMetaAccumulator.Clear();
+                    // copy the accumulators into the working arrays.
+                    NativeArray<RaycastCommand>.Copy(nativeRaycastCommandsAccumulator, nativeRaycastCommands, countAccumulator);
+                    Array.Copy(raycastCommandsMetaAccumulator, raycastCommandsMeta, countAccumulator);
 
                     // schedule the batched raycast commands on the job system but do not wait here.
-                    jobHandle = RaycastCommand.ScheduleBatch(nativeRaycastCommands, nativeRaycastResults, 256);
-                    count = 0;
+                    jobHandle = RaycastCommand.ScheduleBatch(nativeRaycastCommands.GetSubArray(0, countAccumulator), nativeRaycastHits, 256);
+                    count = countAccumulator;
+                    countAccumulator = 0;
 
                     // the main thread will continue accumulating more work while we are busy processing
                     // raycasts. hopefully by the time we finish, new raycasts will already be prepared.
@@ -119,10 +115,6 @@ namespace AlpacaIT.DynamicLighting
                     // process the results.
                     ProcessResults();
 
-                    // clean up the native memory.
-                    nativeRaycastResults.Dispose();
-                    nativeRaycastCommands.Dispose();
-
                     // we are no longer active.
                     wasActive = false;
                 }
@@ -133,10 +125,10 @@ namespace AlpacaIT.DynamicLighting
                 uint* p = pixelsLightmap;
                 int pixelsLightmapSize = lightmapSize;
 
-                for (int i = 0; i < nativeRaycastResults.Length; i++)
+                for (int i = 0; i < count; i++)
                 {
                     var meta = raycastCommandsMeta[i];
-                    var hit = nativeRaycastResults[i];
+                    var hit = nativeRaycastHits[i];
 
 #if !UNITY_2021_2_OR_NEWER
                     if (hit.distance == 0f && hit.point.Equals(Vector3.zero))
@@ -147,6 +139,20 @@ namespace AlpacaIT.DynamicLighting
                         p[meta.y * pixelsLightmapSize + meta.x] |= (uint)1 << ((int)meta.lightChannel);
                     }
                 }
+            }
+
+            public void Dispose()
+            {
+                if (wasActive) throw new Exception("Unable to Dispose of an active " + nameof(DynamicLightingTracer));
+
+                if (nativeRaycastCommands.IsCreated)
+                    nativeRaycastCommands.Dispose();
+
+                if (nativeRaycastCommandsAccumulator.IsCreated)
+                    nativeRaycastCommandsAccumulator.Dispose();
+
+                if (nativeRaycastHits.IsCreated)
+                    nativeRaycastHits.Dispose();
             }
         }
     }

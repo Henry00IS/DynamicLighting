@@ -38,12 +38,6 @@ namespace AlpacaIT.DynamicLighting
         private bool progressBarCancel = false;
 #endif
 
-        /// <summary>Creates a new instance of the dynamic lighting tracer.</summary>
-        public DynamicLightingTracer()
-        {
-            Prepare();
-        }
-
         /// <summary>Resets the internal state so that it's ready for raytracing.</summary>
         private void Prepare()
         {
@@ -145,6 +139,7 @@ namespace AlpacaIT.DynamicLighting
 #if UNITY_EDITOR
                 UnityEditor.EditorUtility.ClearProgressBar();
 #endif
+                raycastProcessor.Dispose();
             }
         }
 
