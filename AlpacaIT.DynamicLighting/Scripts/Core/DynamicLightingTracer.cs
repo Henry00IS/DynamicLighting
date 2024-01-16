@@ -261,30 +261,30 @@ namespace AlpacaIT.DynamicLighting
 
                             // uint l00 = GetPixel(ref pixels_lightmap, x - 2, y - 2);
                             // uint l10 = GetPixel(ref pixels_lightmap, x - 1, y - 2);
-                            uint l20 = GetPixel(pixels_visited_ptr, x, y - 2);
+                            uint l20 = GetPixel(pixels_lightmap_ptr, x, y - 2);
                             // uint l30 = GetPixel(ref pixels_lightmap, x + 1, y - 2);
                             // uint l40 = GetPixel(ref pixels_lightmap, x + 2, y - 2);
 
                             // uint l01 = GetPixel(ref pixels_lightmap, x - 2, y - 1);
                             // uint l11 = GetPixel(ref pixels_lightmap, x - 1, y - 1);
-                            uint l21 = GetPixel(pixels_visited_ptr, x, y - 1);
+                            uint l21 = GetPixel(pixels_lightmap_ptr, x, y - 1);
                             // uint l31 = GetPixel(ref pixels_lightmap, x + 1, y - 1);
                             // uint l41 = GetPixel(ref pixels_lightmap, x + 2, y - 1);
 
-                            uint l02 = GetPixel(pixels_visited_ptr, x - 2, y);
-                            uint l12 = GetPixel(pixels_visited_ptr, x - 1, y);
-                            uint l32 = GetPixel(pixels_visited_ptr, x + 1, y);
-                            uint l42 = GetPixel(pixels_visited_ptr, x + 2, y);
+                            uint l02 = GetPixel(pixels_lightmap_ptr, x - 2, y);
+                            uint l12 = GetPixel(pixels_lightmap_ptr, x - 1, y);
+                            uint l32 = GetPixel(pixels_lightmap_ptr, x + 1, y);
+                            uint l42 = GetPixel(pixels_lightmap_ptr, x + 2, y);
 
                             // uint l03 = GetPixel(ref pixels_lightmap, x - 2, y + 1);
                             // uint l13 = GetPixel(ref pixels_lightmap, x - 1, y + 1);
-                            uint l23 = GetPixel(pixels_visited_ptr, x, y + 1);
+                            uint l23 = GetPixel(pixels_lightmap_ptr, x, y + 1);
                             // uint l33 = GetPixel(ref pixels_lightmap, x + 1, y + 1);
                             // uint l43 = GetPixel(ref pixels_lightmap, x + 2, y + 1);
 
                             // uint l04 = GetPixel(ref pixels_lightmap, x - 2, y + 2);
                             // uint l14 = GetPixel(ref pixels_lightmap, x - 1, y + 2);
-                            uint l24 = GetPixel(pixels_visited_ptr, x, y + 2);
+                            uint l24 = GetPixel(pixels_lightmap_ptr, x, y + 2);
                             // uint l34 = GetPixel(ref pixels_lightmap, x + 1, y + 2);
                             // uint l44 = GetPixel(ref pixels_lightmap, x + 2, y + 2);
 
