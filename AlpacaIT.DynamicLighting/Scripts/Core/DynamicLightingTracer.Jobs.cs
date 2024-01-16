@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Jobs;
-using Unity.Jobs.LowLevel.Unsafe;
 using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
@@ -15,7 +13,7 @@ namespace AlpacaIT.DynamicLighting
         /// Uses the Unity job system to schedule raycasts. It will let the main thread prepare more
         /// raycasts while background threads execute them.
         /// </summary>
-        private class RaycastProcessor
+        private unsafe class RaycastProcessor
         {
             /// <summary>
             /// The amount of commands that will be stored before scheduling it on the job system.
@@ -49,7 +47,7 @@ namespace AlpacaIT.DynamicLighting
             private bool wasActive = false;
 
             /// <summary>Contains the pixels of the lightmap.</summary>
-            public uint[] pixelsLightmap;
+            public uint* pixelsLightmap;
             public int lightmapSize;
 
             public void Add(RaycastCommand raycastCommand, RaycastCommandMeta raycastCommandMeta)
@@ -130,8 +128,11 @@ namespace AlpacaIT.DynamicLighting
                 }
             }
 
-            private unsafe void ProcessResults()
+            private void ProcessResults()
             {
+                uint* p = pixelsLightmap;
+                int pixelsLightmapSize = lightmapSize;
+
                 for (int i = 0; i < nativeRaycastResults.Length; i++)
                 {
                     var meta = raycastCommandsMeta[i];
@@ -143,10 +144,7 @@ namespace AlpacaIT.DynamicLighting
                     if (hit.colliderInstanceID == 0)
 #endif
                     {
-                        fixed (uint* p = pixelsLightmap)
-                        {
-                            p[meta.y * lightmapSize + meta.x] |= (uint)1 << ((int)meta.lightChannel);
-                        }
+                        p[meta.y * pixelsLightmapSize + meta.x] |= (uint)1 << ((int)meta.lightChannel);
                     }
                 }
             }

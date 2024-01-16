@@ -1,8 +1,6 @@
 using AlpacaIT.DynamicLighting.Internal;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using Unity.Collections;
-using Unity.Jobs.LowLevel.Unsafe;
+using System.Runtime.InteropServices;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -150,7 +148,7 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
-        private void Raytrace(MeshFilter meshFilter, float progressMin, float progressMax)
+        private unsafe void Raytrace(MeshFilter meshFilter, float progressMin, float progressMax)
         {
             var meshBuilder = new MeshBuilder(meshFilter.transform.localToWorldMatrix, meshFilter.sharedMesh);
             lightmapSize = MathEx.SurfaceAreaToTextureSize(meshBuilder.surfaceArea, pixelDensityPerSquareMeter);
@@ -180,9 +178,13 @@ namespace AlpacaIT.DynamicLighting
             var dynamic_triangles = new DynamicTrianglesBuilder(meshBuilder.triangleCount);
             var pixels_lightmap = new uint[lightmapSize * lightmapSize];
             var pixels_visited = new uint[lightmapSize * lightmapSize];
+            var pixels_lightmap_gc = GCHandle.Alloc(pixels_lightmap, GCHandleType.Pinned);
+            var pixels_visited_gc = GCHandle.Alloc(pixels_visited, GCHandleType.Pinned);
+            var pixels_lightmap_ptr = (uint*)pixels_lightmap_gc.AddrOfPinnedObject();
+            var pixels_visited_ptr = (uint*)pixels_visited_gc.AddrOfPinnedObject();
 
             // prepare to raycast the entire mesh using multi-threading.
-            raycastProcessor.pixelsLightmap = pixels_lightmap;
+            raycastProcessor.pixelsLightmap = pixels_lightmap_ptr;
             raycastProcessor.lightmapSize = lightmapSize;
 
             // iterate over all triangles in the mesh.
@@ -202,7 +204,7 @@ namespace AlpacaIT.DynamicLighting
                 var (v1, v2, v3) = meshBuilder.GetTriangleVertices(i);
                 var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
 
-                RaycastTriangle(i, dynamic_triangles, pixels_visited, v1, v2, v3, t1, t2, t3);
+                RaycastTriangle(i, dynamic_triangles, pixels_visited_ptr, v1, v2, v3, t1, t2, t3);
             }
 
             // finish any remaining raycasting work.
@@ -218,11 +220,8 @@ namespace AlpacaIT.DynamicLighting
                     {
                         // if we find an unvisited pixel it will appear as a black seam in the scene.
                         uint visited;
-                        unsafe
-                        {
-                            fixed (uint* p = pixels_visited)
-                                visited = p[y * lightmapSize + x];
-                        }
+
+                        visited = pixels_visited_ptr[y * lightmapSize + x];
                         if (visited == 0)
                         {
                             uint res = 0;
@@ -231,30 +230,30 @@ namespace AlpacaIT.DynamicLighting
 
                             // bool p00 = GetPixel(ref pixels_visited, x - 2, y - 2) == 1;
                             // bool p10 = GetPixel(ref pixels_visited, x - 1, y - 2) == 1;
-                            bool p20 = GetPixel(pixels_visited, x, y - 2) == 1;
+                            bool p20 = GetPixel(pixels_visited_ptr, x, y - 2) == 1;
                             // bool p30 = GetPixel(ref pixels_visited, x + 1, y - 2) == 1;
                             // bool p40 = GetPixel(ref pixels_visited, x + 2, y - 2) == 1;
 
                             // bool p01 = GetPixel(ref pixels_visited, x - 2, y - 1) == 1;
                             // bool p11 = GetPixel(ref pixels_visited, x - 1, y - 1) == 1;
-                            bool p21 = GetPixel(pixels_visited, x, y - 1) == 1;
+                            bool p21 = GetPixel(pixels_visited_ptr, x, y - 1) == 1;
                             // bool p31 = GetPixel(ref pixels_visited, x + 1, y - 1) == 1;
                             // bool p41 = GetPixel(ref pixels_visited, x + 2, y - 1) == 1;
 
-                            bool p02 = GetPixel(pixels_visited, x - 2, y) == 1;
-                            bool p12 = GetPixel(pixels_visited, x - 1, y) == 1;
-                            bool p32 = GetPixel(pixels_visited, x + 1, y) == 1;
-                            bool p42 = GetPixel(pixels_visited, x + 2, y) == 1;
+                            bool p02 = GetPixel(pixels_visited_ptr, x - 2, y) == 1;
+                            bool p12 = GetPixel(pixels_visited_ptr, x - 1, y) == 1;
+                            bool p32 = GetPixel(pixels_visited_ptr, x + 1, y) == 1;
+                            bool p42 = GetPixel(pixels_visited_ptr, x + 2, y) == 1;
 
                             // bool p03 = GetPixel(ref pixels_visited, x - 2, y + 1) == 1;
                             // bool p13 = GetPixel(ref pixels_visited, x - 1, y + 1) == 1;
-                            bool p23 = GetPixel(pixels_visited, x, y + 1) == 1;
+                            bool p23 = GetPixel(pixels_visited_ptr, x, y + 1) == 1;
                             // bool p33 = GetPixel(ref pixels_visited, x + 1, y + 1) == 1;
                             // bool p43 = GetPixel(ref pixels_visited, x + 2, y + 1) == 1;
 
                             // bool p04 = GetPixel(ref pixels_visited, x - 2, y + 2) == 1;
                             // bool p14 = GetPixel(ref pixels_visited, x - 1, y + 2) == 1;
-                            bool p24 = GetPixel(pixels_visited, x, y + 2) == 1;
+                            bool p24 = GetPixel(pixels_visited_ptr, x, y + 2) == 1;
                             // bool p34 = GetPixel(ref pixels_visited, x + 1, y + 2) == 1;
                             // bool p44 = GetPixel(ref pixels_visited, x + 2, y + 2) == 1;
 
@@ -262,30 +261,30 @@ namespace AlpacaIT.DynamicLighting
 
                             // uint l00 = GetPixel(ref pixels_lightmap, x - 2, y - 2);
                             // uint l10 = GetPixel(ref pixels_lightmap, x - 1, y - 2);
-                            uint l20 = GetPixel(pixels_lightmap, x, y - 2);
+                            uint l20 = GetPixel(pixels_visited_ptr, x, y - 2);
                             // uint l30 = GetPixel(ref pixels_lightmap, x + 1, y - 2);
                             // uint l40 = GetPixel(ref pixels_lightmap, x + 2, y - 2);
 
                             // uint l01 = GetPixel(ref pixels_lightmap, x - 2, y - 1);
                             // uint l11 = GetPixel(ref pixels_lightmap, x - 1, y - 1);
-                            uint l21 = GetPixel(pixels_lightmap, x, y - 1);
+                            uint l21 = GetPixel(pixels_visited_ptr, x, y - 1);
                             // uint l31 = GetPixel(ref pixels_lightmap, x + 1, y - 1);
                             // uint l41 = GetPixel(ref pixels_lightmap, x + 2, y - 1);
 
-                            uint l02 = GetPixel(pixels_lightmap, x - 2, y);
-                            uint l12 = GetPixel(pixels_lightmap, x - 1, y);
-                            uint l32 = GetPixel(pixels_lightmap, x + 1, y);
-                            uint l42 = GetPixel(pixels_lightmap, x + 2, y);
+                            uint l02 = GetPixel(pixels_visited_ptr, x - 2, y);
+                            uint l12 = GetPixel(pixels_visited_ptr, x - 1, y);
+                            uint l32 = GetPixel(pixels_visited_ptr, x + 1, y);
+                            uint l42 = GetPixel(pixels_visited_ptr, x + 2, y);
 
                             // uint l03 = GetPixel(ref pixels_lightmap, x - 2, y + 1);
                             // uint l13 = GetPixel(ref pixels_lightmap, x - 1, y + 1);
-                            uint l23 = GetPixel(pixels_lightmap, x, y + 1);
+                            uint l23 = GetPixel(pixels_visited_ptr, x, y + 1);
                             // uint l33 = GetPixel(ref pixels_lightmap, x + 1, y + 1);
                             // uint l43 = GetPixel(ref pixels_lightmap, x + 2, y + 1);
 
                             // uint l04 = GetPixel(ref pixels_lightmap, x - 2, y + 2);
                             // uint l14 = GetPixel(ref pixels_lightmap, x - 1, y + 2);
-                            uint l24 = GetPixel(pixels_lightmap, x, y + 2);
+                            uint l24 = GetPixel(pixels_visited_ptr, x, y + 2);
                             // uint l34 = GetPixel(ref pixels_lightmap, x + 1, y + 2);
                             // uint l44 = GetPixel(ref pixels_lightmap, x + 2, y + 2);
 
@@ -339,16 +338,15 @@ namespace AlpacaIT.DynamicLighting
                             if (!p23 && p24)
                                 res |= l24;
 
-                            unsafe
-                            {
-                                fixed (uint* p = pixels_lightmap)
-                                    p[y * lightmapSize + x] = res;
-                            }
+                            pixels_lightmap_ptr[y * lightmapSize + x] = res;
                         }
                     }
                 }
             }
             seamTime.Stop();
+
+            pixels_lightmap_gc.Free();
+            pixels_visited_gc.Free();
 
             // store the scene reference renderer in the dynamic light manager with lightmap metadata.
             var lightmap = new RaycastedMeshRenderer();
@@ -367,14 +365,13 @@ namespace AlpacaIT.DynamicLighting
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private unsafe uint GetPixel(uint[] pixels, int x, int y)
+        private unsafe uint GetPixel(uint* pixels, int x, int y)
         {
             if (x < 0 || y < 0 || x >= lightmapSize || y >= lightmapSize) return 0;
-            fixed (uint* p = pixels)
-                return p[y * lightmapSize + x];
+            return pixels[y * lightmapSize + x];
         }
 
-        private void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, uint[] pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        private unsafe void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, uint* pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // calculate the triangle normal (this may fail when degenerate or very small).
             var trianglePlane = new Plane(v1, v2, v3);
@@ -475,11 +472,7 @@ namespace AlpacaIT.DynamicLighting
                     }
 
                     // write this pixel into the visited map.
-                    unsafe
-                    {
-                        fixed (uint* p = pixels_visited)
-                            p[y * lightmapSize + x] = 1;
-                    }
+                    pixels_visited[y * lightmapSize + x] = 1;
                 }
             }
         }
