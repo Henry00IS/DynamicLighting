@@ -20,8 +20,10 @@ namespace AlpacaIT.DynamicLighting
 #pragma warning restore CS0067
 
         private int traces = 0;
+        private int optimizationLightsRemoved = 0;
         private BenchmarkTimer tracingTime;
         private BenchmarkTimer seamTime;
+        private BenchmarkTimer optimizationTime;
         private ulong vramTotal = 0;
         private DynamicLight[] pointLights;
         private CachedLightData[] pointLightsCache;
@@ -51,8 +53,10 @@ namespace AlpacaIT.DynamicLighting
             raycastProcessor = new RaycastProcessor();
 
             traces = 0;
+            optimizationLightsRemoved = 0;
             tracingTime = new BenchmarkTimer();
             seamTime = new BenchmarkTimer();
+            optimizationTime = new BenchmarkTimer();
             vramTotal = 0;
             lightmapSizeMin1 = lightmapSize - 1;
             uniqueIdentifier = 0;
@@ -121,7 +125,7 @@ namespace AlpacaIT.DynamicLighting
                 // have unity editor reload the modified assets.
                 UnityEditor.AssetDatabase.Refresh();
 #endif
-                Debug.Log("Raytracing Finished: " + traces + " traces in " + tracingTime + "! Seams padding in " + seamTime + "! VRAM estimation: " + MathEx.BytesToUnitString(vramTotal));
+                Debug.Log("Raytracing Finished: " + traces + " traces in " + tracingTime + "! Seams padding in " + seamTime + "! Runtime optimizations in " + optimizationTime + " (removed " + optimizationLightsRemoved + " light sources from triangles)! VRAM estimation: " + MathEx.BytesToUnitString(vramTotal));
                 dynamicLightManager.Reload();
 #if UNITY_EDITOR
                 UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
@@ -204,8 +208,18 @@ namespace AlpacaIT.DynamicLighting
 
             // finish any remaining raycasting work.
             raycastProcessor.Complete();
-
             tracingTime.Stop();
+
+            // optimize the runtime performance.
+            // iterate over all triangles in the mesh.
+            optimizationTime.Begin();
+            for (int i = 0; i < meshBuilder.triangleCount; i++)
+            {
+                var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
+
+                OptimizeTriangle(i, pixels_lightmap_ptr, dynamic_triangles, t1, t2, t3);
+            }
+            optimizationTime.Stop();
 
             seamTime.Begin();
             {
@@ -472,6 +486,72 @@ namespace AlpacaIT.DynamicLighting
 
                     // write this pixel into the visited map.
                     pixels_visited[y * lightmapSize + x] = 1;
+                }
+            }
+        }
+
+        private unsafe void OptimizeTriangle(int triangle_index, uint* pixels_lightmap, DynamicTrianglesBuilder dynamic_triangles, Vector2 t1, Vector2 t2, Vector2 t3)
+        {
+            // during the raycasting process, lights were associated per-triangle. This was
+            // determined by the normal of the triangle (must face the light) and that the radius of
+            // the light intersects the triangle, however, fully occluded walls may still have the
+            // light associated with this logic alone. we use the raycasting results to determine
+            // which triangles are truly affected by which lights and remove the lights that are not
+            // affecting it. depending on the scene, this removes hundreds of thousands of lights
+            // doubling the framerate.
+
+            // calculate the bounding box of the polygon in UV space.
+            var triangleBoundingBox = MathEx.ComputeTriangleBoundingBox(t1, t2, t3);
+
+            // triangles may be so thin and small that they do not have their own UV texels, so we
+            // expand the bounding box by one pixel on the shadow occlusion map to include the
+            // neighbouring texels, as failure to do so will leave them without all of their light
+            // sources (i.e. fully black).
+            var minX = Mathf.FloorToInt(triangleBoundingBox.xMin * lightmapSizeMin1) - 1;
+            var minY = Mathf.FloorToInt(triangleBoundingBox.yMin * lightmapSizeMin1) - 1;
+            var maxX = Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSizeMin1) + 1;
+            var maxY = Mathf.CeilToInt(triangleBoundingBox.yMax * lightmapSizeMin1) + 1;
+
+            // clamp the pixel coordinates so that we can safely read from our arrays.
+            minX = Mathf.Clamp(minX, 0, (int)lightmapSizeMin1);
+            minY = Mathf.Clamp(minY, 0, (int)lightmapSizeMin1);
+            maxX = Mathf.Clamp(maxX, 0, (int)lightmapSizeMin1);
+            maxY = Mathf.Clamp(maxY, 0, (int)lightmapSizeMin1);
+
+            // prepare to iterate over lights associated with the current triangle.
+            var triangleLightIndices = dynamic_triangles.GetAssociatedLightIndices(triangle_index);
+            var triangleLightIndicesCount = triangleLightIndices.Count;
+
+            // only iterate over lights associated with the current triangle.
+            for (int i = triangleLightIndicesCount; i-- > 0;)
+            {
+                var pointLight = pointLights[triangleLightIndices[i]];
+                var lightChannelBit = (uint)1 << ((int)pointLight.lightChannel);
+                var lightFound = false;
+
+                for (int y = minY; y < maxY; y++)
+                {
+                    int yPtr = y * lightmapSize;
+
+                    for (int x = minX; x < maxX; x++)
+                    {
+                        int xyPtr = yPtr + x;
+
+                        if ((pixels_lightmap[xyPtr] & lightChannelBit) > 0)
+                        {
+                            lightFound = true;
+                            break;
+                        }
+                    }
+
+                    if (lightFound)
+                        break;
+                }
+
+                if (!lightFound)
+                {
+                    optimizationLightsRemoved++;
+                    triangleLightIndices.RemoveAt(i);
                 }
             }
         }
