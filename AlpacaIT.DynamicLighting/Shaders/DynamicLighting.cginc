@@ -299,12 +299,12 @@ float lightmap_sample3x3(uint2 uv, uint channel)
 {
     float map;
 
-    map  = lightmap_sample(uv, channel);
-    map += lightmap_sample(uv + uint2(-1, -1), channel);
+    map  = lightmap_sample(uv + uint2(-1, -1), channel);
     map += lightmap_sample(uv + uint2( 0, -1), channel);
     map += lightmap_sample(uv + uint2( 1, -1), channel);
 
     map += lightmap_sample(uv + uint2(-1,  0), channel);
+    map += lightmap_sample(uv                , channel);
     map += lightmap_sample(uv + uint2( 1,  0), channel);
 
     map += lightmap_sample(uv + uint2(-1,  1), channel);
