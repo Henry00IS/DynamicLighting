@@ -41,7 +41,7 @@ namespace AlpacaIT.DynamicLighting
                 }
                 else
                 {
-                    Debug.LogError("More than 32 lights intersect at the same position! This is not supported! Please spread your light sources further apart or reduce their radius.");
+                    Debug.LogError("More than 32 lights intersect at the same position! This is not supported! Please spread your light sources further apart or reduce their radius.", light);
                 }
             }
         }
