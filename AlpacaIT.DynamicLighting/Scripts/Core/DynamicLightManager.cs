@@ -366,6 +366,8 @@ namespace AlpacaIT.DynamicLighting
             if (!IsRaycastedDynamicLight(light))
                 sceneRealtimeLights.Add(light);
 
+            SetRaycastedDynamicLightAvailable(light, true);
+
             lightRegistered?.Invoke(this, new DynamicLightRegisteredEventArgs(light));
         }
 
@@ -375,8 +377,28 @@ namespace AlpacaIT.DynamicLighting
             {
                 sceneRealtimeLights.Remove(light);
                 activeRealtimeLights.Remove(light);
+                SetRaycastedDynamicLightAvailable(light, false);
 
                 lightUnregistered?.Invoke(this, new DynamicLightUnregisteredEventArgs(light));
+            }
+        }
+
+        /// <summary>
+        /// In the <see cref="raycastedDynamicLights"/> marks a light as either available or unavailable.
+        /// </summary>
+        /// <param name="light">The <see cref="DynamicLight"/> to be found.</param>
+        /// <param name="available">Whether the light is available or not.</param>
+        private void SetRaycastedDynamicLightAvailable(DynamicLight light, bool available)
+        {
+            var raycastedDynamicLightsCount = raycastedDynamicLights.Count;
+            for (int i = 0; i < raycastedDynamicLightsCount; i++)
+            {
+                var raycastedDynamicLight = raycastedDynamicLights[i];
+                if (raycastedDynamicLight.light == light)
+                {
+                    raycastedDynamicLight.lightAvailable = available;
+                    break;
+                }
             }
         }
 
@@ -448,19 +470,23 @@ namespace AlpacaIT.DynamicLighting
             // always process the raycasted dynamic lights.
             for (int i = 0; i < raycastedDynamicLightsCount; i++)
             {
-                var raycastedLight = raycastedDynamicLights[i];
+                var raycastedDynamicLight = raycastedDynamicLights[i];
 
                 // destroyed raycasted lights in the scene, must still exist in the shader.
-                if (!raycastedLight.light) continue;
+                if (!raycastedDynamicLight.lightAvailable) continue;
+
+                var light = raycastedDynamicLight.light;
+                var lightCache = light.cache;
 
                 // when a raycasted light position has been moved away from the origin:
-                if (raycastedLight.light.transform.position != raycastedLight.origin)
+                lightCache.transformPosition = light.transform.position;
+                if (lightCache.transformPosition != raycastedDynamicLight.origin)
                 {
-                    if (!raycastedLight.light.cache.movedFromOrigin)
+                    if (!lightCache.movedFromOrigin)
                     {
                         // add it to the realtime lights and disable the raycasted light.
-                        sceneRealtimeLights.Add(raycastedLight.light);
-                        raycastedLight.light.cache.movedFromOrigin = true;
+                        sceneRealtimeLights.Add(light);
+                        lightCache.movedFromOrigin = true;
                     }
 
                     // we skip the update here as that's done for realtime lights later.
@@ -468,25 +494,31 @@ namespace AlpacaIT.DynamicLighting
                 else
                 {
                     // when a raycasted light position has been restored to the origin:
-                    if (raycastedLight.light.cache.movedFromOrigin)
+                    if (lightCache.movedFromOrigin)
                     {
                         // remove it from the realtime lights and enable the raycasted light.
-                        sceneRealtimeLights.Remove(raycastedLight.light);
-                        raycastedLight.light.cache.movedFromOrigin = false;
+                        sceneRealtimeLights.Remove(light);
+                        lightCache.movedFromOrigin = false;
                     }
 
                     // we must always update the fixed timestep calculator as it relies on Time.deltaTime.
-                    raycastedLight.light.cache.fixedTimestep.timePerStep = raycastedLight.light.lightEffectTimestepFrequency;
-                    raycastedLight.light.cache.fixedTimestep.Update();
+                    lightCache.fixedTimestep.timePerStep = light.lightEffectTimestepFrequency;
+                    lightCache.fixedTimestep.Update();
                 }
             }
 
             // clear as many active lights as possible.
             activeRealtimeLights.Clear();
 
+            // update the cached realtime light positions (required for fast sorting).
+            var sceneRealtimeLightsCount = sceneRealtimeLights.Count;
+            if (sceneRealtimeLightsCount > 0)
+            {
+                UpdateSceneRealtimeLightPositionsInCache();
+            }
+
             // if we exceed the realtime light budget we sort the realtime lights by distance every
             // frame, as we will assume they are moving around.
-            var sceneRealtimeLightsCount = sceneRealtimeLights.Count;
             if (sceneRealtimeLightsCount > realtimeLightBudget)
             {
                 SortSceneRealtimeLights(camera.transform.position);
@@ -523,9 +555,11 @@ namespace AlpacaIT.DynamicLighting
             var idx = 0;
             for (int i = 0; i < raycastedDynamicLightsCount; i++)
             {
-                var light = raycastedDynamicLights[i].light;
-                SetShaderDynamicLight(idx, light, false);
-                UpdateLightEffects(idx, light);
+                var raycastedDynamicLight = raycastedDynamicLights[i];
+                var light = raycastedDynamicLight.light;
+                var lightAvailable = raycastedDynamicLight.lightAvailable;
+                SetShaderDynamicLight(idx, light, lightAvailable, false);
+                UpdateLightEffects(idx, light, lightAvailable);
                 idx++;
             }
 
@@ -533,8 +567,9 @@ namespace AlpacaIT.DynamicLighting
             for (int i = 0; i < activeRealtimeLightsCount; i++)
             {
                 var light = activeRealtimeLights[i];
-                SetShaderDynamicLight(idx, light, true);
-                UpdateLightEffects(idx, light);
+                bool lightAvailable = light;
+                SetShaderDynamicLight(idx, light, lightAvailable, true);
+                UpdateLightEffects(idx, light, lightAvailable);
                 idx++;
             }
 
@@ -563,35 +598,49 @@ namespace AlpacaIT.DynamicLighting
         }
 
         /// <summary>
+        /// Updates all of the <see cref="DynamicLight.cache"/><see
+        /// cref="DynamicLightCache.transformPosition"/> for the <see cref="sceneRealtimeLights"/>.
+        /// </summary>
+        private void UpdateSceneRealtimeLightPositionsInCache()
+        {
+            var sceneRealtimeLightsCount = sceneRealtimeLights.Count;
+            for (int i = 0; i < sceneRealtimeLightsCount; i++)
+            {
+                var sceneRealtimeLight = sceneRealtimeLights[i];
+                sceneRealtimeLight.cache.transformPosition = sceneRealtimeLight.transform.position;
+            }
+        }
+
+        /// <summary>
         /// Sorts the scene realtime light lists by the distance from the specified origin. The
         /// closests lights will appear first in the list.
+        /// <para>Requires a call to <see cref="UpdateSceneRealtimeLightPositionsInCache"/>.</para>
         /// </summary>
         /// <param name="origin">The origin (usually the camera world position).</param>
         private void SortSceneRealtimeLights(Vector3 origin)
         {
-            sceneRealtimeLights.Sort((a, b) => (origin - a.transform.position).sqrMagnitude
-            .CompareTo((origin - b.transform.position).sqrMagnitude));
+            sceneRealtimeLights.Sort((a, b) => (origin - a.cache.transformPosition).sqrMagnitude
+            .CompareTo((origin - b.cache.transformPosition).sqrMagnitude));
         }
 
-        private void SetShaderDynamicLight(int idx, DynamicLight light, bool realtime)
+        private void SetShaderDynamicLight(int idx, DynamicLight light, bool lightAvailable, bool realtime)
         {
             // destroyed raycasted lights in the scene, must still exist in the shader. we can make
             // the radius negative causing an early out whenever a fragment tries to use it.
-            if (!light || !light.isActiveAndEnabled || (!realtime && light.cache.movedFromOrigin))
+            if (!lightAvailable || (!realtime && light.cache.movedFromOrigin))
             {
                 shaderDynamicLights[idx].radiusSqr = -1.0f;
                 return;
             }
 
             // retrieving the slow information about the light.
-            var lightTransform = light.transform;
             var lightRadius = light.lightRadius;
             var lightColor = light.lightColor;
 
             // we ignore the channel for realtime lights without shadows.
             shaderDynamicLights[idx].channel = realtime ? 32 : light.lightChannel;
             // -> the light intensity is set by the effects update step.
-            shaderDynamicLights[idx].position = lightTransform.position;
+            shaderDynamicLights[idx].position = light.cache.transformPosition;
             shaderDynamicLights[idx].color = new Vector3(lightColor.r, lightColor.g, lightColor.b);
             shaderDynamicLights[idx].radiusSqr = lightRadius * lightRadius;
 
@@ -602,7 +651,7 @@ namespace AlpacaIT.DynamicLighting
                     shaderDynamicLights[idx].channel |= (uint)1 << 6; // spot light bit
                     shaderDynamicLights[idx].gpFloat1 = Mathf.Cos(light.lightCutoff * Mathf.Deg2Rad);
                     shaderDynamicLights[idx].gpFloat2 = Mathf.Cos(light.lightOuterCutoff * Mathf.Deg2Rad);
-                    lightRotation = lightTransform.rotation;
+                    lightRotation = light.transform.rotation;
                     shaderDynamicLights[idx].forward = lightRotation * Vector3.forward;
                     break;
 
@@ -610,7 +659,7 @@ namespace AlpacaIT.DynamicLighting
                     shaderDynamicLights[idx].channel |= (uint)1 << 7; // discoball light bit
                     shaderDynamicLights[idx].gpFloat1 = Mathf.Cos(light.lightCutoff * Mathf.Deg2Rad);
                     shaderDynamicLights[idx].gpFloat2 = Mathf.Cos(light.lightOuterCutoff * Mathf.Deg2Rad);
-                    lightRotation = lightTransform.rotation;
+                    lightRotation = light.transform.rotation;
                     shaderDynamicLights[idx].up = lightRotation * Vector3.up;
                     shaderDynamicLights[idx].forward = lightRotation * Vector3.forward;
                     break;
@@ -625,7 +674,7 @@ namespace AlpacaIT.DynamicLighting
                     shaderDynamicLights[idx].channel |= (uint)1 << 11; // interference light bit
                     shaderDynamicLights[idx].gpFloat1 = light.lightWaveSpeed;
                     shaderDynamicLights[idx].gpFloat2 = light.lightWaveFrequency;
-                    lightRotation = lightTransform.rotation;
+                    lightRotation = light.transform.rotation;
                     shaderDynamicLights[idx].up = lightRotation * Vector3.up;
                     shaderDynamicLights[idx].forward = lightRotation * Vector3.forward;
                     break;
@@ -635,7 +684,7 @@ namespace AlpacaIT.DynamicLighting
                     shaderDynamicLights[idx].gpFloat1 = light.lightWaveSpeed;
                     shaderDynamicLights[idx].gpFloat2 = Mathf.Round(light.lightWaveFrequency);
                     shaderDynamicLights[idx].gpFloat3 = light.lightRotorCenter;
-                    lightRotation = lightTransform.rotation;
+                    lightRotation = light.transform.rotation;
                     shaderDynamicLights[idx].up = lightRotation * Vector3.up;
                     shaderDynamicLights[idx].forward = lightRotation * Vector3.forward;
                     break;
@@ -651,7 +700,7 @@ namespace AlpacaIT.DynamicLighting
                     shaderDynamicLights[idx].gpFloat1 = light.lightWaveSpeed;
                     shaderDynamicLights[idx].gpFloat2 = Mathf.Round(light.lightWaveFrequency);
                     shaderDynamicLights[idx].gpFloat3 = light.lightDiscoVerticalSpeed;
-                    lightRotation = lightTransform.rotation;
+                    lightRotation = light.transform.rotation;
                     shaderDynamicLights[idx].up = lightRotation * Vector3.up;
                     shaderDynamicLights[idx].forward = lightRotation * Vector3.forward;
                     break;
@@ -685,10 +734,10 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
-        private void UpdateLightEffects(int idx, DynamicLight light)
+        private void UpdateLightEffects(int idx, DynamicLight light, bool lightAvailable)
         {
             // destroyed raycasted lights in the scene, must still exist in the shader.
-            if (!light) return;
+            if (!lightAvailable) return;
 
             // continuous light effects:
 

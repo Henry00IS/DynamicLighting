@@ -1,4 +1,6 @@
-﻿namespace AlpacaIT.DynamicLighting
+﻿using UnityEngine;
+
+namespace AlpacaIT.DynamicLighting
 {
     /// <summary>Stores dynamic light runtime effect values that change at irregular intervals.</summary>
     internal class DynamicLightCache
@@ -31,5 +33,11 @@
         /// away from the origin or back to the origin.
         /// </summary>
         public bool movedFromOrigin;
+
+        /// <summary>
+        /// It is expensive to call <see cref="Transform.position"/> and this vector stores it
+        /// during <see cref="DynamicLightManager.Update"/>.
+        /// </summary>
+        public Vector3 transformPosition;
     }
 }

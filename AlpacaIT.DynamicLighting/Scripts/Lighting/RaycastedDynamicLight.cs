@@ -16,6 +16,9 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>The original position the immovable dynamic light was raycasted at.</summary>
         public Vector3 origin = Vector3.positiveInfinity;
 
+        /// <summary>Gets or sets whether the <see cref="light"/> is a valid instance and enabled.</summary>
+        public bool lightAvailable = true;
+
         /// <summary>Creates a new instance for the given <see cref="DynamicLight"/>.</summary>
         /// <param name="dynamicLight">The <see cref="DynamicLight"/> to be referenced.</param>
         public RaycastedDynamicLight(DynamicLight dynamicLight)
