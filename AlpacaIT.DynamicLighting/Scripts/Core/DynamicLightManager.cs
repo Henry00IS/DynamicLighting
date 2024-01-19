@@ -132,6 +132,9 @@ namespace AlpacaIT.DynamicLighting
         private ShaderDynamicLight[] shaderDynamicLights;
         private ComputeBuffer dynamicLightsBuffer;
 
+        /// <summary>Stores the 6 camera frustum planes, for the non-alloc version of <see cref="GeometryUtility.CalculateFrustumPlanes"/>.</summary>
+        private Plane[] cameraFrustumPlanes = new Plane[6];
+
         [System.NonSerialized]
         private bool isInitialized = false;
 
@@ -501,12 +504,12 @@ namespace AlpacaIT.DynamicLighting
                 if (activeRealtimeLights.Count < realtimeLightBudget)
                 {
                     // calculate the camera frustum planes.
-                    Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(camera);
+                    GeometryUtility.CalculateFrustumPlanes(camera, cameraFrustumPlanes);
 
 #if UNITY_EDITOR    // optimization: only add lights that are within the camera frustum.
-                    if (!Application.isPlaying || MathEx.CheckSphereIntersectsFrustum(frustumPlanes, realtimeLight.transform.position, realtimeLight.largestLightRadius))
+                    if (!Application.isPlaying || MathEx.CheckSphereIntersectsFrustum(cameraFrustumPlanes, realtimeLight.transform.position, realtimeLight.largestLightRadius))
 #else
-                    if (MathEx.CheckSphereIntersectsFrustum(frustumPlanes, realtimeLight.transform.position, realtimeLight.largestLightRadius))
+                    if (MathEx.CheckSphereIntersectsFrustum(cameraFrustumPlanes, realtimeLight.transform.position, realtimeLight.largestLightRadius))
 #endif
                     {
                         activeRealtimeLights.Add(realtimeLight);
@@ -579,15 +582,21 @@ namespace AlpacaIT.DynamicLighting
                 return;
             }
 
+            // retrieving the slow information about the light.
+            var lightTransform = light.transform;
+            var lightRotation = lightTransform.rotation;
+            var lightTransformUp = lightRotation * Vector3.up;
+            var lightTransformForward = lightRotation * Vector3.forward;
+
             // we ignore the channel for realtime lights without shadows.
             shaderDynamicLights[idx].channel = realtime ? 32 : light.lightChannel;
             // > the light intensity is set by the effects update step.
-            shaderDynamicLights[idx].position = light.transform.position;
+            shaderDynamicLights[idx].position = lightTransform.position;
             shaderDynamicLights[idx].color = new Vector3(light.lightColor.r, light.lightColor.g, light.lightColor.b);
             shaderDynamicLights[idx].radiusSqr = light.lightRadius * light.lightRadius;
 
-            shaderDynamicLights[idx].up = light.transform.up;
-            shaderDynamicLights[idx].forward = light.transform.forward;
+            shaderDynamicLights[idx].up = lightTransformUp;
+            shaderDynamicLights[idx].forward = lightTransformForward;
             shaderDynamicLights[idx].shimmerScale = light.lightShimmerScale;
             shaderDynamicLights[idx].shimmerModifier = light.lightShimmerModifier;
 
