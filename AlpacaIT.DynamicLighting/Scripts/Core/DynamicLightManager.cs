@@ -492,6 +492,10 @@ namespace AlpacaIT.DynamicLighting
                 SortSceneRealtimeLights(camera.transform.position);
             }
 
+            // if there are realtime light sources we calculate the camera frustum planes.
+            if (sceneRealtimeLightsCount > 0 && realtimeLightBudget > 0)
+                GeometryUtility.CalculateFrustumPlanes(camera, cameraFrustumPlanes);
+
             // fill the active realtime lights back up with the closest lights.
             for (int i = 0; i < sceneRealtimeLightsCount; i++)
             {
@@ -503,9 +507,6 @@ namespace AlpacaIT.DynamicLighting
 
                 if (activeRealtimeLights.Count < realtimeLightBudget)
                 {
-                    // calculate the camera frustum planes.
-                    GeometryUtility.CalculateFrustumPlanes(camera, cameraFrustumPlanes);
-
 #if UNITY_EDITOR    // optimization: only add lights that are within the camera frustum.
                     if (!Application.isPlaying || MathEx.CheckSphereIntersectsFrustum(cameraFrustumPlanes, realtimeLight.transform.position, realtimeLight.largestLightRadius))
 #else
@@ -584,39 +585,34 @@ namespace AlpacaIT.DynamicLighting
 
             // retrieving the slow information about the light.
             var lightTransform = light.transform;
-            var lightRotation = lightTransform.rotation;
-            var lightTransformUp = lightRotation * Vector3.up;
-            var lightTransformForward = lightRotation * Vector3.forward;
+            var lightRadius = light.lightRadius;
+            var lightColor = light.lightColor;
 
             // we ignore the channel for realtime lights without shadows.
             shaderDynamicLights[idx].channel = realtime ? 32 : light.lightChannel;
-            // > the light intensity is set by the effects update step.
+            // -> the light intensity is set by the effects update step.
             shaderDynamicLights[idx].position = lightTransform.position;
-            shaderDynamicLights[idx].color = new Vector3(light.lightColor.r, light.lightColor.g, light.lightColor.b);
-            shaderDynamicLights[idx].radiusSqr = light.lightRadius * light.lightRadius;
+            shaderDynamicLights[idx].color = new Vector3(lightColor.r, lightColor.g, lightColor.b);
+            shaderDynamicLights[idx].radiusSqr = lightRadius * lightRadius;
 
-            shaderDynamicLights[idx].up = lightTransformUp;
-            shaderDynamicLights[idx].forward = lightTransformForward;
-            shaderDynamicLights[idx].shimmerScale = light.lightShimmerScale;
-            shaderDynamicLights[idx].shimmerModifier = light.lightShimmerModifier;
-
-            // the volumetric intensity is set by the effects update step.
-            shaderDynamicLights[idx].volumetricRadiusSqr = light.lightVolumetricRadius * light.lightVolumetricRadius;
-            shaderDynamicLights[idx].volumetricThickness = light.lightVolumetricThickness;
-            shaderDynamicLights[idx].volumetricVisibility = light.lightVolumetricVisibility <= 0f ? 0.00001f : light.lightVolumetricVisibility;
-
+            Quaternion lightRotation;
             switch (light.lightType)
             {
                 case DynamicLightType.Spot:
                     shaderDynamicLights[idx].channel |= (uint)1 << 6; // spot light bit
                     shaderDynamicLights[idx].gpFloat1 = Mathf.Cos(light.lightCutoff * Mathf.Deg2Rad);
                     shaderDynamicLights[idx].gpFloat2 = Mathf.Cos(light.lightOuterCutoff * Mathf.Deg2Rad);
+                    lightRotation = lightTransform.rotation;
+                    shaderDynamicLights[idx].forward = lightRotation * Vector3.forward;
                     break;
 
                 case DynamicLightType.Discoball:
                     shaderDynamicLights[idx].channel |= (uint)1 << 7; // discoball light bit
                     shaderDynamicLights[idx].gpFloat1 = Mathf.Cos(light.lightCutoff * Mathf.Deg2Rad);
                     shaderDynamicLights[idx].gpFloat2 = Mathf.Cos(light.lightOuterCutoff * Mathf.Deg2Rad);
+                    lightRotation = lightTransform.rotation;
+                    shaderDynamicLights[idx].up = lightRotation * Vector3.up;
+                    shaderDynamicLights[idx].forward = lightRotation * Vector3.forward;
                     break;
 
                 case DynamicLightType.Wave:
@@ -629,6 +625,9 @@ namespace AlpacaIT.DynamicLighting
                     shaderDynamicLights[idx].channel |= (uint)1 << 11; // interference light bit
                     shaderDynamicLights[idx].gpFloat1 = light.lightWaveSpeed;
                     shaderDynamicLights[idx].gpFloat2 = light.lightWaveFrequency;
+                    lightRotation = lightTransform.rotation;
+                    shaderDynamicLights[idx].up = lightRotation * Vector3.up;
+                    shaderDynamicLights[idx].forward = lightRotation * Vector3.forward;
                     break;
 
                 case DynamicLightType.Rotor:
@@ -636,6 +635,9 @@ namespace AlpacaIT.DynamicLighting
                     shaderDynamicLights[idx].gpFloat1 = light.lightWaveSpeed;
                     shaderDynamicLights[idx].gpFloat2 = Mathf.Round(light.lightWaveFrequency);
                     shaderDynamicLights[idx].gpFloat3 = light.lightRotorCenter;
+                    lightRotation = lightTransform.rotation;
+                    shaderDynamicLights[idx].up = lightRotation * Vector3.up;
+                    shaderDynamicLights[idx].forward = lightRotation * Vector3.forward;
                     break;
 
                 case DynamicLightType.Shock:
@@ -649,6 +651,9 @@ namespace AlpacaIT.DynamicLighting
                     shaderDynamicLights[idx].gpFloat1 = light.lightWaveSpeed;
                     shaderDynamicLights[idx].gpFloat2 = Mathf.Round(light.lightWaveFrequency);
                     shaderDynamicLights[idx].gpFloat3 = light.lightDiscoVerticalSpeed;
+                    lightRotation = lightTransform.rotation;
+                    shaderDynamicLights[idx].up = lightRotation * Vector3.up;
+                    shaderDynamicLights[idx].forward = lightRotation * Vector3.forward;
                     break;
             }
 
@@ -656,10 +661,14 @@ namespace AlpacaIT.DynamicLighting
             {
                 case DynamicLightShimmer.Water:
                     shaderDynamicLights[idx].channel |= (uint)1 << 8; // water shimmer light bit
+                    shaderDynamicLights[idx].shimmerScale = light.lightShimmerScale;
+                    shaderDynamicLights[idx].shimmerModifier = light.lightShimmerModifier;
                     break;
 
                 case DynamicLightShimmer.Random:
                     shaderDynamicLights[idx].channel |= (uint)1 << 9; // random shimmer light bit
+                    shaderDynamicLights[idx].shimmerScale = light.lightShimmerScale;
+                    shaderDynamicLights[idx].shimmerModifier = light.lightShimmerModifier;
                     break;
             }
 
@@ -667,6 +676,11 @@ namespace AlpacaIT.DynamicLighting
             {
                 case DynamicLightVolumetricType.Sphere:
                     shaderDynamicLights[idx].channel |= (uint)1 << 15; // volumetric light bit
+                    // -> the volumetric intensity is set by the effects update step.
+                    var lightVolumetricRadius = light.lightVolumetricRadius;
+                    shaderDynamicLights[idx].volumetricRadiusSqr = lightVolumetricRadius * lightVolumetricRadius;
+                    shaderDynamicLights[idx].volumetricThickness = light.lightVolumetricThickness;
+                    shaderDynamicLights[idx].volumetricVisibility = light.lightVolumetricVisibility <= 0f ? 0.00001f : light.lightVolumetricVisibility;
                     break;
             }
         }
@@ -719,7 +733,13 @@ namespace AlpacaIT.DynamicLighting
             // assign the cached values to the shader lights.
 
             shaderDynamicLights[idx].intensity = light.lightIntensity * light.cache.intensity;
-            shaderDynamicLights[idx].volumetricIntensity = light.lightVolumetricIntensity * light.cache.intensity;
+
+            switch (light.lightVolumetricType)
+            {
+                case DynamicLightVolumetricType.Sphere:
+                    shaderDynamicLights[idx].volumetricIntensity = light.lightVolumetricIntensity * light.cache.intensity;
+                    break;
+            }
         }
 
         private void OnDrawGizmos()

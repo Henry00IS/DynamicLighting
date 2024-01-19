@@ -211,6 +211,23 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Stores dynamic light runtime effect values that change at irregular intervals.</summary>
         internal DynamicLightCache cache = new DynamicLightCache();
 
+        /// <summary>The cached <see cref="Transform"/> of this <see cref="GameObject"/>.</summary>
+        private Transform transformInstance = null;
+
+        /// <summary>
+        /// Gets the <see cref="Transform"/> attached to this <see cref="GameObject"/>.
+        /// <para>The <see cref="Transform"/> is cached automatically and fast to access.</para>
+        /// </summary>
+        public new Transform transform
+        {
+            get
+            {
+                if (ReferenceEquals(transformInstance, null))
+                    transformInstance = base.transform;
+                return transformInstance;
+            }
+        }
+
         /// <summary>
         /// The largest spherical radius that the light will occupy (either <see
         /// cref="lightRadius"/> or <see cref="lightVolumetricRadius"/>. This value is internally
