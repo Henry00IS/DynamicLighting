@@ -299,17 +299,17 @@ float lightmap_sample3x3(uint2 uv, uint channel)
 {
     float map;
 
-    map  = lightmap_sample(uv + uint2(-1, -1), channel);
-    map += lightmap_sample(uv + uint2( 0, -1), channel);
-    map += lightmap_sample(uv + uint2( 1, -1), channel);
+    map  = lightmap_sample(uint2(uv.x - 1u, uv.y - 1u), channel);
+    map += lightmap_sample(uint2(uv.x     , uv.y - 1u), channel);
+    map += lightmap_sample(uint2(uv.x + 1u, uv.y - 1u), channel);
 
-    map += lightmap_sample(uv + uint2(-1,  0), channel);
-    map += lightmap_sample(uv                , channel);
-    map += lightmap_sample(uv + uint2( 1,  0), channel);
+    map += lightmap_sample(uint2(uv.x - 1u, uv.y     ), channel);
+    map += lightmap_sample(uv                         , channel);
+    map += lightmap_sample(uint2(uv.x + 1u, uv.y     ), channel);
 
-    map += lightmap_sample(uv + uint2(-1,  1), channel);
-    map += lightmap_sample(uv + uint2( 0,  1), channel);
-    map += lightmap_sample(uv + uint2( 1,  1), channel);
+    map += lightmap_sample(uint2(uv.x - 1u, uv.y + 1u), channel);
+    map += lightmap_sample(uint2(uv.x     , uv.y + 1u), channel);
+    map += lightmap_sample(uint2(uv.x + 1u, uv.y + 1u), channel);
 
     return map / 9.0;
 }
@@ -336,22 +336,22 @@ float lightmap_sample_bilinear(float2 uv, uint channel)
 
     // read all of the lightmap samples we need in advance.
     float4x4 map;
-    map[0][0] = lightmap_sample(pos_top_left + uint2(-1, -1), channel);
-    map[0][1] = lightmap_sample(pos_top_left + uint2( 0, -1), channel);
-    map[0][2] = lightmap_sample(pos_top_left + uint2( 1, -1), channel);
-    map[0][3] = lightmap_sample(pos_top_left + uint2( 2, -1), channel);
-    map[1][0] = lightmap_sample(pos_top_left + uint2(-1,  0), channel);
-    map[1][1] = lightmap_sample(pos_top_left + uint2( 0,  0), channel);
-    map[1][2] = lightmap_sample(pos_top_left + uint2( 1,  0), channel);
-    map[1][3] = lightmap_sample(pos_top_left + uint2( 2,  0), channel);
-    map[2][0] = lightmap_sample(pos_top_left + uint2(-1,  1), channel);
-    map[2][1] = lightmap_sample(pos_top_left + uint2( 0,  1), channel);
-    map[2][2] = lightmap_sample(pos_top_left + uint2( 1,  1), channel);
-    map[2][3] = lightmap_sample(pos_top_left + uint2( 2,  1), channel);
-    map[3][0] = lightmap_sample(pos_top_left + uint2(-1,  2), channel);
-    map[3][1] = lightmap_sample(pos_top_left + uint2( 0,  2), channel);
-    map[3][2] = lightmap_sample(pos_top_left + uint2( 1,  2), channel);
-    map[3][3] = lightmap_sample(pos_top_left + uint2( 2,  2), channel);
+    map[0][0] = lightmap_sample(uint2(pos_top_left.x - 1, pos_top_left.y - 1), channel);
+    map[0][1] = lightmap_sample(uint2(pos_top_left.x    , pos_top_left.y - 1), channel);
+    map[0][2] = lightmap_sample(uint2(pos_top_left.x + 1, pos_top_left.y - 1), channel);
+    map[0][3] = lightmap_sample(uint2(pos_top_left.x + 2, pos_top_left.y - 1), channel);
+    map[1][0] = lightmap_sample(uint2(pos_top_left.x - 1, pos_top_left.y    ), channel);
+    map[1][1] = lightmap_sample(pos_top_left                                 , channel);
+    map[1][2] = lightmap_sample(uint2(pos_top_left.x + 1, pos_top_left.y    ), channel);
+    map[1][3] = lightmap_sample(uint2(pos_top_left.x + 2, pos_top_left.y    ), channel);
+    map[2][0] = lightmap_sample(uint2(pos_top_left.x - 1, pos_top_left.y + 1), channel);
+    map[2][1] = lightmap_sample(uint2(pos_top_left.x    , pos_top_left.y + 1), channel);
+    map[2][2] = lightmap_sample(uint2(pos_top_left.x + 1, pos_top_left.y + 1), channel);
+    map[2][3] = lightmap_sample(uint2(pos_top_left.x + 2, pos_top_left.y + 1), channel);
+    map[3][0] = lightmap_sample(uint2(pos_top_left.x - 1, pos_top_left.y + 2), channel);
+    map[3][1] = lightmap_sample(uint2(pos_top_left.x    , pos_top_left.y + 2), channel);
+    map[3][2] = lightmap_sample(uint2(pos_top_left.x + 1, pos_top_left.y + 2), channel);
+    map[3][3] = lightmap_sample(uint2(pos_top_left.x + 2, pos_top_left.y + 2), channel);
 
     // there are several common overlapping 3x3 samples (marked as X).
     //
