@@ -36,79 +36,79 @@ struct DynamicLight
     // the first 5 bits contain a valid channel index so mask by 31.
     uint get_shadow_channel()
     {
-        return channel & 31;
+        return channel & 31u;
     }
 
     // bit 6 determines whether the light is realtime and does not have shadows.
-    uint is_realtime()
+    bool is_realtime()
     {
-        return channel & 32;
+        return channel & 32u;
     }
 
     // bit 6 determines whether the light is realtime and does not have shadows.
-    uint is_dynamic()
+    bool is_dynamic()
     {
-        return (channel & 32) == 0;
+        return !is_realtime();
     }
 
     // bit 7 determines whether the light is a spotlight.
-    uint is_spotlight()
+    bool is_spotlight()
     {
-        return channel & 64;
+        return channel & 64u;
     }
 
     // bit 8 determines whether the light is a discoball.
-    uint is_discoball()
+    bool is_discoball()
     {
-        return channel & 128;
+        return channel & 128u;
     }
 
     // bit 9 determines whether the light has water shimmer.
-    uint is_watershimmer()
+    bool is_watershimmer()
     {
-        return channel & 256;
+        return channel & 256u;
     }
 
     // bit 10 determines whether the light has random shimmer.
-    uint is_randomshimmer()
+    bool is_randomshimmer()
     {
-        return channel & 512;
+        return channel & 512u;
     }
 
     // bit 11 determines whether the light is a wave.
-    uint is_wave()
+    bool is_wave()
     {
-        return channel & 1024;
+        return channel & 1024u;
     }
 
     // bit 12 determines whether the light is interference.
-    uint is_interference()
+    bool is_interference()
     {
-        return channel & 2048;
+        return channel & 2048u;
     }
 
     // bit 13 determines whether the light is a rotor.
-    uint is_rotor()
+    bool is_rotor()
     {
-        return channel & 4096;
+        return channel & 4096u;
     }
 
     // bit 14 determines whether the light is a shockwave.
-    uint is_shock()
+    bool is_shock()
     {
-        return channel & 8192;
+        return channel & 8192u;
     }
 
     // bit 15 determines whether the light is a disco.
-    uint is_disco()
+    bool is_disco()
     {
-        return channel & 16384;
+        return channel & 16384u;
     }
     
     // bit 16 determines whether the light is volumetric.
-    uint is_volumetric()
+    bool is_volumetric()
     {
-        return channel & 32768;
+        return channel & 32768u;
     }
     
     // calculates the spotlight effect.
@@ -287,9 +287,9 @@ uint lightmap_resolution;
 float3 dynamic_ambient_color;
 
 // fetches a shadow bit at the specified uv coordinates from the lightmap data.
-float lightmap_sample(uint2 uv, uint channel)
+bool lightmap_sample(uint2 uv, uint channel)
 {
-    return (lightmap[uv.y * lightmap_resolution + uv.x] & (1 << channel)) > 0;
+    return lightmap[uv.y * lightmap_resolution + uv.x] & (1u << channel);
 }
 
 // x x x
