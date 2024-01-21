@@ -255,6 +255,18 @@ namespace AlpacaIT.DynamicLighting
             return bytes + "B";
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool FastEquals(this Vector3 self, Vector3 other)
+        {
+            return self.x == other.x && self.y == other.y && self.z == other.z;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool FastNotEquals(this Vector3 self, Vector3 other)
+        {
+            return self.x != other.x && self.y != other.y && self.z != other.z;
+        }
+
         /// <summary>
         /// Calculates a framerate independent fixed timestep.
         /// </summary>
@@ -289,14 +301,19 @@ namespace AlpacaIT.DynamicLighting
 
                 if (timeAccumulator >= timePerStep)
                 {
-                    pendingSteps = Mathf.FloorToInt(timeAccumulator / timePerStep);
+                    pendingSteps = (int)(timeAccumulator / timePerStep);
                     timeAccumulator -= pendingSteps * timePerStep;
                 }
             }
 
             /// <summary>
-            /// Updates the framerate independent fixed timestep and returns how many steps to execute
-            /// this frame.
+            /// Updates the framerate independent fixed timestep and returns how many steps to
+            /// execute this frame.
+            /// <para>
+            /// Many calls to <see cref="Time.deltaTime"/> are slow, so it's faster to update many
+            /// instances of <see cref="FixedTimestep"/> by retrieving the delta time once and then
+            /// calling this overload instead.
+            /// </para>
             /// </summary>
             /// <param name="deltaTime">
             /// The interval in seconds from the last frame to the current one.
@@ -308,7 +325,7 @@ namespace AlpacaIT.DynamicLighting
 
                 if (timeAccumulator >= timePerStep)
                 {
-                    pendingSteps = Mathf.FloorToInt(timeAccumulator / timePerStep);
+                    pendingSteps = (int)(timeAccumulator / timePerStep);
                     timeAccumulator -= pendingSteps * timePerStep;
                 }
             }
