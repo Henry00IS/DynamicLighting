@@ -264,7 +264,7 @@ namespace AlpacaIT.DynamicLighting
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool FastNotEquals(this Vector3 self, Vector3 other)
         {
-            return self.x != other.x && self.y != other.y && self.z != other.z;
+            return self.x != other.x || self.y != other.y || self.z != other.z;
         }
 
         /// <summary>
