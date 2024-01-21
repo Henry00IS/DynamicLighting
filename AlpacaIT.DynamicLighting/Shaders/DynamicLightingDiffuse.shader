@@ -67,52 +67,49 @@ Shader "Dynamic Lighting/Diffuse"
 
 #if DYNAMIC_LIGHTING_LIT
 
-            fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
-            {
-                // iterate over every dynamic light affecting this triangle:
-                uint triangle_light_count = dynamic_triangles_light_count(triangle_index);
+            #define DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS inout float3 light_final
+            #define DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS light_final
+
+            DYNLIT_FRAGMENT_BEGIN
                 
                 float3 light_final = dynamic_ambient_color;
-                for (uint k = 0; k < triangle_light_count + realtime_lights_count; k++)
-                {
-                    // get the current light from memory.
-                    DynamicLight light = dynamic_lights[dynamic_triangles_light_index(triangle_index, triangle_light_count, k)];
-        
-                    // this generates the light with shadows and effects calculation declaring:
-                    // 
-                    // required: DynamicLight light; the current dynamic light source.
-                    // float3 light_direction; normalized direction between the light source and the fragment.
-                    // float light_distanceSqr; the square distance between the light source and the fragment.
-                    // float NdotL; dot product with the normal and light direction (diffusion).
-                    // float map; the computed shadow of this fragment with effects.
-                    // float attenuation; the attenuation of the point light with maximum radius.
-                    //
-                    // it may also early out and continue the loop to the next light.
-                    //
-                    #define GENERATE_NORMAL i.normal
-                    #include "GenerateLightProcessor.cginc"
-
-                    // add this light to the final color of the fragment.
-                    light_final += light.color * attenuation * NdotL * map;
-                }
-    
-                // sample the unity baked lightmap (i.e. progressive lightmapper).
-                light_final += DecodeLightmap(UNITY_SAMPLE_TEX2D(unity_Lightmap, i.uv2));
-
+                
+            DYNLIT_FRAGMENT_INTERNAL
+                
                 // sample the main texture, multiply by the light and add vertex colors.
                 fixed4 col = tex2D(_MainTex, i.uv0) * half4(_Color.rgb, 1) * half4(light_final, 1) * i.color;
                 
                 // apply fog.
                 UNITY_APPLY_FOG(i.fogCoord, col);
+                
                 return col;
+                
+            DYNLIT_FRAGMENT_END
+            
+            DYNLIT_FRAGMENT_LIGHT
+            {
+                // this generates the light with shadows and effects calculation declaring:
+                // 
+                // required: DynamicLight light; the current dynamic light source.
+                // float3 light_direction; normalized direction between the light source and the fragment.
+                // float light_distanceSqr; the square distance between the light source and the fragment.
+                // float3 light_position_minus_world; the light position minus the world position.
+                // float NdotL; dot product with the normal and light direction (diffusion).
+                // float map; the computed shadow of this fragment with effects.
+                // float attenuation; the attenuation of the point light with maximum radius.
+                //
+                // it may also early out and continue the loop to the next light.
+                //
+                #define GENERATE_NORMAL i.normal
+                #include "GenerateLightProcessor.cginc"
+                
+                // add this light to the final color of the fragment.
+                light_final += light.color * attenuation * NdotL * map;
             }
 
 #else
 
-            fixed4 frag(v2f i) : SV_Target
-            {
-                return tex2D(_MainTex, i.uv0);
-            }
+            DYNLIT_FRAGMENT_UNLIT
 
 #endif
 

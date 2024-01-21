@@ -98,19 +98,22 @@ Shader "Dynamic Lighting/Metallic"
 
 #if DYNAMIC_LIGHTING_LIT
 
-            fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
-            {
+            #define DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS inout float3 albedo, inout float metallic, inout float roughness, inout float3 N, inout float3 V, inout float3 F0, inout float3 Lo
+            #define DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS albedo, metallic, roughness, N, V, F0, Lo
+
+            DYNLIT_FRAGMENT_BEGIN
+                
                 // material parameters
                 float3 albedo = tex2D(_MainTex, i.uv0).rgb * _Color.rgb * i.color;
                 
-#if METALLIC_TEXTURE_UNASSIGNED
+            #if METALLIC_TEXTURE_UNASSIGNED
                 float metallic = _Metallic;
                 float roughness = 1.0 - _GlossMapScale;
-#else
+            #else
                 float4 metallicmap = tex2D(_MetallicGlossMap, i.uv0);
                 float metallic = metallicmap.r;
                 float roughness = 1.0 - metallicmap.a * _GlossMapScale;
-#endif
+            #endif
                 float ao = tex2D(_OcclusionMap, i.uv0).r;
 
                 half3 bumpmap = UnpackNormalWithScale(tex2D(_BumpMap, i.uv0), _BumpScale);
@@ -129,102 +132,100 @@ Shader "Dynamic Lighting/Metallic"
 
                 // reflectance equation
                 float3 Lo = float3(0.0, 0.0, 0.0);
-                // iterate over every dynamic light affecting this triangle:
-                uint triangle_light_count = dynamic_triangles_light_count(triangle_index);
-                for (uint k = 0; k < triangle_light_count + realtime_lights_count; k++)
-                {
-                    // get the current light from memory.
-                    DynamicLight light = dynamic_lights[dynamic_triangles_light_index(triangle_index, triangle_light_count, k)];
-                    
-                    // this generates the light with shadows and effects calculation declaring:
-                    // 
-                    // required: DynamicLight light; the current dynamic light source.
-                    // float3 light_direction; normalized direction between the light source and the fragment.
-                    // float light_distanceSqr; the square distance between the light source and the fragment.
-                    // float NdotL; dot product with the normal and light direction (diffusion).
-                    // float map; the computed shadow of this fragment with effects.
-                    // float attenuation; the attenuation of the point light with maximum radius.
-                    //
-                    // it may also early out and continue the loop to the next light.
-                    //
-                    #define GENERATE_NORMAL N
-                    #include "GenerateLightProcessor.cginc"
-
-                    // calculate per-light radiance
-                    float3 H = normalize(V + light_direction);
-                    float3 radiance = light.color * light.intensity * attenuation;
-
-                    // normal distribution function: approximates the amount the surface's
-                    // microfacets are aligned to the halfway vector, influenced by the roughness of
-                    // the surface; this is the primary function approximating the microfacets.
-                    float NDF = DistributionGGX(N, H, roughness);
-
-                    // geometry function: describes the self-shadowing property of the microfacets.
-                    // when a surface is relatively rough, the surface's microfacets can overshadow
-                    // other microfacets reducing the light the surface reflects.
-                    float G = GeometrySmith(N, V, light_direction, roughness);
-
-                    // fresnel equation: the fresnel equation describes the ratio of surface
-                    // reflection at different surface angles.
-                    float3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
-
-                    // reflected and refracted light must be mutually exclusive. whatever light
-                    // energy gets reflected will no longer be absorbed by the material itself.
-                    // 
-                    // kS: reflection/specular fraction.
-                    // kD: refraction/diffuse fraction.
-                    float3 kS = F;
-
-                    // for energy conservation, the diffuse and specular light can't be above 1.0
-                    // (unless the surface emits light); to preserve this relationship the diffuse
-                    // component (kD) should equal 1.0 - kS.
-                    float3 kD = 1.0 - kS;
-
-                    // multiply kD by the inverse metalness such that only non-metals have diffuse
-                    // lighting, or a linear blend if partly metal (pure metals have no diffuse light).
-                    kD *= 1.0 - metallic; 
-
-                    // cook-torrance brdf
-                    // we add 0.0001 to the denominator to prevent a potential divide by zero.
-                    float3 numerator = NDF * G * F;
-                    float denominator = 4.0 * max(dot(N, V), 0.0) * NdotL + 0.0001;
-                    float3 specular = numerator / denominator;
-                    
-                    // add to outgoing radiance Lo
-                    Lo += (kD * albedo / UNITY_PI + specular) * radiance * NdotL * map;
-                }
-
+                
+            DYNLIT_FRAGMENT_INTERNAL
+                
                 // ambient lighting (we now use IBL as the ambient term).
                 float3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
-
+                
                 float3 kS = F;
                 float3 kD = 1.0 - kS;
                 kD *= 1.0 - metallic;
-
+                
                 // reflecting a ray from the camera against the object surface.
                 half3 reflection = reflect(-V, worldNormal);
                 // sample the default cubemap provided by unity.
                 half4 skyData = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, reflection, roughness * 4.0);
                 half3 skyColor = DecodeHDR(skyData, unity_SpecCube0_HDR);
                 float3 specular = skyColor * F;
-    
+                
                 // sample the unity baked lightmap (i.e. progressive lightmapper).
                 half3 unity_lightmap_color = DecodeLightmap(UNITY_SAMPLE_TEX2D(unity_Lightmap, i.uv2));
-
+                
                 // the final lighting calculation combining all of the parts.
                 float3 ambient = kD * albedo * (unity_lightmap_color + dynamic_ambient_color);
                 float3 color = (ambient + Lo) * lerp(1.0, ao, _OcclusionStrength) + specular;
-
+                
                 // apply fog.
                 UNITY_APPLY_FOG(i.fogCoord, color);
                 return fixed4(color, 1.0);
+                
+            DYNLIT_FRAGMENT_END
+
+            DYNLIT_FRAGMENT_LIGHT
+            {
+                // this generates the light with shadows and effects calculation declaring:
+                // 
+                // required: DynamicLight light; the current dynamic light source.
+                // float3 light_direction; normalized direction between the light source and the fragment.
+                // float light_distanceSqr; the square distance between the light source and the fragment.
+                // float3 light_position_minus_world; the light position minus the world position.
+                // float NdotL; dot product with the normal and light direction (diffusion).
+                // float map; the computed shadow of this fragment with effects.
+                // float attenuation; the attenuation of the point light with maximum radius.
+                //
+                // it may also early out and continue the loop to the next light.
+                //
+                #define GENERATE_NORMAL N
+                #include "GenerateLightProcessor.cginc"
+                
+                // calculate per-light radiance
+                float3 H = normalize(V + light_direction);
+                float3 radiance = light.color * light.intensity * attenuation;
+                
+                // normal distribution function: approximates the amount the surface's
+                // microfacets are aligned to the halfway vector, influenced by the roughness of
+                // the surface; this is the primary function approximating the microfacets.
+                float NDF = DistributionGGX(N, H, roughness);
+                
+                // geometry function: describes the self-shadowing property of the microfacets.
+                // when a surface is relatively rough, the surface's microfacets can overshadow
+                // other microfacets reducing the light the surface reflects.
+                float G = GeometrySmith(N, V, light_direction, roughness);
+                
+                // fresnel equation: the fresnel equation describes the ratio of surface
+                // reflection at different surface angles.
+                float3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
+                
+                // reflected and refracted light must be mutually exclusive. whatever light
+                // energy gets reflected will no longer be absorbed by the material itself.
+                // 
+                // kS: reflection/specular fraction.
+                // kD: refraction/diffuse fraction.
+                float3 kS = F;
+                
+                // for energy conservation, the diffuse and specular light can't be above 1.0
+                // (unless the surface emits light); to preserve this relationship the diffuse
+                // component (kD) should equal 1.0 - kS.
+                float3 kD = 1.0 - kS;
+                
+                // multiply kD by the inverse metalness such that only non-metals have diffuse
+                // lighting, or a linear blend if partly metal (pure metals have no diffuse light).
+                kD *= 1.0 - metallic; 
+                
+                // cook-torrance brdf
+                // we add 0.0001 to the denominator to prevent a potential divide by zero.
+                float3 numerator = NDF * G * F;
+                float denominator = 4.0 * max(dot(N, V), 0.0) * NdotL + 0.0001;
+                float3 specular = numerator / denominator;
+                
+                // add to outgoing radiance Lo
+                Lo += (kD * albedo / UNITY_PI + specular) * radiance * NdotL * map;
             }
+            
 #else
 
-            fixed4 frag(v2f i) : SV_Target
-            {
-                return tex2D(_MainTex, i.uv0);
-            }
+            DYNLIT_FRAGMENT_UNLIT
 
 #endif
 

@@ -10,7 +10,7 @@ float light_distanceSqr = dot(light_direction, light_direction);
 
 // we can use the distance and guaranteed maximum light radius to early out.
 // confirmed with NVIDIA Quadro K1000M doubling the framerate.
-if (light_distanceSqr > light.radiusSqr) continue;
+if (light_distanceSqr > light.radiusSqr) return;
 
 // many effects require the (light.position - i.world) that we already calculated.
 float3 light_position_minus_world = light_direction;
@@ -24,7 +24,7 @@ float NdotL = max(dot(GENERATE_NORMAL, light_direction), 0);
 // this also tells us whether the fragment is facing away from the light.
 // as the fragment will then be black we can early out here.
 // confirmed with NVIDIA Quadro K1000M improving the framerate.
-if (NdotL == 0.0) continue;
+if (NdotL == 0.0) return;
 
 // if this renderer has a lightmap we use shadow bits otherwise it's a dynamic object.
 // if this light is realtime we will skip this step.
@@ -43,7 +43,7 @@ if (lightmap_resolution > 0 && light.is_dynamic())
 
     // whenever the fragment is fully in shadow we can early out.
     // confirmed with NVIDIA Quadro K1000M improving the framerate.
-    if (map == 0.0) continue;
+    if (map == 0.0) return;
 }
 
 // spot lights determine whether we are in the light cone or outside.
@@ -52,7 +52,7 @@ if (light.is_spotlight())
     // anything outside of the spot light can and must be skipped.
     float2 spotlight = light.calculate_spotlight(light_direction);
     if (spotlight.x <= light.light_outerCutoff)
-        continue;
+        return;
     map *= spotlight.y;
 }
 else if (light.is_discoball())
@@ -60,7 +60,7 @@ else if (light.is_discoball())
     // anything outside of the spot lights can and must be skipped.
     float2 spotlight = light.calculate_discoball(light_direction);
     if (spotlight.x <= light.light_outerCutoff)
-        continue;
+        return;
     map *= spotlight.y;
 }
 else if (light.is_wave())

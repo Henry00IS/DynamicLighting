@@ -2,7 +2,10 @@ using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
-    /// <summary>A dynamic light (this struct is mirrored in the shader and can not be modified).</summary>
+    /// <summary>
+    /// A dynamic light (this struct is mirrored in the shader and can not be modified).
+    /// <para>This struct uses 16-byte alignment for performance on the GPU.</para>
+    /// </summary>
     internal struct ShaderDynamicLight
     {
         /// <summary>The position of the light in world space.</summary>
