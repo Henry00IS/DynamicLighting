@@ -74,11 +74,11 @@ Shader "Dynamic Lighting/Transparent"
             #define DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS inout float3 light_final
             #define DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS light_final
 
-            DYNLIT_FRAGMENT_BEGIN
-                
+            DYNLIT_FRAGMENT_FUNCTION
+            {
                 float3 light_final = dynamic_ambient_color;
                 
-            DYNLIT_FRAGMENT_INTERNAL
+                DYNLIT_FRAGMENT_INTERNAL
                 
                 // sample the main texture, multiply by the light and add vertex colors.
                 fixed4 col = tex2D(_MainTex, i.uv0) * half4(_Color) * half4(light_final, 1) * i.color;
@@ -87,8 +87,7 @@ Shader "Dynamic Lighting/Transparent"
                 UNITY_APPLY_FOG(i.fogCoord, col);
                 
                 return col;
-                
-            DYNLIT_FRAGMENT_END
+            }
             
             DYNLIT_FRAGMENT_LIGHT
             {

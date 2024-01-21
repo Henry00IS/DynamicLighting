@@ -101,8 +101,8 @@ Shader "Dynamic Lighting/Metallic"
             #define DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS inout float3 albedo, inout float metallic, inout float roughness, inout float3 N, inout float3 V, inout float3 F0, inout float3 Lo
             #define DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS albedo, metallic, roughness, N, V, F0, Lo
 
-            DYNLIT_FRAGMENT_BEGIN
-                
+            DYNLIT_FRAGMENT_FUNCTION
+            {
                 // material parameters
                 float3 albedo = tex2D(_MainTex, i.uv0).rgb * _Color.rgb * i.color;
                 
@@ -133,7 +133,7 @@ Shader "Dynamic Lighting/Metallic"
                 // reflectance equation
                 float3 Lo = float3(0.0, 0.0, 0.0);
                 
-            DYNLIT_FRAGMENT_INTERNAL
+                DYNLIT_FRAGMENT_INTERNAL
                 
                 // ambient lighting (we now use IBL as the ambient term).
                 float3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
@@ -159,8 +159,7 @@ Shader "Dynamic Lighting/Metallic"
                 // apply fog.
                 UNITY_APPLY_FOG(i.fogCoord, color);
                 return fixed4(color, 1.0);
-                
-            DYNLIT_FRAGMENT_END
+            }
 
             DYNLIT_FRAGMENT_LIGHT
             {

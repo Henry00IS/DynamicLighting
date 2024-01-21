@@ -438,39 +438,35 @@ uint dynamic_triangles_light_index(uint triangle_index, uint triangle_light_coun
     return dynamic_lights_count + light_index - triangle_light_count;
 }
 
-#define DYNLIT_FRAGMENT_BEGIN \
+#define DYNLIT_FRAGMENT_FUNCTION \
 void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, inout DynamicLight light, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS);\
 \
-fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target\
-{
+fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
 
 #define DYNLIT_FRAGMENT_INTERNAL \
-    if (lightmap_resolution == 0)\
+if (lightmap_resolution == 0)\
+{\
+    /* iterate over every dynamic light in the scene: */ \
+    for (uint k = 0; k < dynamic_lights_count + realtime_lights_count; k++)\
     {\
-        /* iterate over every dynamic light in the scene: */ \
-        for (uint k = 0; k < dynamic_lights_count + realtime_lights_count; k++)\
-        {\
-            /* get the current light from memory. */ \
-            DynamicLight light = dynamic_lights[k];\
-            \
-            dynlit_frag_light(i, triangle_index, light, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
-        }\
+        /* get the current light from memory. */ \
+        DynamicLight light = dynamic_lights[k];\
+        \
+        dynlit_frag_light(i, triangle_index, light, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
     }\
-    else\
-    {\
-        /* iterate over every dynamic light affecting this triangle: */ \
-        uint triangle_light_count = dynamic_triangles_light_count(triangle_index);\
-        for (uint k = 0; k < triangle_light_count + realtime_lights_count; k++)\
-        {\
-            /* get the current light from memory. */ \
-            DynamicLight light = dynamic_lights[dynamic_triangles_light_index(triangle_index, triangle_light_count, k)];\
-            \
-            dynlit_frag_light(i, triangle_index, light, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
-        }\
-    }
-
-#define DYNLIT_FRAGMENT_END \
 }\
+else\
+{\
+    /* iterate over every dynamic light affecting this triangle: */ \
+    uint triangle_light_count = dynamic_triangles_light_count(triangle_index);\
+    for (uint k = 0; k < triangle_light_count + realtime_lights_count; k++)\
+    {\
+        /* get the current light from memory. */ \
+        DynamicLight light = dynamic_lights[dynamic_triangles_light_index(triangle_index, triangle_light_count, k)];\
+        \
+        dynlit_frag_light(i, triangle_index, light, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
+    }\
+}
 
 #define DYNLIT_FRAGMENT_LIGHT void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, inout DynamicLight light, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS)
 
