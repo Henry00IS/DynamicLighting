@@ -212,6 +212,7 @@ namespace AlpacaIT.DynamicLighting
         internal DynamicLightCache cache = new DynamicLightCache();
 
         /// <summary>The cached <see cref="Transform"/> of this <see cref="GameObject"/>.</summary>
+        [System.NonSerialized]
         private Transform transformInstance = null;
 
         /// <summary>

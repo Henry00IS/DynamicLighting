@@ -46,6 +46,11 @@ bool point_in_sphere(float3 pos, float3 center, float radius, float epsilon = 0.
     return dist < (radius * radius) + epsilon;
 }
 
+bool point_in_aabb(float3 pos, float3 min, float3 max)
+{
+    return all(pos >= min) && all(pos <= max);
+}
+
 // shoutouts to lordofduct (https://forum.unity.com/threads/how-do-i-find-the-closest-point-on-a-line.340058/)
 float3 nearest_point_on_finite_line(float3 start, float3 end, float3 pnt)
 {

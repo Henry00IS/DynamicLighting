@@ -46,9 +46,6 @@ namespace AlpacaIT.DynamicLighting
             // fetch the dynamic light manager instance once.
             dynamicLightManager = DynamicLightManager.Instance;
 
-            // find all of the dynamic lights in the scene.
-            pointLights = DynamicLightManager.FindDynamicLightsInScene().ToArray();
-
             // prepare to process raycasts on the job system.
             raycastProcessor = new RaycastProcessor();
 
@@ -66,6 +63,33 @@ namespace AlpacaIT.DynamicLighting
             progressBarLastUpdate = 0f;
             progressBarCancel = false;
 #endif
+        }
+
+        /// <summary>
+        /// Finds all dynamic light sources in the scene and calculates the Bounding Volume Hierarchy.
+        /// </summary>
+        private void CreateDynamicLightsBvh()
+        {
+            // find all of the dynamic lights in the scene.
+            var dynamicLights = DynamicLightManager.FindDynamicLightsInScene().ToArray();
+
+            // there must be at least one light in order to create the bounding volume hierarchy.
+            if (dynamicLights.Length > 0)
+            {
+                // create the dynamic lights bounding volume hierarchy and write it to disk.
+                var bvhDynamicLights = new BvhLightStructure(dynamicLights);
+                if (!Utilities.WriteLightmapData(0, "DynamicLightsBvh", bvhDynamicLights.ToUInt32Array()))
+                    Debug.LogError($"Unable to write the dynamic lights bounding volume hierarchy file in the active scene resources directory!");
+
+                // create the point lights array with the order the bvh tree desires.
+                pointLights = new DynamicLight[dynamicLights.Length];
+                for (int i = 0; i < dynamicLights.Length; i++)
+                    pointLights[i] = dynamicLights[bvhDynamicLights.dynamicLightsIdx[i]]; // pigeonhole sort!
+            }
+            else
+            {
+                pointLights = dynamicLights;
+            }
         }
 
         /// <summary>Starts raytracing the world.</summary>
@@ -90,6 +114,9 @@ namespace AlpacaIT.DynamicLighting
                 // delete all of the old lightmap data in the scene and on disk.
                 dynamicLightManager.EditorDeleteLightmaps();
 #endif
+                // find all light sources and calculate the bounding volume hierarchy.
+                CreateDynamicLightsBvh();
+
                 // assign channels to all dynamic lights in the scene.
                 ChannelsUpdatePointLightsInScene();
 

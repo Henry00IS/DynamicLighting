@@ -29,6 +29,7 @@ Shader "Dynamic Lighting/Metallic"
             #pragma multi_compile_fog
             #pragma multi_compile __ DYNAMIC_LIGHTING_SHADOW_SOFT
             #pragma multi_compile __ DYNAMIC_LIGHTING_LIT
+            #pragma multi_compile __ DYNAMIC_LIGHTING_BVH
             #pragma shader_feature METALLIC_TEXTURE_UNASSIGNED
 
             #include "UnityCG.cginc"

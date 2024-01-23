@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -199,6 +200,64 @@ namespace AlpacaIT.DynamicLighting.Internal
             UnityEditor.AssetDatabase.Refresh();
 #endif
             return true;
+        }
+
+        /// <summary>Converts the given array of structs, in memory, to a byte array.</summary>
+        public static byte[] StructArrayToByteArray<T>(T[] array) where T : struct
+        {
+            int size = Marshal.SizeOf(typeof(T));
+            int length = array.Length;
+            byte[] byteArray = new byte[size * length];
+
+            GCHandle handle = default;
+
+            try
+            {
+                handle = GCHandle.Alloc(array, GCHandleType.Pinned);
+                IntPtr ptr = handle.AddrOfPinnedObject();
+
+                for (int i = 0; i < length; i++)
+                {
+                    IntPtr offset = IntPtr.Add(ptr, i * size);
+                    Marshal.Copy(offset, byteArray, i * size, size);
+                }
+            }
+            finally
+            {
+                if (handle.IsAllocated)
+                    handle.Free();
+            }
+
+            return byteArray;
+        }
+
+        /// <summary>Converts the given array of bytes, in memory, to an array of structs.</summary>
+        public static T[] ByteArrayToStructArray<T>(byte[] byteArray) where T : struct
+        {
+            int size = Marshal.SizeOf(typeof(T));
+            int length = byteArray.Length / size;
+            T[] structArray = new T[length];
+
+            GCHandle handle = default;
+
+            try
+            {
+                handle = GCHandle.Alloc(structArray, GCHandleType.Pinned);
+                IntPtr ptr = handle.AddrOfPinnedObject();
+
+                for (int i = 0; i < length; i++)
+                {
+                    IntPtr offset = IntPtr.Add(ptr, i * size);
+                    Marshal.Copy(byteArray, i * size, offset, size);
+                }
+            }
+            finally
+            {
+                if (handle.IsAllocated)
+                    handle.Free();
+            }
+
+            return structArray;
         }
 
 #if UNITY_EDITOR

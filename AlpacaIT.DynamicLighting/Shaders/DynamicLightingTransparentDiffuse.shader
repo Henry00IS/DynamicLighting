@@ -24,6 +24,7 @@ Shader "Dynamic Lighting/Transparent"
             #pragma multi_compile_fog
             #pragma multi_compile __ DYNAMIC_LIGHTING_SHADOW_SOFT
             #pragma multi_compile __ DYNAMIC_LIGHTING_LIT
+            #pragma multi_compile __ DYNAMIC_LIGHTING_BVH
 
             #include "UnityCG.cginc"
             #include "DynamicLighting.cginc"

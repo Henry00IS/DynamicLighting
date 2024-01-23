@@ -438,35 +438,147 @@ uint dynamic_triangles_light_index(uint triangle_index, uint triangle_light_coun
     return dynamic_lights_count + light_index - triangle_light_count;
 }
 
+// [dynamic mesh acceleration]
+//
+// instead of iterating over all light sources in the scene per fragment,
+// we use a bounding volume hierarchy acceleration structure.
+
+struct DynamicLightBvhNode
+{
+    float3 aabbMin;
+    uint   leftFirst;
+    // -- 16 byte boundary --
+    float3 aabbMax;
+    uint   count;
+    // -- 16 byte boundary --
+    
+    // gets whether this node is a leaf containing light source indices.
+    bool is_leaf()
+    {
+        return count > 0;
+    }
+    
+    // when is_leaf() then contains the first light index.
+    uint get_first_light_index()
+    {
+        return leftFirst;
+    }
+    
+    // when not is_leaf() then contains the left node index.
+    uint get_left_node_index()
+    {
+        return leftFirst;
+    }
+    
+    // when not is_leaf() then contains the right node index.
+    uint get_right_node_index()
+    {
+        return leftFirst + 1;
+    }
+};
+
+StructuredBuffer<DynamicLightBvhNode> dynamic_lights_bvh;
+
+// next we prepare macro statements that shaders use to implement their fragment functions.
+
 #define DYNLIT_FRAGMENT_FUNCTION \
 void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, inout DynamicLight light, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS);\
 \
 fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
 
-#define DYNLIT_FRAGMENT_INTERNAL \
-if (lightmap_resolution == 0)\
-{\
-    /* iterate over every dynamic light in the scene: */ \
-    for (uint k = 0; k < dynamic_lights_count + realtime_lights_count; k++)\
+#if DYNAMIC_LIGHTING_BVH
+
+    #define DYNLIT_FRAGMENT_INTERNAL \
+    if (lightmap_resolution == 0)\
     {\
-        /* get the current light from memory. */ \
-        DynamicLight light = dynamic_lights[k];\
         \
-        dynlit_frag_light(i, triangle_index, light, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
+        /* we traverse the bounding volume hierarchy starting at the root node: */ \
+        DynamicLightBvhNode stack[32];\
+        uint stackPointer = 0;\
+        DynamicLightBvhNode node = dynamic_lights_bvh[0];\
+        \
+        /* instead of 'true' we can cheaply prevent an infinite loop and stack overflow. */ \
+        while (stackPointer <= 30)\
+        {\
+            /* if the current node is a leaf (has light indices): */ \
+            if (node.is_leaf())\
+            {\
+                /* process the light indices: */ \
+                for (uint k = node.get_first_light_index(); k < node.get_first_light_index() + node.count; k++)\
+                {\
+                    DynamicLight light = dynamic_lights[k];\
+                    \
+                    dynlit_frag_light(i, triangle_index, light, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS); \
+                }\
+                \
+                /* check whether we are done traversing the bvh: */ \
+                if (stackPointer == 0) break; else node = stack[--stackPointer]; \
+                continue; \
+            }\
+            \
+            /* find the left and right child node. */ \
+            DynamicLightBvhNode left = dynamic_lights_bvh[node.get_left_node_index()];\
+            DynamicLightBvhNode right = dynamic_lights_bvh[node.get_right_node_index()];\
+            \
+            if (point_in_aabb(i.world, left.aabbMin, left.aabbMax)) \
+                stack[stackPointer++] = left; \
+            \
+            if (point_in_aabb(i.world, right.aabbMin, right.aabbMax)) \
+                stack[stackPointer++] = right; \
+            \
+            if (stackPointer == 0) break; else node = stack[--stackPointer]; \
+        }\
+        \
+        /* iterate over every realtime light in the scene: */ \
+        for (uint k = 0; k < realtime_lights_count; k++)\
+        {\
+            /* get the current light from memory. */ \
+            DynamicLight light = dynamic_lights[dynamic_lights_count + k];\
+            \
+            dynlit_frag_light(i, triangle_index, light, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
+        }\
     }\
-}\
-else\
-{\
-    /* iterate over every dynamic light affecting this triangle: */ \
-    uint triangle_light_count = dynamic_triangles_light_count(triangle_index);\
-    for (uint k = 0; k < triangle_light_count + realtime_lights_count; k++)\
+    else\
     {\
-        /* get the current light from memory. */ \
-        DynamicLight light = dynamic_lights[dynamic_triangles_light_index(triangle_index, triangle_light_count, k)];\
-        \
-        dynlit_frag_light(i, triangle_index, light, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
+        /* iterate over every dynamic light affecting this triangle: */ \
+        uint triangle_light_count = dynamic_triangles_light_count(triangle_index);\
+        for (uint k = 0; k < triangle_light_count + realtime_lights_count; k++)\
+        {\
+            /* get the current light from memory. */ \
+            DynamicLight light = dynamic_lights[dynamic_triangles_light_index(triangle_index, triangle_light_count, k)];\
+            \
+            dynlit_frag_light(i, triangle_index, light, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
+        }\
+    }
+
+#else
+
+    #define DYNLIT_FRAGMENT_INTERNAL \
+    if (lightmap_resolution == 0)\
+    {\
+        /* iterate over every dynamic light in the scene (slow without bvh): */ \
+        for (uint k = 0; k < dynamic_lights_count + realtime_lights_count; k++)\
+        {\
+            /* get the current light from memory. */ \
+            DynamicLight light = dynamic_lights[k];\
+            \
+            dynlit_frag_light(i, triangle_index, light, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
+        }\
     }\
-}
+    else\
+    {\
+        /* iterate over every dynamic light affecting this triangle: */ \
+        uint triangle_light_count = dynamic_triangles_light_count(triangle_index);\
+        for (uint k = 0; k < triangle_light_count + realtime_lights_count; k++)\
+        {\
+            /* get the current light from memory. */ \
+            DynamicLight light = dynamic_lights[dynamic_triangles_light_index(triangle_index, triangle_light_count, k)];\
+            \
+            dynlit_frag_light(i, triangle_index, light, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
+        }\
+    }
+
+#endif
 
 #define DYNLIT_FRAGMENT_LIGHT void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, inout DynamicLight light, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS)
 

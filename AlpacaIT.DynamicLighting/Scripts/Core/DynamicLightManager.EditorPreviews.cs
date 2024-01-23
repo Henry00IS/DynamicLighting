@@ -22,6 +22,9 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Stores the original value of the shader keyword state "DYNAMIC_LIGHTING_LIT".</summary>
         private bool editorPreviewsShaderLitEnabled;
 
+        /// <summary>Stores the original value of the shader keyword state "DYNAMIC_LIGHTING_BVH".</summary>
+        private bool editorPreviewsShaderBvhEnabled;
+
         /// <summary>Executes before a camera starts rendering.</summary>
         /// <param name="camera">The camera that is about to render.</param>
         private void EditorOnPreRenderCallback(Camera camera)
@@ -55,6 +58,11 @@ namespace AlpacaIT.DynamicLighting
             editorPreviewsShaderLitEnabled = shadersKeywordLitEnabled;
             if (!editorPreviewsShaderLitEnabled)
                 shadersKeywordLitEnabled = true;
+
+            // apply shader keywords.
+            editorPreviewsShaderBvhEnabled = shadersKeywordBvhEnabled;
+            if (editorPreviewsShaderBvhEnabled)
+                shadersKeywordBvhEnabled = false;
         }
 
         /// <summary>Executes after a camera stops rendering.</summary>
@@ -87,6 +95,10 @@ namespace AlpacaIT.DynamicLighting
             // restore shader keywords.
             if (!editorPreviewsShaderLitEnabled)
                 shadersKeywordLitEnabled = false;
+
+            // restore shader keywords.
+            if (editorPreviewsShaderBvhEnabled)
+                shadersKeywordBvhEnabled = true;
         }
 
         /// <summary>

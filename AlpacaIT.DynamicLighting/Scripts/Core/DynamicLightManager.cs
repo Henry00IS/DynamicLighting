@@ -132,6 +132,10 @@ namespace AlpacaIT.DynamicLighting
         private ShaderDynamicLight[] shaderDynamicLights;
         private ComputeBuffer dynamicLightsBuffer;
 
+        /// <summary>The memory size in bytes of the <see cref="BvhLightNode"/> struct.</summary>
+        private int dynamicLightsBvhNodeStride;
+        private ComputeBuffer dynamicLightsBvhBuffer;
+
         /// <summary>Stores the 6 camera frustum planes, for the non-alloc version of <see cref="GeometryUtility.CalculateFrustumPlanes"/>.</summary>
         private Plane[] cameraFrustumPlanes = new Plane[6];
 
@@ -159,6 +163,7 @@ namespace AlpacaIT.DynamicLighting
             // delete the lightmap files from disk.
             Utilities.DeleteLightmapData("Lightmap");
             Utilities.DeleteLightmapData("Triangles");
+            Utilities.DeleteLightmapData("DynamicLightsBvh");
 
             // make sure the user gets prompted to save their scene.
             UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
@@ -247,6 +252,7 @@ namespace AlpacaIT.DynamicLighting
             ShadersInitialize();
 
             dynamicLightStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(ShaderDynamicLight));
+            dynamicLightsBvhNodeStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(BvhLightNode));
 
             // prepare to store realtime dynamic lights that will register themselves to us.
             sceneRealtimeLights = new List<DynamicLight>(realtimeLightBudget);
@@ -305,6 +311,22 @@ namespace AlpacaIT.DynamicLighting
                 }
                 else Debug.LogError("Unable to read the triangles " + lightmap.identifier + " data file! Probably because you upgraded from an older version. Please raytrace your scene again.");
             }
+
+            // the scene may not have lights which would not be an error:
+            if (raycastedDynamicLights.Count > 0)
+            {
+                // assign the dynamic lights bounding volume hierarchy to a global buffer.
+                if (Utilities.ReadLightmapData(0, "DynamicLightsBvh", out uint[] bvhData))
+                {
+                    dynamicLightsBvhBuffer = new ComputeBuffer(bvhData.Length / 8, dynamicLightsBvhNodeStride, ComputeBufferType.Default);
+                    dynamicLightsBvhBuffer.SetData(bvhData);
+                    ShadersSetGlobalDynamicLightsBvh(dynamicLightsBvhBuffer);
+
+                    // enable the bounding volume hierarchy processing in the shader.
+                    shadersKeywordBvhEnabled = true;
+                }
+                else Debug.LogError("Unable to read the dynamic lights bounding volume hierarchy file! Probably because you upgraded from an older version. Please raytrace your scene again.");
+            }
         }
 
         private void Cleanup()
@@ -323,6 +345,15 @@ namespace AlpacaIT.DynamicLighting
                 dynamicLightsBuffer.Release();
                 dynamicLightsBuffer = null;
             }
+
+            if (dynamicLightsBvhBuffer != null && dynamicLightsBvhBuffer.IsValid())
+            {
+                dynamicLightsBvhBuffer.Release();
+                dynamicLightsBvhBuffer = null;
+            }
+
+            // always disable the bounding volume hierarchy in the shader as it's dangerous now.
+            shadersKeywordBvhEnabled = false;
 
             var raycastedMeshRenderersCount = raycastedMeshRenderers.Count;
             for (int i = 0; i < raycastedMeshRenderersCount; i++)

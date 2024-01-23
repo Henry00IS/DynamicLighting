@@ -48,6 +48,14 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Stores the <see cref="GlobalKeyword"/> of "DYNAMIC_LIGHTING_SHADOW_SOFT".</summary>
         private GlobalKeyword shadersGlobalKeywordShadowSoft;
 
+        /// <summary>
+        /// Stores the <see cref="GlobalKeyword"/> of "DYNAMIC_LIGHTING_BVH". Because the Bounding
+        /// Volume Hierarchy requires a valid StructuredBuffer on the GPU, we use this flag to have
+        /// a fallback implementation by default. The GPU uses while loops and it would be dangerous
+        /// to read an unbound buffer.
+        /// </summary>
+        private GlobalKeyword shadersGlobalKeywordBvh;
+
         /// <summary>Global <see cref="Shader.PropertyToID"/> for buffer "dynamic_lights".</summary>
         private int shadersGlobalPropertyIdDynamicLights;
 
@@ -59,6 +67,9 @@ namespace AlpacaIT.DynamicLighting
 
         /// <summary>Global <see cref="Shader.PropertyToID"/> for color "dynamic_ambient_color".</summary>
         private int shadersGlobalPropertyIdDynamicAmbientColor;
+
+        /// <summary>Global <see cref="Shader.PropertyToID"/> for buffer "dynamic_lights_bvh".</summary>
+        private int shadersGlobalPropertyIdDynamicLightsBvh;
 
         /// <summary>Stores the value last assigned with <see cref="ShadersSetGlobalDynamicLightsCount"/>.</summary>
         private int shadersLastDynamicLightsCount;
@@ -78,6 +89,13 @@ namespace AlpacaIT.DynamicLighting
         {
             get => Shader.IsKeywordEnabled(shadersGlobalKeywordShadowSoft);
             set => ShadersSetGlobalKeyword(ref shadersGlobalKeywordShadowSoft, value);
+        }
+
+        /// <summary>Gets or sets whether global shader keyword "DYNAMIC_LIGHTING_BVH" is enabled.</summary>
+        private bool shadersKeywordBvhEnabled
+        {
+            get => Shader.IsKeywordEnabled(shadersGlobalKeywordBvh);
+            set => ShadersSetGlobalKeyword(ref shadersGlobalKeywordBvh, value);
         }
 
         /// <summary>Sets the global shader buffer property "dynamic_lights".</summary>
@@ -112,6 +130,12 @@ namespace AlpacaIT.DynamicLighting
             Shader.SetGlobalColor(shadersGlobalPropertyIdDynamicAmbientColor, value);
         }
 
+        /// <summary>Sets the global shader buffer property "dynamic_lights_bvh".</summary>
+        private void ShadersSetGlobalDynamicLightsBvh(ComputeBuffer buffer)
+        {
+            Shader.SetGlobalBuffer(shadersGlobalPropertyIdDynamicLightsBvh, buffer);
+        }
+
         /// <summary>
         /// Initialization of shader related variables in the DynamicLightManager.Shaders partial class.
         /// </summary>
@@ -119,14 +143,21 @@ namespace AlpacaIT.DynamicLighting
         {
             shadersGlobalKeywordLit = GlobalKeyword.Create("DYNAMIC_LIGHTING_LIT");
             shadersGlobalKeywordShadowSoft = GlobalKeyword.Create("DYNAMIC_LIGHTING_SHADOW_SOFT");
+            shadersGlobalKeywordBvh = GlobalKeyword.Create("DYNAMIC_LIGHTING_BVH");
 
             shadersGlobalPropertyIdDynamicLights = Shader.PropertyToID("dynamic_lights");
             shadersGlobalPropertyIdDynamicLightsCount = Shader.PropertyToID("dynamic_lights_count");
             shadersGlobalPropertyIdRealtimeLightsCount = Shader.PropertyToID("realtime_lights_count");
             shadersGlobalPropertyIdDynamicAmbientColor = Shader.PropertyToID("dynamic_ambient_color");
+            shadersGlobalPropertyIdDynamicLightsBvh = Shader.PropertyToID("dynamic_lights_bvh");
 
-            // upon startup (or level transitions) we always enable lighting.
+            // upon startup (or level transitions):
+
+            // we always enable lighting.
             shadersKeywordLitEnabled = !renderUnlit;
+
+            // disable the bounding volume hierarchy logic as it may be dangerous.
+            shadersKeywordBvhEnabled = false;
         }
 
         /// <summary>Enables or disables a <see cref="GlobalKeyword"/>.</summary>
