@@ -27,7 +27,7 @@ struct DynamicLight
     float3 forward;
     float  shimmerModifier;
     // -- 16 byte boundary --
-    float  volumetricRadiusSqr;
+    float  volumetricRadius;
     float  volumetricIntensity;
     float  volumetricThickness;
     float  volumetricVisibility;

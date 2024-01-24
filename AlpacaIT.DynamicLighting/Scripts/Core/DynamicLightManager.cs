@@ -268,6 +268,9 @@ namespace AlpacaIT.DynamicLighting
             shaderDynamicLights = new ShaderDynamicLight[totalLightBudget];
             dynamicLightsBuffer = new ComputeBuffer(shaderDynamicLights.Length, dynamicLightStride, ComputeBufferType.Default);
 
+            // -> partial class DynamicLightManager.PostProcessing initialize.
+            PostProcessingInitialize();
+
             ShadersSetGlobalDynamicLights(dynamicLightsBuffer);
             ShadersSetGlobalDynamicLightsCount(shadersLastDynamicLightsCount = 0);
             ShadersSetGlobalRealtimeLightsCount(shadersLastRealtimeLightsCount = 0);
@@ -451,6 +454,9 @@ namespace AlpacaIT.DynamicLighting
             shaderDynamicLights = new ShaderDynamicLight[totalLightBudget];
             dynamicLightsBuffer = new ComputeBuffer(shaderDynamicLights.Length, dynamicLightStride, ComputeBufferType.Default);
             ShadersSetGlobalDynamicLights(dynamicLightsBuffer);
+
+            // -> partial class DynamicLightManager.PostProcessing.
+            PostProcessingReallocateShaderLightBuffer();
         }
 
         /// <summary>Gets the total light budget to be reserved on the graphics card.</summary>
@@ -589,6 +595,10 @@ namespace AlpacaIT.DynamicLighting
                 }
             }
 
+            // we are going to iterate over all active shader light sources below, we make use of
+            // this opportunity, to filter out volumetric light sources for post processing.
+            postProcessingVolumetricLightsCount = 0;
+
             // write the active lights into the shader data.
             var activeRealtimeLightsCount = activeRealtimeLights.Count;
             fixed (ShaderDynamicLight* shaderLightsPtr = shaderDynamicLights)
@@ -603,6 +613,11 @@ namespace AlpacaIT.DynamicLighting
                     SetShaderDynamicLight(shaderLight, light, lightAvailable, false);
                     UpdateLightEffects(shaderLight, light, lightAvailable);
                     idx++;
+
+                    // copy volumetric light sources into the post processing system.
+                    // -> partial class DynamicLightManager.PostProcessing.
+                    if (lightAvailable)
+                        PostProcessingProcessLight(shaderLight, light);
                 }
 
                 for (int i = 0; i < activeRealtimeLightsCount; i++)
@@ -613,6 +628,11 @@ namespace AlpacaIT.DynamicLighting
                     SetShaderDynamicLight(shaderLight, light, lightAvailable, true);
                     UpdateLightEffects(shaderLight, light, lightAvailable);
                     idx++;
+
+                    // copy volumetric light sources into the post processing system.
+                    // -> partial class DynamicLightManager.PostProcessing.
+                    if (lightAvailable)
+                        PostProcessingProcessLight(shaderLight, light);
                 }
             }
 
@@ -776,10 +796,9 @@ namespace AlpacaIT.DynamicLighting
                 case DynamicLightVolumetricType.Sphere:
                     shaderLight->channel |= (uint)1 << 15; // volumetric light bit
                     // -> the volumetric intensity is set by the effects update step.
-                    var lightVolumetricRadius = light.lightVolumetricRadius;
-                    shaderLight->volumetricRadiusSqr = lightVolumetricRadius * lightVolumetricRadius;
+                    shaderLight->volumetricRadius = light.lightVolumetricRadius;
                     shaderLight->volumetricThickness = light.lightVolumetricThickness;
-                    shaderLight->volumetricVisibility = light.lightVolumetricVisibility <= 0f ? 0.00001f : light.lightVolumetricVisibility;
+                    shaderLight->volumetricVisibility = light.lightVolumetricVisibility <= 0f ? 1.0f / 0.00001f : 1.0f / light.lightVolumetricVisibility;
                     break;
             }
         }

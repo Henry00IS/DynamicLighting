@@ -20,13 +20,24 @@ namespace AlpacaIT.DynamicLighting
 
         private void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
+            var dynamicLightManagerInstance = DynamicLightManager.Instance;
+
+            // when there are no active volumetric light sources we can skip work.
+            if (dynamicLightManagerInstance.postProcessingVolumetricLightsCount == 0)
+            {
+                Graphics.Blit(source, destination);
+                return;
+            }
+
             var viewMatrix = _camera.worldToCameraMatrix;
             var projectionMatrix = _camera.projectionMatrix;
             projectionMatrix = GL.GetGPUProjectionMatrix(projectionMatrix, false);
             var clipToPos = (projectionMatrix * viewMatrix).inverse;
             _material.SetMatrix("clipToWorld", clipToPos);
 
+            dynamicLightManagerInstance.PostProcessingOnPreRenderCallback();
             Graphics.Blit(source, destination, _material);
+            dynamicLightManagerInstance.PostProcessingOnPostRenderCallback();
         }
     }
 }

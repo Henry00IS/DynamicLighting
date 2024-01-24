@@ -54,7 +54,7 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>
         /// The maximum cutoff radius where the volumetric light fog is guaranteed to end.
         /// </summary>
-        public float volumetricRadiusSqr;
+        public float volumetricRadius;
 
         /// <summary>
         /// The volumetric fog intensity modifier changes the transparency of the final fog.

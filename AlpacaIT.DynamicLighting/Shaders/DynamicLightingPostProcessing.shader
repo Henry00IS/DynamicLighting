@@ -14,7 +14,6 @@
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag
-			#pragma target 5.0
 			
 			#include "UnityCG.cginc"
 			#include "DynamicLighting.cginc"
@@ -68,29 +67,17 @@
 				float3 worldspace = ComputeWorldSpacePosition(i.uv.xy, depth, clipToWorld);
 				float4 color = tex2D(_MainTex, i.uv);
 				
-				// iterate over every dynamic light in the scene:
+				// iterate over every volumetric light in the scene (pre-filtered on the CPU):
 				float4 fog_final = float4(0.0, 0.0, 0.0, 0.0);
 				float fog_final_t = 0.0;
-				for (uint k = 0; k < dynamic_lights_count + realtime_lights_count; k++)
+				for (uint k = 0; k < dynamic_lights_count; k++)
 				{
-					// get the current light from memory.
+					// get the current volumetric light from memory.
 					DynamicLight light = dynamic_lights[k];
-		
-					// only process volumetric lights.
-					if (!light.is_volumetric()) continue;
-		
-					// ignore raycasted lights that got disabled by radius.
-					if (light.radiusSqr <= -1.0) continue;
 					
 					float4 fog_color = float4(light.color, 1.0);
 					float3 fog_center = light.position;
-					float fog_radius = sqrt(light.volumetricRadiusSqr);
-					
-					// nothing to do when the radius is zero.
-					if (fog_radius == 0.0) continue;
-		
-					// nothing to do when the intensity is zero.
-					if (light.volumetricIntensity == 0.0) continue;
+					float fog_radius = light.volumetricRadius;
 		
 					// closest point to the fog center on line between camera and fragment.
 					float3 fog_closest_point = nearest_point_on_finite_line(_WorldSpaceCameraPos, worldspace, fog_center);
@@ -108,7 +95,7 @@
 						t = saturate(t * light.volumetricThickness);
 						
 						// the distance from the camera to the world is used to make nearby geometry inside the fog visible.
-						float camera_distance_from_world = distance(_WorldSpaceCameraPos, worldspace) * (1.0 / light.volumetricVisibility);
+						float camera_distance_from_world = distance(_WorldSpaceCameraPos, worldspace) * light.volumetricVisibility;
 						
 						// we only subtract from t so that naturally fading fog takes precedence.
 						t = min(t, camera_distance_from_world);
