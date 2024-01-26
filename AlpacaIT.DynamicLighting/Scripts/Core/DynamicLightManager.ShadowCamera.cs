@@ -1,0 +1,154 @@
+﻿using UnityEngine;
+using UnityEngine.Rendering;
+
+namespace AlpacaIT.DynamicLighting
+{
+    // implements real-time shadow generation using a shadow camera that builds cubemaps.
+
+    public partial class DynamicLightManager
+    {
+        /// <summary>All of the shadow camera orientations to take cubemap frames.</summary>
+        private static readonly Quaternion[] shadowCameraOrientations = new Quaternion[]
+        {
+            Quaternion.LookRotation(Vector3.left, Vector3.down),
+            Quaternion.LookRotation(Vector3.right, Vector3.down),
+            Quaternion.LookRotation(Vector3.up, Vector3.up),
+            Quaternion.LookRotation(Vector3.down, Vector3.up),
+            Quaternion.LookRotation(Vector3.back, Vector3.down),
+            Quaternion.LookRotation(Vector3.forward, Vector3.down),
+        };
+
+        /// <summary>The <see cref="GameObject"/> of the shadow camera.</summary>
+        private GameObject shadowCameraGameObject;
+
+        /// <summary>The <see cref="Transform"/> of the shadow camera <see cref="GameObject"/>.</summary>
+        private Transform shadowCameraTransform;
+
+        /// <summary>The <see cref="Camera"/> used for capturing shadow frames in the scene.</summary>
+        private Camera shadowCamera;
+
+        /// <summary>The array of shadow camera cubemap textures.</summary>
+        private RenderTexture shadowCameraCubemaps;
+
+        /// <summary>The replacement shader used by the shadow camera to render depth.</summary>
+        private Shader shadowCameraDepthShader;
+
+        private Material shadowCameraPostProcessingMaterial;
+
+        /// <summary>Used to fetch 16-bit floating point textures for the shadow camera rendering.</summary>
+        private RenderTextureDescriptor shadowCameraRenderTextureDescriptor;
+
+        private const int shadowCameraResolution = 256; // anything above 1024 will fail.
+        private const int shadowCameraCubemapBudget = 16; // 300 is around the maximum, from there DX11 D3D error 0x80070057.
+        private int shadowCameraCubemapIndex;
+
+        /// <summary>Initialization of the DynamicLightManager.ShadowCamera partial class.</summary>
+        private void ShadowCameraInitialize()
+        {
+            shadowCameraDepthShader = DynamicLightingResources.Instance.shadowCameraDepthShader;
+            shadowCameraPostProcessingMaterial = DynamicLightingResources.Instance.shadowCameraPostProcessingMaterial;
+
+#if UNITY_2021_3_OR_NEWER
+            shadowCameraRenderTextureDescriptor = new RenderTextureDescriptor(shadowCameraResolution, shadowCameraResolution, RenderTextureFormat.RHalf, 16, 0, RenderTextureReadWrite.Linear);
+#else
+            shadowCameraRenderTextureDescriptor = new RenderTextureDescriptor(shadowCameraResolution, shadowCameraResolution, RenderTextureFormat.RHalf, 16, 0);
+#endif
+            // create the shadow camera game object.
+            shadowCameraGameObject = new GameObject("[Dynamic Lighting - Realtime Shadow Camera]");
+            shadowCameraGameObject.SetActive(false);
+
+            // this is very important, otherwise it keeps adding more instances when switching
+            // between editor and play mode as it saves the scene.
+            shadowCameraGameObject.hideFlags = HideFlags.HideAndDontSave;
+
+            // parent it under our instance to keep things clean.
+            shadowCameraTransform = shadowCameraGameObject.transform;
+            shadowCameraTransform.parent = transform;
+
+            // create the shadow camera.
+            shadowCamera = shadowCameraGameObject.AddComponent<Camera>();
+            shadowCamera.enabled = false;
+            // the 90 degrees field of view is exactly one side of a cubemap.
+            shadowCamera.fieldOfView = 90;
+            // this acts as the inner radius around the camera, which when objects clip inside, the
+            // shadows will visually glitch, so we keep it very small.
+            shadowCamera.nearClipPlane = 0.01f;
+            // only useful in the editor previews, but programmers can filter by this category.
+            shadowCamera.cameraType = CameraType.Reflection;
+
+            // create shadow cubemap array.
+            shadowCameraCubemaps = new RenderTexture(shadowCameraRenderTextureDescriptor);
+            shadowCameraCubemaps.dimension = TextureDimension.CubeArray;
+            shadowCameraCubemaps.useMipMap = false;
+            shadowCameraCubemaps.autoGenerateMips = false;
+            shadowCameraCubemaps.volumeDepth = 6 * shadowCameraCubemapBudget;
+            shadowCameraCubemaps.Create();
+
+            Shader.SetGlobalTexture("shadow_cubemaps", shadowCameraCubemaps);
+        }
+
+        /// <summary>Cleanup of the DynamicLightManager.ShadowCamera partial class.</summary>
+        private void ShadowCameraCleanup()
+        {
+            // destroy the shadow camera game object.
+            DestroyImmediate(shadowCameraGameObject);
+
+            // release the unity resources we no longer need.
+            shadowCameraCubemaps.Release();
+        }
+
+        private void ShadowCameraUpdate()
+        {
+            shadowCameraCubemapIndex = 0;
+        }
+
+        private unsafe void ShadowCameraProcessLight(ShaderDynamicLight* shaderLight, DynamicLight light)
+        {
+            if (light.lightShadows == DynamicLightShadowMode.RealtimeShadows)
+            {
+                ShadowCameraRenderLight(shaderLight, light);
+            }
+        }
+
+        private unsafe void ShadowCameraRenderLight(ShaderDynamicLight* shaderLight, DynamicLight light)
+        {
+            // we ran out of cubemaps.
+            if (shadowCameraCubemapIndex >= shadowCameraCubemapBudget)
+                return;
+
+            // we move the camera to the light source.
+            shadowCameraTransform.position = light.transform.position;
+
+            // we do not need shadows beyond the light radius.
+            shadowCamera.farClipPlane = light.lightRadius + 5f; // todo: have to add 5 to prevent janky stops, probably because the camera is a square box.
+            shadowCamera.cullingMask = ~0; // todo: per light or global?
+
+            // get a temporary render texture.
+            var renderTexture = RenderTexture.GetTemporary(shadowCameraRenderTextureDescriptor);
+            var mirrorTexture = RenderTexture.GetTemporary(shadowCameraRenderTextureDescriptor);
+
+            shadowCamera.targetTexture = renderTexture;
+
+            // render the 6 sides of the cubemap:
+            for (int face = 0; face < 6; face++)
+            {
+                shadowCameraTransform.rotation = shadowCameraOrientations[face];
+
+                // use the depth replacement shader to render the scene.
+                shadowCamera.RenderWithShader(shadowCameraDepthShader, "");
+
+                Graphics.Blit(renderTexture, mirrorTexture, shadowCameraPostProcessingMaterial);
+                Graphics.CopyTexture(mirrorTexture, 0, 0, shadowCameraCubemaps, (shadowCameraCubemapIndex * 6) + face, 0);
+            }
+
+            shadowCamera.targetTexture = null;
+
+            RenderTexture.ReleaseTemporary(renderTexture);
+            RenderTexture.ReleaseTemporary(mirrorTexture);
+
+            // activate the cubemap on this light source.
+            shaderLight->channel |= (uint)1 << 15; // shadow camera bit
+            shaderLight->shadowCubemapIndex = (uint)shadowCameraCubemapIndex++;
+        }
+    }
+}

@@ -32,6 +32,9 @@ struct DynamicLight
     float  volumetricThickness;
     float  volumetricVisibility;
     // -- 16 byte boundary --
+    uint   shadowCubemapIndex;
+    float3 paddingUnused;
+    // -- 16 byte boundary --
     
     // the first 5 bits contain a valid channel index so mask by 31.
     uint get_shadow_channel()
@@ -105,8 +108,8 @@ struct DynamicLight
         return channel & 16384u;
     }
     
-    // bit 16 determines whether the light is volumetric.
-    bool is_volumetric()
+    // bit 16 determines whether the light has a shadow cubemap.
+    bool is_shadowcamera()
     {
         return channel & 32768u;
     }
@@ -283,6 +286,9 @@ uint realtime_lights_count;
 
 StructuredBuffer<uint> lightmap;
 uint lightmap_resolution;
+
+TextureCubeArray shadow_cubemaps;
+sampler sampler_shadow_cubemaps;
 
 float3 dynamic_ambient_color;
 

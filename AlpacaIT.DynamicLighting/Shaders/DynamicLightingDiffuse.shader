@@ -15,6 +15,7 @@ Shader "Dynamic Lighting/Diffuse"
         Pass
         {
             CGPROGRAM
+            #pragma target 4.5
             #pragma vertex vert
             #pragma fragment frag
             #pragma multi_compile_fog

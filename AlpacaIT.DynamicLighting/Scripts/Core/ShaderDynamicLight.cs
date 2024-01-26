@@ -70,5 +70,15 @@ namespace AlpacaIT.DynamicLighting
         public float volumetricVisibility;
 
         // -- 16 byte boundary --
+
+        /// <summary>
+        /// The shadow cubemap index for real-time shadows and static shadows on dynamic meshes.
+        /// </summary>
+        public uint shadowCubemapIndex;
+
+        /// <summary>Unused padding to align struct to 16 byte boundary.</summary>
+        public Vector3 paddingUnused;
+
+        // -- 16 byte boundary --
     };
 }

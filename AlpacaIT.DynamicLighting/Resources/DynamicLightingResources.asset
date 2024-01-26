@@ -14,3 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   dynamicPointLightIcon: {fileID: 2800000, guid: 1646eb50de3a9b14f90eef653beeca4b, type: 3}
   dynamicLightingPostProcessingMaterial: {fileID: 2100000, guid: 7c7fe9e515cc0be4886168d3c1a785d6, type: 2}
+  shadowCameraPostProcessingMaterial: {fileID: 2100000, guid: 9fd681876a1ceab45b3334ed37858496, type: 2}
+  shadowCameraDepthShader: {fileID: 4800000, guid: 1a9ff03cd330c124c93337f9e5edac79, type: 3}
