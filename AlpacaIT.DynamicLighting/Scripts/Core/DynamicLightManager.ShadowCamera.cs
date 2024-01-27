@@ -150,7 +150,7 @@ namespace AlpacaIT.DynamicLighting
                 shadowCameraTransform.rotation = shadowCameraOrientations[face];
 
                 // use the depth replacement shader to render the scene.
-                shadowCamera.RenderWithShader(shadowCameraDepthShader, "");
+                shadowCamera.RenderWithShader(shadowCameraDepthShader, "RenderType");
 
                 Graphics.CopyTexture(shadowCameraRenderTexture, 0, 0, shadowCameraCubemaps, (shadowCameraCubemapIndex * 6) + face, 0);
             }
