@@ -39,7 +39,7 @@ struct DynamicLight
     // the first 5 bits contain a valid channel index so mask by 31.
     uint get_shadow_channel()
     {
-        return channel & 31u;
+        return 1u << (channel & 31u);
     }
 
     // bit 6 determines whether the light is realtime and does not have shadows.
@@ -295,7 +295,7 @@ float3 dynamic_ambient_color;
 // fetches a shadow bit at the specified uv coordinates from the lightmap data.
 bool lightmap_sample(uint2 uv, uint channel)
 {
-    return lightmap[uv.y * lightmap_resolution + uv.x] & (1u << channel);
+    return lightmap[uv.y * lightmap_resolution + uv.x] & channel;
 }
 
 // x x x
