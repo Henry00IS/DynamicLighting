@@ -655,6 +655,9 @@ namespace AlpacaIT.DynamicLighting
                 }
             }
 
+            // -> partial class DynamicLightManager.ShadowCamera.
+            ShadowCameraPostUpdate();
+
             // upload the active light data to the graphics card.
             var activeDynamicLightsCount = raycastedDynamicLightsCount + activeRealtimeLightsCount;
             if (dynamicLightsBuffer != null && dynamicLightsBuffer.IsValid())

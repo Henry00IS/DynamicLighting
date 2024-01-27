@@ -31,7 +31,7 @@ if (light.is_shadowcamera())
 {
     // this autobias is guesswork, improve me.
     float autobias = lerp(0.2, 0.5, light_distanceSqr / 18.0);
-    float static_shadow_mapping_distance = shadow_cubemaps.SampleLevel(sampler_shadow_cubemaps, float4(light_direction.x, -light_direction.y, light_direction.z, light.shadowCubemapIndex), 0).r;
+    float static_shadow_mapping_distance = shadow_cubemaps.SampleLevel(sampler_shadow_cubemaps, float4(light_direction, light.shadowCubemapIndex), 0).r;
     
     // when the fragment is occluded we can early out here.
     if (light_distanceSqr - (autobias * autobias) > static_shadow_mapping_distance)
