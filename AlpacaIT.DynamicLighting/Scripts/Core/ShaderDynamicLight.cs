@@ -52,11 +52,6 @@ namespace AlpacaIT.DynamicLighting
         // -- 16 byte boundary --
 
         /// <summary>
-        /// The maximum cutoff radius where the volumetric light fog is guaranteed to end.
-        /// </summary>
-        public float volumetricRadius;
-
-        /// <summary>
         /// The volumetric fog intensity modifier changes the transparency of the final fog.
         /// </summary>
         public float volumetricIntensity;
@@ -69,15 +64,10 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>The visibility in meters within the volumetric fog.</summary>
         public float volumetricVisibility;
 
-        // -- 16 byte boundary --
-
         /// <summary>
         /// The shadow cubemap index for real-time shadows and static shadows on dynamic meshes.
         /// </summary>
         public uint shadowCubemapIndex;
-
-        /// <summary>Unused padding to align struct to 16 byte boundary.</summary>
-        public Vector3 paddingUnused;
 
         // -- 16 byte boundary --
     };

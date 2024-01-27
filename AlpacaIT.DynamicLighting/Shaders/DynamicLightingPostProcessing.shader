@@ -58,6 +58,9 @@
 				return hpositionWS.xyz / hpositionWS.w;
 			}
 
+			// macros to name the recycled variables.
+			#define light_volumetricRadius radiusSqr
+
 			float4 frag (v2f i) : SV_Target
 			{
 				float depth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv.xy);
@@ -77,7 +80,7 @@
 					
 					float4 fog_color = float4(light.color, 1.0);
 					float3 fog_center = light.position;
-					float fog_radius = light.volumetricRadius;
+					float fog_radius = light.light_volumetricRadius;
 		
 					// closest point to the fog center on line between camera and fragment.
 					float3 fog_closest_point = nearest_point_on_finite_line(_WorldSpaceCameraPos, worldspace, fog_center);

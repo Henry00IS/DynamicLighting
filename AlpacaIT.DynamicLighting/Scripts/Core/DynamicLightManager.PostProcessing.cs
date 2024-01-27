@@ -55,10 +55,18 @@ namespace AlpacaIT.DynamicLighting
             if (shaderLight->volumetricIntensity == 0.0f) return;
 
             // nothing to do when the volumetric radius is zero.
-            if (shaderLight->volumetricRadius == 0.0f) return;
+            var lightVolumetricRadius = light.lightVolumetricRadius;
+            if (lightVolumetricRadius == 0.0f) return;
 
             // copy volumetric light sources into the post processing system.
-            postProcessingShaderVolumetricLights[postProcessingVolumetricLightsCount++] = *shaderLight;
+            fixed (ShaderDynamicLight* volumetricLight = &postProcessingShaderVolumetricLights[postProcessingVolumetricLightsCount++])
+            {
+                // copy the shader dynamic light struct.
+                *volumetricLight = *shaderLight;
+
+                // recycle the light radius to store the volumetric radius.
+                volumetricLight->radiusSqr = lightVolumetricRadius;
+            }
         }
 
         /// <summary>Executes before a camera starts rendering the post processing shader.</summary>

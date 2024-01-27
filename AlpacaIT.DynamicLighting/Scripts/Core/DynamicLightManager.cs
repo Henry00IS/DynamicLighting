@@ -815,7 +815,7 @@ namespace AlpacaIT.DynamicLighting
                 case DynamicLightVolumetricType.Sphere:
                     // does not require a channel bit as the post-processing shader knows implicitly.
                     // -> the volumetric intensity is set by the effects update step.
-                    shaderLight->volumetricRadius = light.lightVolumetricRadius;
+                    // -> the volumetric radius is set by the partial class DynamicLightManager.PostProcessing.
                     shaderLight->volumetricThickness = light.lightVolumetricThickness;
                     shaderLight->volumetricVisibility = light.lightVolumetricVisibility <= 0f ? 1.0f / 0.00001f : 1.0f / light.lightVolumetricVisibility;
                     break;

@@ -27,13 +27,10 @@ struct DynamicLight
     float3 forward;
     float  shimmerModifier;
     // -- 16 byte boundary --
-    float  volumetricRadius;
     float  volumetricIntensity;
     float  volumetricThickness;
     float  volumetricVisibility;
-    // -- 16 byte boundary --
     uint   shadowCubemapIndex;
-    float3 paddingUnused;
     // -- 16 byte boundary --
     
     // the first 5 bits contain a valid channel index so mask by 31.
