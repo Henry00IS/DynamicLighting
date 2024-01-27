@@ -29,12 +29,16 @@ if (NdotL == 0.0) return;
 // when the light has a shadow cubemap we sample that for real-time shadows.
 if (light.is_shadowcamera())
 {
-    // this autobias is guesswork, improve me.
-    float autobias = lerp(0.2, 0.5, light_distanceSqr / 18.0);
+    // magic bias function! it is amazing!
+    float light_distance = sqrt(light_distanceSqr);
+    float magic = 0.02 + ((light_distanceSqr / light_distance) * 0.01);
+    float autobias = magic*tan(acos(1.0 - NdotL));
+    autobias = clamp(autobias, 0, magic);
+    
     float static_shadow_mapping_distance = shadow_cubemaps.SampleLevel(sampler_shadow_cubemaps, float4(light_direction, light.shadowCubemapIndex), 0).r;
     
     // when the fragment is occluded we can early out here.
-    if (light_distanceSqr - (autobias * autobias) > static_shadow_mapping_distance)
+    if (light_distance - autobias > static_shadow_mapping_distance)
         return;
 }
 

@@ -45,9 +45,7 @@ Shader "Hidden/Dynamic Lighting/ShadowDepth"
 
             float frag (v2f i) : SV_Target
             {
-                float3 world_direction = _WorldSpaceCameraPos - i.world;
-                float world_distanceSqr = dot(world_direction, world_direction);
-                return world_distanceSqr;
+                return distance(_WorldSpaceCameraPos, i.world);
             }
 
             ENDCG
@@ -102,9 +100,7 @@ Shader "Hidden/Dynamic Lighting/ShadowDepth"
                 fixed4 col = tex2D(_MainTex, i.uv0);
                 if (col.a > 0.5)
                 {
-                    float3 world_direction = _WorldSpaceCameraPos - i.world;
-                    float world_distanceSqr = dot(world_direction, world_direction);
-                    return world_distanceSqr;
+                    return distance(_WorldSpaceCameraPos, i.world);
                 }
                 else
                 {
