@@ -138,7 +138,7 @@ namespace AlpacaIT.DynamicLighting
                 return;
 
             // we move the camera to the light source.
-            shadowCameraTransform.position = light.transform.position;
+            shadowCameraTransform.position = shaderLight->position;
 
             // we do not need shadows beyond the light radius.
             shadowCamera.farClipPlane = light.lightRadius * 2f;
