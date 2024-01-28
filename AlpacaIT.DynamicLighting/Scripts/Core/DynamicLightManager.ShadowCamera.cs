@@ -79,6 +79,8 @@ namespace AlpacaIT.DynamicLighting
             shadowCamera.clearFlags = CameraClearFlags.Depth;
             // only useful in the editor previews, but programmers can filter by this category.
             shadowCamera.cameraType = CameraType.Reflection;
+            // we render depth using a special shader.
+            shadowCamera.SetReplacementShader(shadowCameraDepthShader, "RenderType");
 
             // create shadow cubemap array.
             shadowCameraCubemaps = new RenderTexture(shadowCameraRenderTextureDescriptor);
@@ -127,6 +129,10 @@ namespace AlpacaIT.DynamicLighting
         {
             if (light.lightShadows == DynamicLightShadowMode.RealtimeShadows)
             {
+                // if the light can not be seen by the camera we do not calculate/activate realtime shadows.
+                if (!MathEx.CheckSphereIntersectsFrustum(cameraFrustumPlanes, shaderLight->position, light.lightRadius))
+                    return;
+
                 ShadowCameraRenderLight(shaderLight, light);
             }
         }
@@ -150,7 +156,7 @@ namespace AlpacaIT.DynamicLighting
                 shadowCameraTransform.rotation = shadowCameraOrientations[face];
 
                 // use the depth replacement shader to render the scene.
-                shadowCamera.RenderWithShader(shadowCameraDepthShader, "RenderType");
+                shadowCamera.Render();
 
                 Graphics.CopyTexture(shadowCameraRenderTexture, 0, 0, shadowCameraCubemaps, (shadowCameraCubemapIndex * 6) + face, 0);
             }

@@ -575,9 +575,8 @@ namespace AlpacaIT.DynamicLighting
                 SortSceneRealtimeLights(camera.transform.position);
             }
 
-            // if there are realtime light sources we calculate the camera frustum planes.
-            if (sceneRealtimeLightsCount > 0 && realtimeLightBudget > 0)
-                GeometryUtility.CalculateFrustumPlanes(camera, cameraFrustumPlanes);
+            // we calculate the camera frustum planes to cull realtime lights and realtime shadows.
+            GeometryUtility.CalculateFrustumPlanes(camera, cameraFrustumPlanes);
 
             // fill the active realtime lights back up with the closest lights.
             for (int i = 0; i < sceneRealtimeLightsCount; i++)
