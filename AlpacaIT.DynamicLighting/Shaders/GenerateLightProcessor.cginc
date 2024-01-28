@@ -31,14 +31,14 @@ if (light.is_shadowcamera())
 {
     // magic bias function! it is amazing!
     float light_distance = sqrt(light_distanceSqr);
-    float magic = 0.02 + ((light_distanceSqr / light_distance) * 0.01);
-    float autobias = magic*tan(acos(1.0 - NdotL));
-    autobias = clamp(autobias, 0, magic);
+    float magic = 0.02 + 0.01 * (light_distanceSqr / light_distance);
+    float autobias = magic * tan(acos(1.0 - NdotL));
+    autobias = clamp(autobias, 0.0, magic);
     
-    float static_shadow_mapping_distance = shadow_cubemaps.SampleLevel(sampler_shadow_cubemaps, float4(light_direction, light.shadowCubemapIndex), 0).r;
+    float shadow_mapping_distance = shadow_cubemaps.SampleLevel(sampler_shadow_cubemaps, float4(light_direction, light.shadowCubemapIndex), 0);
     
     // when the fragment is occluded we can early out here.
-    if (light_distance - autobias > static_shadow_mapping_distance)
+    if (light_distance - autobias > shadow_mapping_distance)
         return;
 }
 
