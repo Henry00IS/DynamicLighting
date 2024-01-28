@@ -159,6 +159,7 @@ namespace AlpacaIT.DynamicLighting
 
             // clear the lightmap scene data.
             raycastedMeshRenderers.Clear();
+            raycastedDynamicLights.Clear();
 
             // delete the lightmap files from disk.
             Utilities.DeleteLightmapData("Lightmap");
@@ -231,7 +232,7 @@ namespace AlpacaIT.DynamicLighting
             // remove all of the raycasted lights from our collection.
             var dynamicPointLightsCount = dynamicPointLights.Count;
             for (int i = dynamicPointLightsCount; i-- > 0;)
-                if (!dynamicPointLights[i].realtime || IsRaycastedDynamicLight(dynamicPointLights[i]))
+                if (IsRaycastedDynamicLight(dynamicPointLights[i]))
                     dynamicPointLights.RemoveAt(i);
 
             return dynamicPointLights;
