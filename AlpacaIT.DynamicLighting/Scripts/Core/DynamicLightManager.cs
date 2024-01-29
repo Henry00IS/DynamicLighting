@@ -591,9 +591,9 @@ namespace AlpacaIT.DynamicLighting
                 if (activeRealtimeLights.Count < realtimeLightBudget)
                 {
 #if UNITY_EDITOR    // optimization: only add lights that are within the camera frustum.
-                    if (!Application.isPlaying || MathEx.CheckSphereIntersectsFrustum(cameraFrustumPlanes, realtimeLight.transform.position, realtimeLight.largestLightRadius))
+                    if (!Application.isPlaying || MathEx.CheckSphereIntersectsFrustum(cameraFrustumPlanes, realtimeLight.cache.transformPosition, realtimeLight.largestLightRadius))
 #else
-                    if (MathEx.CheckSphereIntersectsFrustum(cameraFrustumPlanes, realtimeLight.transform.position, realtimeLight.largestLightRadius))
+                    if (MathEx.CheckSphereIntersectsFrustum(cameraFrustumPlanes, realtimeLight.cache.transformPosition, realtimeLight.largestLightRadius))
 #endif
                     {
                         activeRealtimeLights.Add(realtimeLight);
@@ -625,12 +625,12 @@ namespace AlpacaIT.DynamicLighting
 
                     if (lightAvailable)
                     {
+                        // -> partial class DynamicLightManager.ShadowCamera.
+                        ShadowCameraProcessLight(shaderLight, light);
+
                         // copy volumetric light sources into the post processing system.
                         // -> partial class DynamicLightManager.PostProcessing.
                         PostProcessingProcessLight(shaderLight, light);
-
-                        // -> partial class DynamicLightManager.ShadowCamera.
-                        ShadowCameraProcessLight(shaderLight, light);
                     }
                 }
 
@@ -645,12 +645,12 @@ namespace AlpacaIT.DynamicLighting
 
                     if (lightAvailable)
                     {
+                        // -> partial class DynamicLightManager.ShadowCamera.
+                        ShadowCameraProcessLight(shaderLight, light);
+
                         // copy volumetric light sources into the post processing system.
                         // -> partial class DynamicLightManager.PostProcessing.
                         PostProcessingProcessLight(shaderLight, light);
-
-                        // -> partial class DynamicLightManager.ShadowCamera.
-                        ShadowCameraProcessLight(shaderLight, light);
                     }
                 }
             }

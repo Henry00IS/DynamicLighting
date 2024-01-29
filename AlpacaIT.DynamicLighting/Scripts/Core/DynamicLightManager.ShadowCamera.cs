@@ -127,14 +127,17 @@ namespace AlpacaIT.DynamicLighting
 
         private unsafe void ShadowCameraProcessLight(ShaderDynamicLight* shaderLight, DynamicLight light)
         {
-            if (light.lightShadows == DynamicLightShadowMode.RealtimeShadows)
-            {
-                // if the light can not be seen by the camera we do not calculate/activate realtime shadows.
-                if (!MathEx.CheckSphereIntersectsFrustum(cameraFrustumPlanes, shaderLight->position, light.lightRadius))
-                    return;
+            // the shader light must still be active.
+            if (shaderLight->radiusSqr == -1.0f) return;
 
-                ShadowCameraRenderLight(shaderLight, light);
-            }
+            // the light must have realtime shadows enabled.
+            if (light.lightShadows != DynamicLightShadowMode.RealtimeShadows) return;
+
+            // if the light can not be seen by the camera we do not calculate/activate realtime shadows.
+            if (!MathEx.CheckSphereIntersectsFrustum(cameraFrustumPlanes, shaderLight->position, light.lightRadius))
+                return;
+
+            ShadowCameraRenderLight(shaderLight, light);
         }
 
         private unsafe void ShadowCameraRenderLight(ShaderDynamicLight* shaderLight, DynamicLight light)
