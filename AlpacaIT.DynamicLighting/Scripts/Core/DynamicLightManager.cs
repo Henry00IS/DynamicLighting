@@ -148,6 +148,11 @@ namespace AlpacaIT.DynamicLighting
 #if UNITY_EDITOR
 
         /// <summary>
+        /// Remembers whether <see cref="Application.isPlaying"/> to prevent native calls.
+        /// </summary>
+        private bool editorIsPlaying = false;
+
+        /// <summary>
         /// Called by <see cref="DynamicLightingTracer"/> to properly free up the compute buffers
         /// before clearing the lightmaps collection. Then deletes all lightmap files from disk.
         /// This method call must be followed up by a call to <see cref="Reload"/>
@@ -245,6 +250,9 @@ namespace AlpacaIT.DynamicLighting
             isInitialized = true;
 
 #if UNITY_EDITOR
+            // check whether we are currently in play mode.
+            editorIsPlaying = Application.isPlaying;
+
             // in the editor, subscribe to the camera rendering functions to repair preview cameras.
             Camera.onPreRender += EditorOnPreRenderCallback;
             Camera.onPostRender += EditorOnPostRenderCallback;
@@ -457,7 +465,9 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         private void ReallocateShaderLightBuffer()
         {
-            if (Application.isPlaying)
+#if UNITY_EDITOR
+            if (editorIsPlaying)
+#endif
                 Debug.LogWarning("Reallocation of dynamic lighting shader buffers on the graphics card due to a light budget change (slow).");
 
             // properly release any old buffer.
@@ -487,7 +497,7 @@ namespace AlpacaIT.DynamicLighting
 
 #if UNITY_EDITOR
             // editor scene view support.
-            if (!Application.isPlaying)
+            if (!editorIsPlaying)
             {
                 camera = Utilities.GetSceneViewCamera();
             }
@@ -597,7 +607,7 @@ namespace AlpacaIT.DynamicLighting
                 if (activeRealtimeLights.Count < realtimeLightBudget)
                 {
 #if UNITY_EDITOR    // optimization: only add lights that are within the camera frustum.
-                    if (!Application.isPlaying || MathEx.CheckSphereIntersectsFrustum(cameraFrustumPlanes, realtimeLight.cache.transformPosition, realtimeLight.largestLightRadius))
+                    if (!editorIsPlaying || MathEx.CheckSphereIntersectsFrustum(cameraFrustumPlanes, realtimeLight.cache.transformPosition, realtimeLight.largestLightRadius))
 #else
                     if (MathEx.CheckSphereIntersectsFrustum(cameraFrustumPlanes, realtimeLight.cache.transformPosition, realtimeLight.largestLightRadius))
 #endif
@@ -917,7 +927,7 @@ namespace AlpacaIT.DynamicLighting
             if (sceneView && sceneView.sceneViewState.fxEnabled && sceneView.sceneViewState.alwaysRefresh)
             {
                 // ensure continuous update calls.
-                if (!Application.isPlaying)
+                if (!editorIsPlaying)
                 {
                     UnityEditor.EditorApplication.QueuePlayerLoopUpdate();
                     UnityEditor.SceneView.RepaintAll();
