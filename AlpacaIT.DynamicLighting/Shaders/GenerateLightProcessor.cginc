@@ -27,7 +27,7 @@ float NdotL = max(dot(GENERATE_NORMAL, light_direction), 0);
 if (NdotL == 0.0) return;
 
 // when the light has a shadow cubemap we sample that for real-time shadows.
-if (light.is_shadowcamera())
+if (light.is_shadow_available())
 {
     // magic bias function! it is amazing!
     float light_distance = sqrt(light_distanceSqr);
@@ -67,9 +67,17 @@ if (light.is_spotlight())
 {
     // anything outside of the spot light can and must be skipped.
     float2 spotlight = light.calculate_spotlight(light_direction);
-    if (spotlight.x <= light.light_outerCutoff)
+    if (spotlight.x <= light.light_outerCutoff || spotlight.x == 0.0) // prevent division by zero in light cookies.
         return;
     map *= spotlight.y;
+    
+    // when the light has a cookie texture we sample that.
+    if (light.is_cookie_available() && light.light_outerCutoff > 0.0)
+    {
+        float3x3 rot = look_at_matrix(-light.forward, light.up);
+        float2 world_minus_light_position = mul(light_direction, rot).xy;
+        map *= light_cookies.SampleLevel(sampler_light_cookies, float3(0.5 - light.gpFloat3 * world_minus_light_position * (1.0 / spotlight.x), light.cookieIndex), 0);
+    }
 }
 else if (light.is_discoball())
 {

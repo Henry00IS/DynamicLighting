@@ -60,6 +60,7 @@
 
 			// macros to name the recycled variables.
 			#define light_volumetricRadius radiusSqr
+			#define light_volumetricThickness gpFloat1
 
 			float4 frag (v2f i) : SV_Target
 			{
@@ -95,7 +96,7 @@
 						float t = fog_closest_point_distance_to_interior_sphere / fog_radius;
 						
 						// apply the thickness to the fog that appears as a solid color.
-						t = saturate(t * light.volumetricThickness);
+						t = saturate(t * light.light_volumetricThickness);
 						
 						// the distance from the camera to the world is used to make nearby geometry inside the fog visible.
 						float camera_distance_from_world = distance(_WorldSpaceCameraPos, worldspace) * light.volumetricVisibility;

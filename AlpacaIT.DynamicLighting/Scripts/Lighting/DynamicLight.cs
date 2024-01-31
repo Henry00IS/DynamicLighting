@@ -109,9 +109,17 @@ namespace AlpacaIT.DynamicLighting
         public float lightDiscoVerticalSpeed = 1.0f;
 
         /// <summary>
+        /// When using the 'Spot' light type, this texture can be used as a grayscale shadow cookie
+        /// that will be projected within the radius of the spot light.
+        /// </summary>
+        [Tooltip("When using the 'Spot' light type, this texture can be used as a grayscale shadow cookie that will be projected within the radius of the spot light.")]
+        public Texture lightCookieTexture;
+
+        /// <summary>
         /// The shimmer effects overlay the world with random blocks that project water caustics or
         /// fire wavering.
         /// </summary>
+        [Header("Shimmering:")]
         [Tooltip("The shimmer effects overlay the world with random blocks that project water caustics or fire wavering.")]
         public DynamicLightShimmer lightShimmer = DynamicLightShimmer.None;
 
@@ -135,6 +143,7 @@ namespace AlpacaIT.DynamicLighting
         public float lightShimmerModifier = 0.8f;
 
         /// <summary>The effect applied to this dynamic light.</summary>
+        [Header("Intensity Effects:")]
         [Tooltip("The effect applied to this dynamic light.")]
         public DynamicLightEffect lightEffect = DynamicLightEffect.Steady;
 

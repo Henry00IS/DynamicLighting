@@ -101,6 +101,7 @@ namespace AlpacaIT.DynamicLighting
 
             // release the unity resources we no longer need.
             shadowCameraCubemaps.Release();
+            shadowCameraCubemaps = null;
         }
 
         /// <summary>Called before the lights are processed for rendering.</summary>
@@ -133,6 +134,10 @@ namespace AlpacaIT.DynamicLighting
             // the light must have realtime shadows enabled.
             if (light.lightShadows != DynamicLightShadowMode.RealtimeShadows) return;
 
+            // we ran out of cubemaps.
+            if (shadowCameraCubemapIndex >= shadowCameraCubemapBudget)
+                return;
+
             // if the light can not be seen by the camera we do not calculate/activate realtime shadows.
             if (!MathEx.CheckSphereIntersectsFrustum(cameraFrustumPlanes, shaderLight->position, light.lightRadius))
                 return;
@@ -142,10 +147,6 @@ namespace AlpacaIT.DynamicLighting
 
         private unsafe void ShadowCameraRenderLight(ShaderDynamicLight* shaderLight, DynamicLight light)
         {
-            // we ran out of cubemaps.
-            if (shadowCameraCubemapIndex >= shadowCameraCubemapBudget)
-                return;
-
             // we move the camera to the light source.
             shadowCameraTransform.position = shaderLight->position;
 
@@ -165,7 +166,7 @@ namespace AlpacaIT.DynamicLighting
             }
 
             // activate the cubemap on this light source.
-            shaderLight->channel |= (uint)1 << 15; // shadow camera bit
+            shaderLight->channel |= (uint)1 << 15; // shadow available bit
             shaderLight->shadowCubemapIndex = (uint)shadowCameraCubemapIndex++;
         }
     }

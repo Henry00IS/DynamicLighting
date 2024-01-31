@@ -28,8 +28,8 @@ struct DynamicLight
     float  shimmerModifier;
     // -- 16 byte boundary --
     float  volumetricIntensity;
-    float  volumetricThickness;
     float  volumetricVisibility;
+    uint   cookieIndex;
     uint   shadowCubemapIndex;
     // -- 16 byte boundary --
     
@@ -106,9 +106,15 @@ struct DynamicLight
     }
     
     // bit 16 determines whether the light has a shadow cubemap.
-    bool is_shadowcamera()
+    bool is_shadow_available()
     {
         return channel & 32768u;
+    }
+    
+    // bit 17 determines whether the light has a cookie texture.
+    bool is_cookie_available()
+    {
+        return channel & 65536u;
     }
     
     // calculates the spotlight effect.
@@ -286,6 +292,9 @@ uint lightmap_resolution;
 
 TextureCubeArray shadow_cubemaps;
 sampler sampler_shadow_cubemaps;
+
+Texture2DArray light_cookies;
+sampler sampler_light_cookies;
 
 float3 dynamic_ambient_color;
 

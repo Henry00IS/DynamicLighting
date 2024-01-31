@@ -56,13 +56,11 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         public float volumetricIntensity;
 
-        /// <summary>
-        /// The volumetric fog thickness makes it increasingly more difficult to see through the fog.
-        /// </summary>
-        public float volumetricThickness;
-
         /// <summary>The visibility in meters within the volumetric fog.</summary>
         public float volumetricVisibility;
+
+        /// <summary>The cookie index for light-cookie texture projections.</summary>
+        public uint cookieIndex;
 
         /// <summary>
         /// The shadow cubemap index for real-time shadows and static shadows on dynamic meshes.

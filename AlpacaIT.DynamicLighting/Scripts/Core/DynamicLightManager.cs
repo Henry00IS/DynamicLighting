@@ -275,6 +275,9 @@ namespace AlpacaIT.DynamicLighting
             // -> partial class DynamicLightManager.ShadowCamera initialize.
             ShadowCameraInitialize();
 
+            // -> partial class DynamicLightManager.LightCookie initialize.
+            LightCookieInitialize();
+
             ShadersSetGlobalDynamicLights(dynamicLightsBuffer);
             ShadersSetGlobalDynamicLightsCount(shadersLastDynamicLightsCount = 0);
             ShadersSetGlobalRealtimeLightsCount(shadersLastRealtimeLightsCount = 0);
@@ -400,6 +403,9 @@ namespace AlpacaIT.DynamicLighting
 
             // -> partial class DynamicLightManager.ShadowCamera cleanup.
             ShadowCameraCleanup();
+
+            // -> partial class DynamicLightManager.LightCookie cleanup.
+            LightCookieCleanup();
         }
 
         internal void RegisterDynamicLight(DynamicLight light)
@@ -604,6 +610,9 @@ namespace AlpacaIT.DynamicLighting
             // -> partial class DynamicLightManager.ShadowCamera.
             ShadowCameraUpdate();
 
+            // -> partial class DynamicLightManager.LightCookie.
+            LightCookieUpdate();
+
             // we are going to iterate over all active shader light sources below, we make use of
             // this opportunity, to filter out volumetric light sources for post processing.
             postProcessingVolumetricLightsCount = 0;
@@ -628,6 +637,9 @@ namespace AlpacaIT.DynamicLighting
                         // -> partial class DynamicLightManager.ShadowCamera.
                         ShadowCameraProcessLight(shaderLight, light);
 
+                        // -> partial class DynamicLightManager.LightCookie.
+                        LightCookieProcessLight(shaderLight, light);
+
                         // copy volumetric light sources into the post processing system.
                         // -> partial class DynamicLightManager.PostProcessing.
                         PostProcessingProcessLight(shaderLight, light);
@@ -647,6 +659,9 @@ namespace AlpacaIT.DynamicLighting
                     {
                         // -> partial class DynamicLightManager.ShadowCamera.
                         ShadowCameraProcessLight(shaderLight, light);
+
+                        // -> partial class DynamicLightManager.LightCookie.
+                        LightCookieProcessLight(shaderLight, light);
 
                         // copy volumetric light sources into the post processing system.
                         // -> partial class DynamicLightManager.PostProcessing.
@@ -745,6 +760,15 @@ namespace AlpacaIT.DynamicLighting
                     shaderLight->gpFloat2 = Mathf.Cos(light.lightOuterCutoff * Mathf.Deg2Rad);
                     lightRotation = light.transform.rotation;
                     shaderLight->forward = lightRotation * Vector3.forward;
+
+                    if (light.lightCookieTexture)
+                    {
+                        // -> a hint for the partial class DynamicLightManager.LightCookie so that
+                        //    we do not have to check for the light cookie texture again.
+                        shaderLight->cookieIndex = uint.MaxValue;
+                        shaderLight->up = lightRotation * Vector3.up;
+                        shaderLight->gpFloat3 = 0.5f * Mathf.Tan((90.0f - light.lightOuterCutoff) * Mathf.Deg2Rad);
+                    }
                     break;
 
                 case DynamicLightType.Discoball:
@@ -819,7 +843,7 @@ namespace AlpacaIT.DynamicLighting
                     // does not require a channel bit as the post-processing shader knows implicitly.
                     // -> the volumetric intensity is set by the effects update step.
                     // -> the volumetric radius is set by the partial class DynamicLightManager.PostProcessing.
-                    shaderLight->volumetricThickness = light.lightVolumetricThickness;
+                    // -> the volumetric thickness is set by the partial class DynamicLightManager.PostProcessing.
                     shaderLight->volumetricVisibility = light.lightVolumetricVisibility <= 0f ? 1.0f / 0.00001f : 1.0f / light.lightVolumetricVisibility;
                     break;
             }
