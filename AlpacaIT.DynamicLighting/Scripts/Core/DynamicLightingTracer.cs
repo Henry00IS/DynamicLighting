@@ -487,16 +487,16 @@ namespace AlpacaIT.DynamicLighting
             // calculate the bounding box of the polygon in UV space.
             // we only have to raycast these pixels and can skip the rest.
             var triangleBoundingBox = MathEx.ComputeTriangleBoundingBox(t1, t2, t3);
-            var minX = Mathf.FloorToInt(triangleBoundingBox.xMin * lightmapSizeMin1);
-            var minY = Mathf.FloorToInt(triangleBoundingBox.yMin * lightmapSizeMin1);
-            var maxX = Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSizeMin1);
-            var maxY = Mathf.CeilToInt(triangleBoundingBox.yMax * lightmapSizeMin1);
+            var minX = Mathf.FloorToInt(triangleBoundingBox.xMin * lightmapSize);
+            var minY = Mathf.FloorToInt(triangleBoundingBox.yMin * lightmapSize);
+            var maxX = Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSize);
+            var maxY = Mathf.CeilToInt(triangleBoundingBox.yMax * lightmapSize);
 
             // clamp the pixel coordinates so that we can safely write to our arrays.
-            minX = Mathf.Clamp(minX, 0, (int)lightmapSizeMin1);
-            minY = Mathf.Clamp(minY, 0, (int)lightmapSizeMin1);
-            maxX = Mathf.Clamp(maxX, 0, (int)lightmapSizeMin1);
-            maxY = Mathf.Clamp(maxY, 0, (int)lightmapSizeMin1);
+            minX = Mathf.Clamp(minX, 0, lightmapSize - 1);
+            minY = Mathf.Clamp(minY, 0, lightmapSize - 1);
+            maxX = Mathf.Clamp(maxX, 0, lightmapSize - 1);
+            maxY = Mathf.Clamp(maxY, 0, lightmapSize - 1);
 
             // prepare to only iterate over lights potentially affecting the current triangle.
             var triangleLightIndices = dynamic_triangles.GetAssociatedLightIndices(triangle_index);
@@ -505,15 +505,17 @@ namespace AlpacaIT.DynamicLighting
             // calculate some values in advance.
             var triangleNormalOffset = triangleNormal * 0.001f;
 
-            for (int y = minY; y < maxY; y++)
+            float half = 1.0f / (lightmapSize * 2f);
+
+            for (int y = minY; y <= maxY; y++)
             {
-                float yy = y / lightmapSizeMin1;
+                float yy = y / (float)lightmapSize;
 
-                for (int x = minX; x < maxX; x++)
+                for (int x = minX; x <= maxX; x++)
                 {
-                    float xx = x / lightmapSizeMin1;
+                    float xx = x / (float)lightmapSize;
 
-                    var world = MathEx.UvTo3dFast(triangleSurfaceArea, new Vector2(xx, yy), v1, v2, v3, t1, t2, t3);
+                    var world = MathEx.UvTo3dFast(triangleSurfaceArea, new Vector2(xx + half, yy + half), v1, v2, v3, t1, t2, t3);
                     if (world.Equals(Vector3.zero)) continue;
 
                     // iterate over the lights potentially affecting this triangle.
