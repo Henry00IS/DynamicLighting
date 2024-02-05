@@ -230,7 +230,7 @@ namespace AlpacaIT.DynamicLighting
             }
 
             tracingTime.Begin();
-            var dynamic_triangles = new DynamicTrianglesBuilder(meshBuilder.triangleCount);
+            var dynamic_triangles = new DynamicTrianglesBuilder(meshBuilder, lightmapSizeMin1);
             var pixels_lightmap = new uint[lightmapSize * lightmapSize];
             var pixels_visited = new uint[lightmapSize * lightmapSize];
             var pixels_lightmap_gc = GCHandle.Alloc(pixels_lightmap, GCHandleType.Pinned);
@@ -412,6 +412,13 @@ namespace AlpacaIT.DynamicLighting
             }
             seamTime.Stop();
 
+            for (int i = 0; i < meshBuilder.triangleCount; i++)
+            {
+                var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
+
+                BuildShadows(i, pixels_lightmap_ptr, dynamic_triangles, t1, t2, t3);
+            }
+
             pixels_lightmap_gc.Free();
             pixels_visited_gc.Free();
 
@@ -429,8 +436,8 @@ namespace AlpacaIT.DynamicLighting
             // write the dynamic triangles to disk.
             var dynamic_triangles32 = dynamic_triangles.BuildDynamicTrianglesData().ToArray();
             vramDynamicTrianglesTotal += (ulong)dynamic_triangles32.Length * 4;
-            if (!Utilities.WriteLightmapData(lightmap.identifier, "Triangles", dynamic_triangles32))
-                Debug.LogError($"Unable to write the triangles {lightmap.identifier} file in the active scene resources directory!");
+            if (!Utilities.WriteLightmapData(lightmap.identifier, "Shadows", dynamic_triangles32))
+                Debug.LogError($"Unable to write the shadows {lightmap.identifier} file in the active scene resources directory!");
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -474,7 +481,7 @@ namespace AlpacaIT.DynamicLighting
                     continue;
 
                 // this light can affect the triangle.
-                dynamic_triangles.AssociateLightWithTriangleFast(triangle_index, i);
+                dynamic_triangles.AddRaycastedLightToTriangle(triangle_index, i);
             }
 
             // skip degenerate triangles.
@@ -499,7 +506,7 @@ namespace AlpacaIT.DynamicLighting
             maxY = Mathf.Clamp(maxY, 0, (int)lightmapSizeMin1);
 
             // prepare to only iterate over lights potentially affecting the current triangle.
-            var triangleLightIndices = dynamic_triangles.GetAssociatedLightIndices(triangle_index);
+            var triangleLightIndices = dynamic_triangles.GetRaycastedLightIndices(triangle_index);
             var triangleLightIndicesCount = triangleLightIndices.Count;
 
             // calculate some values in advance.
@@ -577,13 +584,13 @@ namespace AlpacaIT.DynamicLighting
             maxY = Mathf.Clamp(maxY, 0, (int)lightmapSizeMin1);
 
             // prepare to iterate over lights associated with the current triangle.
-            var triangleLightIndices = dynamic_triangles.GetAssociatedLightIndices(triangle_index);
-            var triangleLightIndicesCount = triangleLightIndices.Count;
+            var triangleRaycastedLightIndices = dynamic_triangles.GetRaycastedLightIndices(triangle_index);
+            var triangleRaycastedLightIndicesCount = triangleRaycastedLightIndices.Count;
 
             // only iterate over lights associated with the current triangle.
-            for (int i = triangleLightIndicesCount; i-- > 0;)
+            for (int i = triangleRaycastedLightIndicesCount; i-- > 0;)
             {
-                var pointLight = pointLights[triangleLightIndices[i]];
+                var pointLight = pointLights[triangleRaycastedLightIndices[i]];
                 var lightChannelBit = (uint)1 << ((int)pointLight.lightChannel);
                 var lightFound = false;
 
@@ -609,8 +616,68 @@ namespace AlpacaIT.DynamicLighting
                 if (!lightFound)
                 {
                     optimizationLightsRemoved++;
-                    triangleLightIndices.RemoveAt(i);
+                    dynamic_triangles.RemoveLightFromTriangle(triangle_index, i);
                 }
+            }
+        }
+
+        private unsafe void BuildShadows(int triangle_index, uint* pixels_lightmap, DynamicTrianglesBuilder dynamic_triangles, Vector2 t1, Vector2 t2, Vector2 t3)
+        {
+            // now the lightmap pixels have also been padded and all the unused light sources have
+            // been removed from the triangle, so we only have to store the 1bpp light occlusion
+            // bits per light source (instead of always using 32 bits per fragment).
+
+            // calculate the bounding box of the polygon in UV space.
+            var triangleBoundingBox = MathEx.ComputeTriangleBoundingBox(t1, t2, t3);
+
+            // triangles may be so thin and small that they do not have their own UV texels, so we
+            // expand the bounding box by one pixel on the shadow occlusion map to include the
+            // neighbouring texels, as failure to do so will leave them without all of their light
+            // sources (i.e. fully black).
+            var minX = Mathf.FloorToInt(triangleBoundingBox.xMin * lightmapSizeMin1) - 2;
+            var minY = Mathf.FloorToInt(triangleBoundingBox.yMin * lightmapSizeMin1) - 2;
+            var maxX = Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSizeMin1) + 2;
+            var maxY = Mathf.CeilToInt(triangleBoundingBox.yMax * lightmapSizeMin1) + 2;
+
+            // clamp the pixel coordinates so that we can safely read from our arrays.
+            minX = Mathf.Clamp(minX, 0, (int)lightmapSizeMin1);
+            minY = Mathf.Clamp(minY, 0, (int)lightmapSizeMin1);
+            maxX = Mathf.Clamp(maxX, 0, (int)lightmapSizeMin1);
+            maxY = Mathf.Clamp(maxY, 0, (int)lightmapSizeMin1);
+
+            // prepare to iterate over lights associated with the current triangle.
+            var triangleRaycastedLightIndices = dynamic_triangles.GetRaycastedLightIndices(triangle_index);
+            var triangleRaycastedLightIndicesCount = triangleRaycastedLightIndices.Count;
+
+            // only iterate over lights associated with the current triangle.
+            for (int i = 0; i < triangleRaycastedLightIndicesCount; i++)
+            {
+                var pointLight = pointLights[triangleRaycastedLightIndices[i]];
+                var lightChannelBit = (uint)1 << ((int)pointLight.lightChannel);
+                var shadowBits = new BitArray2(maxX - minX, maxY - minY);
+
+                for (int y = minY; y < maxY; y++)
+                {
+                    int yPtr = y * lightmapSize;
+
+                    for (int x = minX; x < maxX; x++)
+                    {
+                        int xyPtr = yPtr + x;
+
+                        if ((pixels_lightmap[xyPtr] & lightChannelBit) > 0)
+                        {
+                            shadowBits[x - minX, y - minY] = true;
+                        }
+                    }
+                }
+
+                //shadowBits.PlotRectangle(1, 1, shadowBits.Width - 2, shadowBits.Height - 2, false);
+                //shadowBits.PlotDottedRectangle(1, 1, shadowBits.Width - 2, shadowBits.Height - 2, true);
+
+                //shadowBits.PlotRectangle(0, 0, shadowBits.Width - 1, shadowBits.Height - 1, false);
+                //shadowBits.PlotDottedRectangle(0, 0, shadowBits.Width - 1, shadowBits.Height - 1, true);
+
+                dynamic_triangles.SetShadowOcclusionBits(triangle_index, i, shadowBits);
             }
         }
     }

@@ -412,43 +412,219 @@ float lightmap_sample_bilinear(float2 uv, uint channel)
 // instead of iterating over all light sources in the scene per fragment,
 // a lookup table is used to associate dynamic light indices per triangle.
 // 
-// +---------------+     +-----------------+
-// |SV_PrimitiveID |--+->|Light Data Offset|
-// |(TriangleIndex)|  |  +-----------------+
-// +---------------+  +->|Light Data Offset|
-//                    |  +-----------------+
-//                    +->|...              |
-//                       +--------+--------+
+// +---------------+     +------------------+
+// |SV_PrimitiveID |--+->|Light Data Offset |
+// |(TriangleIndex)|  |  +------------------+
+// +---------------+  |  |Triangle Bounds X |
+//                    |  +------------------+
+//                    |  |Triangle Bounds Y |
+//                    |  +------------------+
+//                    |  |Triangle Bounds W |
+//                    |  +------------------+
+//                    +->|Light Data Offset |
+//                       +------------------+
+//                       |...               |
+//                       +------------------+
 //                                |
 //                                v
-//                       +------------------+
-// Light Data Offset --> |Light Count       |
-//                       +------------------+
-//                       |Light Index 1     | --> dynamic_lights[Light Index 1]
-//                       +------------------+
-//                       |Light Index 2     | --> dynamic_lights[Light Index 2]
-//                       +------------------+
-//                       |Light Index ...   | --> dynamic_lights[Light Index ...]
-//                       +------------------+
+//                       +--------------------+
+// Light Data Offset --> |Light Count         |
+//                       +--------------------+
+//                       |Light Index 1       | --> dynamic_lights[Light Index 1]
+//                       +--------------------+
+//                       |Shadow Data Offset 1| --> dynamic_lights[+1]
+//                       +--------------------+
+//                       |Light Index 2       | --> dynamic_lights[Light Index 2]
+//                       +--------------------+
+//                       |Shadow Data Offset 2| --> dynamic_lights[+1]
+//                       +--------------------+
+//                       |...                 |
+//                       +--------------------+
 //
 StructuredBuffer<uint> dynamic_triangles;
 
-// for a triangle gets the light count affecting it.
-uint dynamic_triangles_light_count(uint triangle_index)
+struct DynamicTriangle
 {
-    return dynamic_triangles[dynamic_triangles[triangle_index]];
-}
-
-// for a triangle gets a light index affecting it.
-uint dynamic_triangles_light_index(uint triangle_index, uint triangle_light_count, uint light_index)
-{
-    // light indices within the triangle light count return the associated light indices.
-    if (light_index < triangle_light_count)
-        return dynamic_triangles[dynamic_triangles[triangle_index] + 1 + light_index];
+    // the bounds of the triangle.
+    uint3 bounds;
+    // offset into dynamic_triangles[] for the light data.
+    uint lightDataOffset;
+    // the amount of light sources affecting the triangle.
+    uint lightCount;
     
-    // light indices beyond the triangle light count are used for realtime light sources.
-    return dynamic_lights_count + light_index - triangle_light_count;
-}
+    // (shader only) the active light index we are currently processing.
+    uint activeLightIndex;
+    // offset into dynamic_lights[] for the active light.
+    uint activeLightDynamicLightsIndex;
+    // offset into dynamic_triangles[] for the shadow data.
+    uint activeLightShadowDataOffset;
+    
+    void initialize()
+    {
+        bounds = uint3(0, 0, 0);
+        lightDataOffset = 0;
+        lightCount = 0;
+        activeLightIndex = 0;
+        activeLightDynamicLightsIndex = 0;
+        activeLightShadowDataOffset = 0;
+    }
+    
+    // loads this struct for a triangle from the dynamic triangles data.
+    void load(uint triangle_index)
+    {
+        // read the dynamic triangles header.
+        uint offset = triangle_index * 4; // struct size.
+        
+        // we increase the light data offset by one to skip the light count field.
+        lightDataOffset = dynamic_triangles[offset++];
+        lightCount = dynamic_triangles[lightDataOffset++];
+        
+        // read the bounds of the triangle as floats.
+        bounds.x = dynamic_triangles[offset++];
+        bounds.y = dynamic_triangles[offset++];
+        bounds.z = dynamic_triangles[offset];
+    }
+    
+    // sets the active triangle light index for light related queries.
+    void set_active_light_index(uint light_index)
+    {
+        activeLightIndex = light_index;
+        
+        // light indices within the triangle light count return the associated light indices.
+        if (activeLightIndex < lightCount)
+        {
+            uint offset = lightDataOffset + activeLightIndex * 2; // struct size.
+            
+            // read the dynamic light index to be used.
+            activeLightDynamicLightsIndex = dynamic_triangles[offset++];
+            
+            // read the shadow data offset.
+            activeLightShadowDataOffset = dynamic_triangles[offset];
+            
+            return;
+        }
+        
+        // light indices beyond the triangle light count are used for realtime light sources.
+        activeLightDynamicLightsIndex = dynamic_lights_count + activeLightIndex - lightCount;
+    }
+    
+    // for a triangle gets the dynamic light source affecting it.
+    uint get_dynamic_light_index()
+    {
+        return activeLightDynamicLightsIndex;
+    }
+    
+    // fetches a shadow bit at the specified uv coordinates from the shadow data.
+    bool shadow_sample(uint2 uv)
+    {
+        uv -= bounds.xy;
+        uint index = uv.y * bounds.z + uv.x;
+        return dynamic_triangles[activeLightShadowDataOffset + index / 32] & (1 << index % 32);
+    }
+    
+    // x x x
+    // x   x apply a simple 3x3 sampling with averaged results to the shadow bits.
+    // x x x
+    float shadow_sample3x3(uint2 uv)
+    {
+        float map;
+
+        map  = shadow_sample(uint2(uv.x - 1u, uv.y - 1u));
+        map += shadow_sample(uint2(uv.x     , uv.y - 1u));
+        map += shadow_sample(uint2(uv.x + 1u, uv.y - 1u));
+
+        map += shadow_sample(uint2(uv.x - 1u, uv.y     ));
+        map += shadow_sample(uv                         );
+        map += shadow_sample(uint2(uv.x + 1u, uv.y     ));
+
+        map += shadow_sample(uint2(uv.x - 1u, uv.y + 1u));
+        map += shadow_sample(uint2(uv.x     , uv.y + 1u));
+        map += shadow_sample(uint2(uv.x + 1u, uv.y + 1u));
+
+        return map / 9.0;
+    }
+    
+    // x x x
+    // x   x apply 4x 3x3 sampling with interpolation to get bilinear filtered shadow bits.
+    // x x x
+    float shadow_sample_bilinear(float2 uv)
+    {
+        // huge shoutout to neu_graphic for their software bilinear filter shader.
+        // https://www.shadertoy.com/view/4sBSRK
+
+        // we are sample center, so it's the same as point sample.
+        float2 pos = uv - 0.5;
+        float2 f = frac(pos);
+        uint2 pos_top_left = floor(pos);
+
+        // we wish to do the following but with as few instructions as possible:
+        //
+        //float tl = lightmap_sample3x3(pos_top_left, channel);
+        //float tr = lightmap_sample3x3(pos_top_left + uint2(1, 0), channel);
+        //float bl = lightmap_sample3x3(pos_top_left + uint2(0, 1), channel);
+        //float br = lightmap_sample3x3(pos_top_left + uint2(1, 1), channel);
+
+        // read all of the lightmap samples we need in advance.
+        float4x4 map;
+        map[0][0] = shadow_sample(uint2(pos_top_left.x - 1, pos_top_left.y - 1));
+        map[0][1] = shadow_sample(uint2(pos_top_left.x    , pos_top_left.y - 1));
+        map[0][2] = shadow_sample(uint2(pos_top_left.x + 1, pos_top_left.y - 1));
+        map[0][3] = shadow_sample(uint2(pos_top_left.x + 2, pos_top_left.y - 1));
+        map[1][0] = shadow_sample(uint2(pos_top_left.x - 1, pos_top_left.y    ));
+        map[1][1] = shadow_sample(pos_top_left                                 );
+        map[1][2] = shadow_sample(uint2(pos_top_left.x + 1, pos_top_left.y    ));
+        map[1][3] = shadow_sample(uint2(pos_top_left.x + 2, pos_top_left.y    ));
+        map[2][0] = shadow_sample(uint2(pos_top_left.x - 1, pos_top_left.y + 1));
+        map[2][1] = shadow_sample(uint2(pos_top_left.x    , pos_top_left.y + 1));
+        map[2][2] = shadow_sample(uint2(pos_top_left.x + 1, pos_top_left.y + 1));
+        map[2][3] = shadow_sample(uint2(pos_top_left.x + 2, pos_top_left.y + 1));
+        map[3][0] = shadow_sample(uint2(pos_top_left.x - 1, pos_top_left.y + 2));
+        map[3][1] = shadow_sample(uint2(pos_top_left.x    , pos_top_left.y + 2));
+        map[3][2] = shadow_sample(uint2(pos_top_left.x + 1, pos_top_left.y + 2));
+        map[3][3] = shadow_sample(uint2(pos_top_left.x + 2, pos_top_left.y + 2));
+
+        // there are several common overlapping 3x3 samples (marked as X).
+        //
+        // ----
+        // -XX-
+        // -XX-
+        // ----
+        // 
+        // m00 m01 m02 m03
+        // m10 m11 m12 m13
+        // m20 m21 m22 m23
+        // m30 m31 m32 m33
+        //
+        float common = map[1][1] + map[1][2] + map[2][1] + map[2][2];
+
+        // for the top 3x3 samples there are more overlapping samples:
+        //
+        // -XX-
+        // -XX-
+        // -XX-
+        // ----
+        //
+        float tcommon = common + map[0][1] + map[0][2];
+
+        float tl = (tcommon + map[0][0] + map[1][0] + map[2][0]) / 9.0;
+        float tr = (tcommon + map[0][3] + map[1][3] + map[2][3]) / 9.0;
+
+        // for the bottom 3x3 samples there are more overlapping samples:
+        //
+        // ----
+        // -XX-
+        // -XX-
+        // -XX-
+        //
+        float bcommon = common + map[3][1] + map[3][2];
+
+        float bl = (bcommon + map[1][0] + map[2][0] + map[3][0]) / 9.0;
+        float br = (bcommon + map[1][3] + map[2][3] + map[3][3]) / 9.0;
+
+        // bilinear interpolation.
+        return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y);
+    }
+};
 
 // [dynamic mesh acceleration]
 //
@@ -494,13 +670,15 @@ StructuredBuffer<DynamicLightBvhNode> dynamic_lights_bvh;
 // next we prepare macro statements that shaders use to implement their fragment functions.
 
 #define DYNLIT_FRAGMENT_FUNCTION \
-void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, inout DynamicLight light, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS);\
+void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, inout DynamicLight light, inout DynamicTriangle dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS);\
 \
 fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
 
 #if DYNAMIC_LIGHTING_BVH
 
     #define DYNLIT_FRAGMENT_INTERNAL \
+    DynamicTriangle dynamic_triangle;\
+    dynamic_triangle.initialize();\
     if (lightmap_resolution == 0)\
     {\
         \
@@ -520,7 +698,7 @@ fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
                 {\
                     DynamicLight light = dynamic_lights[k];\
                     \
-                    dynlit_frag_light(i, triangle_index, light, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS); \
+                    dynlit_frag_light(i, triangle_index, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS); \
                 }\
                 \
                 /* check whether we are done traversing the bvh: */ \
@@ -547,25 +725,30 @@ fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
             /* get the current light from memory. */ \
             DynamicLight light = dynamic_lights[dynamic_lights_count + k];\
             \
-            dynlit_frag_light(i, triangle_index, light, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
+            dynlit_frag_light(i, triangle_index, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
         }\
     }\
     else\
     {\
+        /* use the dynamic triangles acceleration structure. */ \
+        dynamic_triangle.load(triangle_index); \
+        \
         /* iterate over every dynamic light affecting this triangle: */ \
-        uint triangle_light_count = dynamic_triangles_light_count(triangle_index);\
-        for (uint k = 0; k < triangle_light_count + realtime_lights_count; k++)\
+        for (uint k = 0; k < dynamic_triangle.lightCount + realtime_lights_count; k++)\
         {\
             /* get the current light from memory. */ \
-            DynamicLight light = dynamic_lights[dynamic_triangles_light_index(triangle_index, triangle_light_count, k)];\
+            dynamic_triangle.set_active_light_index(k);\
+            DynamicLight light = dynamic_lights[dynamic_triangle.get_dynamic_light_index()];\
             \
-            dynlit_frag_light(i, triangle_index, light, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
+            dynlit_frag_light(i, triangle_index, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
         }\
     }
 
 #else
 
     #define DYNLIT_FRAGMENT_INTERNAL \
+    DynamicTriangle dynamic_triangle;\
+    dynamic_triangle.initialize();\
     if (lightmap_resolution == 0)\
     {\
         /* iterate over every dynamic light in the scene (slow without bvh): */ \
@@ -574,25 +757,28 @@ fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
             /* get the current light from memory. */ \
             DynamicLight light = dynamic_lights[k];\
             \
-            dynlit_frag_light(i, triangle_index, light, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
+            dynlit_frag_light(i, triangle_index, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
         }\
     }\
     else\
     {\
+        /* use the dynamic triangles acceleration structure. */ \
+        dynamic_triangle.load(triangle_index); \
+        \
         /* iterate over every dynamic light affecting this triangle: */ \
-        uint triangle_light_count = dynamic_triangles_light_count(triangle_index);\
-        for (uint k = 0; k < triangle_light_count + realtime_lights_count; k++)\
+        for (uint k = 0; k < dynamic_triangle.lightCount + realtime_lights_count; k++)\
         {\
             /* get the current light from memory. */ \
-            DynamicLight light = dynamic_lights[dynamic_triangles_light_index(triangle_index, triangle_light_count, k)];\
+            dynamic_triangle.set_active_light_index(k);\
+            DynamicLight light = dynamic_lights[dynamic_triangle.get_dynamic_light_index()];\
             \
-            dynlit_frag_light(i, triangle_index, light, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
+            dynlit_frag_light(i, triangle_index, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
         }\
     }
 
 #endif
 
-#define DYNLIT_FRAGMENT_LIGHT void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, inout DynamicLight light, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS)
+#define DYNLIT_FRAGMENT_LIGHT void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, inout DynamicLight light, inout DynamicTriangle dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS)
 
 #define DYNLIT_FRAGMENT_UNLIT \
 fixed4 frag (v2f i) : SV_Target\

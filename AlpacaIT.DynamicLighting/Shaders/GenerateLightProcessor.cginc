@@ -51,10 +51,10 @@ if (lightmap_resolution > 0 && light.is_dynamic())
 
 #if DYNAMIC_LIGHTING_SHADOW_SOFT
     // retrieve the shadow bit at this position with bilinear filtering.
-    map = lightmap_sample_bilinear(i.uv1, shadow_channel);
+    map = dynamic_triangle.shadow_sample_bilinear(i.uv1);
 #else
     // retrieve the shadow bit at this position with 3x3 average sampling.
-    map = lightmap_sample3x3(i.uv1, shadow_channel);
+    map = dynamic_triangle.shadow_sample3x3(i.uv1);
 #endif
 
     // whenever the fragment is fully in shadow we can early out.

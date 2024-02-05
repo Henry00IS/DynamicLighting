@@ -320,14 +320,14 @@ namespace AlpacaIT.DynamicLighting
                 else Debug.LogError("Unable to read the lightmap " + lightmap.identifier + " data file! Please raytrace your scene again.");
 
                 // assign the dynamic triangles data to the material property block.
-                if (Utilities.ReadLightmapData(lightmap.identifier, "Triangles", out uint[] triangles))
+                if (Utilities.ReadLightmapData(lightmap.identifier, "Shadows", out uint[] triangles))
                 {
                     lightmap.trianglebuffer = new ComputeBuffer(triangles.Length, 4);
                     lightmap.trianglebuffer.SetData(triangles);
                     materialPropertyBlock.SetBuffer("dynamic_triangles", lightmap.trianglebuffer);
                     meshRenderer.SetPropertyBlock(materialPropertyBlock);
                 }
-                else Debug.LogError("Unable to read the triangles " + lightmap.identifier + " data file! Probably because you upgraded from an older version. Please raytrace your scene again.");
+                else Debug.LogError("Unable to read the shadows " + lightmap.identifier + " data file! Probably because you upgraded from an older version. Please raytrace your scene again.");
             }
 
             // the scene may not have lights which would not be an error:
