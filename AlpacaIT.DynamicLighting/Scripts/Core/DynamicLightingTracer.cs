@@ -230,7 +230,7 @@ namespace AlpacaIT.DynamicLighting
             }
 
             tracingTime.Begin();
-            var dynamic_triangles = new DynamicTrianglesBuilder(meshBuilder, lightmapSizeMin1);
+            var dynamic_triangles = new DynamicTrianglesBuilder(meshBuilder, lightmapSize);
             var pixels_lightmap = new uint[lightmapSize * lightmapSize];
             var pixels_visited = new uint[lightmapSize * lightmapSize];
             var pixels_lightmap_gc = GCHandle.Alloc(pixels_lightmap, GCHandleType.Pinned);
@@ -636,16 +636,16 @@ namespace AlpacaIT.DynamicLighting
             // expand the bounding box by one pixel on the shadow occlusion map to include the
             // neighbouring texels, as failure to do so will leave them without all of their light
             // sources (i.e. fully black).
-            var minX = Mathf.FloorToInt(triangleBoundingBox.xMin * lightmapSizeMin1) - 2;
-            var minY = Mathf.FloorToInt(triangleBoundingBox.yMin * lightmapSizeMin1) - 2;
-            var maxX = Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSizeMin1) + 2;
-            var maxY = Mathf.CeilToInt(triangleBoundingBox.yMax * lightmapSizeMin1) + 2;
+            var minX = Mathf.FloorToInt(triangleBoundingBox.xMin * lightmapSize) - 2;
+            var minY = Mathf.FloorToInt(triangleBoundingBox.yMin * lightmapSize) - 2;
+            var maxX = Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSize) + 2;
+            var maxY = Mathf.CeilToInt(triangleBoundingBox.yMax * lightmapSize) + 2;
 
             // clamp the pixel coordinates so that we can safely read from our arrays.
-            minX = Mathf.Clamp(minX, 0, (int)lightmapSizeMin1);
-            minY = Mathf.Clamp(minY, 0, (int)lightmapSizeMin1);
-            maxX = Mathf.Clamp(maxX, 0, (int)lightmapSizeMin1);
-            maxY = Mathf.Clamp(maxY, 0, (int)lightmapSizeMin1);
+            minX = Mathf.Clamp(minX, 0, lightmapSize - 1);
+            minY = Mathf.Clamp(minY, 0, lightmapSize - 1);
+            maxX = Mathf.Clamp(maxX, 0, lightmapSize - 1);
+            maxY = Mathf.Clamp(maxY, 0, lightmapSize - 1);
 
             // prepare to iterate over lights associated with the current triangle.
             var triangleRaycastedLightIndices = dynamic_triangles.GetRaycastedLightIndices(triangle_index);
@@ -656,28 +656,28 @@ namespace AlpacaIT.DynamicLighting
             {
                 var pointLight = pointLights[triangleRaycastedLightIndices[i]];
                 var lightChannelBit = (uint)1 << ((int)pointLight.lightChannel);
-                var shadowBits = new BitArray2(maxX - minX, maxY - minY);
+                var shadowBits = new BitArray2(1 + maxX - minX, 1 + maxY - minY);
 
-                for (int y = minY; y < maxY; y++)
+                var yy = 0;
+                for (int y = minY; y <= maxY; y++)
                 {
                     int yPtr = y * lightmapSize;
 
-                    for (int x = minX; x < maxX; x++)
+                    var xx = 0;
+                    for (int x = minX; x <= maxX; x++)
                     {
                         int xyPtr = yPtr + x;
 
                         if ((pixels_lightmap[xyPtr] & lightChannelBit) > 0)
                         {
-                            shadowBits[x - minX, y - minY] = true;
+                            shadowBits[xx, yy] = true;
                         }
+
+                        xx++;
                     }
+
+                    yy++;
                 }
-
-                //shadowBits.PlotRectangle(1, 1, shadowBits.Width - 2, shadowBits.Height - 2, false);
-                //shadowBits.PlotDottedRectangle(1, 1, shadowBits.Width - 2, shadowBits.Height - 2, true);
-
-                //shadowBits.PlotRectangle(0, 0, shadowBits.Width - 1, shadowBits.Height - 1, false);
-                //shadowBits.PlotDottedRectangle(0, 0, shadowBits.Width - 1, shadowBits.Height - 1, true);
 
                 dynamic_triangles.SetShadowOcclusionBits(triangle_index, i, shadowBits);
             }

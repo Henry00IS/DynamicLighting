@@ -65,7 +65,7 @@ namespace AlpacaIT.DynamicLighting
 
         /// <summary>Creates a new instance of <see cref="DynamicTrianglesBuilder"/>.</summary>
         /// <param name="triangleCount">The amount of triangles in the static mesh in the scene.</param>
-        public DynamicTrianglesBuilder(MeshBuilder meshBuilder, float lightmapSizeMin1)
+        public DynamicTrianglesBuilder(MeshBuilder meshBuilder, int lightmapSize)
         {
             // create triangle data for every triangle in the mesh.
             triangles = new List<DtbTriangle>(meshBuilder.triangleCount);
@@ -76,15 +76,15 @@ namespace AlpacaIT.DynamicLighting
                 // calculate the bounding box of the polygon in UV space.
                 var triangleBoundingBox = MathEx.ComputeTriangleBoundingBox(t1, t2, t3);
 
-                var minX = Mathf.FloorToInt(triangleBoundingBox.xMin * lightmapSizeMin1) - 2;
-                var minY = Mathf.FloorToInt(triangleBoundingBox.yMin * lightmapSizeMin1) - 2;
-                var maxX = Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSizeMin1) + 2;
+                var minX = Mathf.FloorToInt(triangleBoundingBox.xMin * lightmapSize) - 2;
+                var minY = Mathf.FloorToInt(triangleBoundingBox.yMin * lightmapSize) - 2;
+                var maxX = Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSize) + 2;
 
-                minX = Mathf.Clamp(minX, 0, (int)lightmapSizeMin1);
-                minY = Mathf.Clamp(minY, 0, (int)lightmapSizeMin1);
-                maxX = Mathf.Clamp(maxX, 0, (int)lightmapSizeMin1);
+                minX = Mathf.Clamp(minX, 0, lightmapSize - 1);
+                minY = Mathf.Clamp(minY, 0, lightmapSize - 1);
+                maxX = Mathf.Clamp(maxX, 0, lightmapSize - 1);
 
-                triangles.Add(new DtbTriangle((uint)minX, (uint)minY, (uint)(maxX - minX)));
+                triangles.Add(new DtbTriangle((uint)minX, (uint)minY, (uint)(1 + maxX - minX)));
             }
         }
 
