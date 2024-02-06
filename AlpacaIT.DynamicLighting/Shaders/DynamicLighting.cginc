@@ -287,7 +287,6 @@ StructuredBuffer<DynamicLight> dynamic_lights;
 uint dynamic_lights_count;
 uint realtime_lights_count;
 
-StructuredBuffer<uint> lightmap;
 uint lightmap_resolution;
 
 TextureCubeArray shadow_cubemaps;
@@ -297,115 +296,6 @@ Texture2DArray light_cookies;
 sampler sampler_light_cookies;
 
 float3 dynamic_ambient_color;
-
-// fetches a shadow bit at the specified uv coordinates from the lightmap data.
-bool lightmap_sample(uint2 uv, uint channel)
-{
-    return lightmap[uv.y * lightmap_resolution + uv.x] & channel;
-}
-
-// x x x
-// x   x apply a simple 3x3 sampling with averaged results to the shadow bits.
-// x x x
-float lightmap_sample3x3(uint2 uv, uint channel)
-{
-    float map;
-
-    map  = lightmap_sample(uint2(uv.x - 1u, uv.y - 1u), channel);
-    map += lightmap_sample(uint2(uv.x     , uv.y - 1u), channel);
-    map += lightmap_sample(uint2(uv.x + 1u, uv.y - 1u), channel);
-
-    map += lightmap_sample(uint2(uv.x - 1u, uv.y     ), channel);
-    map += lightmap_sample(uv                         , channel);
-    map += lightmap_sample(uint2(uv.x + 1u, uv.y     ), channel);
-
-    map += lightmap_sample(uint2(uv.x - 1u, uv.y + 1u), channel);
-    map += lightmap_sample(uint2(uv.x     , uv.y + 1u), channel);
-    map += lightmap_sample(uint2(uv.x + 1u, uv.y + 1u), channel);
-
-    return map / 9.0;
-}
-
-// x x x
-// x   x apply 4x 3x3 sampling with interpolation to get bilinear filtered shadow bits.
-// x x x
-float lightmap_sample_bilinear(float2 uv, uint channel)
-{
-    // huge shoutout to neu_graphic for their software bilinear filter shader.
-    // https://www.shadertoy.com/view/4sBSRK
-
-    // we are sample center, so it's the same as point sample.
-    float2 pos = uv - 0.5;
-    float2 f = frac(pos);
-    uint2 pos_top_left = floor(pos);
-
-    // we wish to do the following but with as few instructions as possible:
-    //
-    //float tl = lightmap_sample3x3(pos_top_left, channel);
-    //float tr = lightmap_sample3x3(pos_top_left + uint2(1, 0), channel);
-    //float bl = lightmap_sample3x3(pos_top_left + uint2(0, 1), channel);
-    //float br = lightmap_sample3x3(pos_top_left + uint2(1, 1), channel);
-
-    // read all of the lightmap samples we need in advance.
-    float4x4 map;
-    map[0][0] = lightmap_sample(uint2(pos_top_left.x - 1, pos_top_left.y - 1), channel);
-    map[0][1] = lightmap_sample(uint2(pos_top_left.x    , pos_top_left.y - 1), channel);
-    map[0][2] = lightmap_sample(uint2(pos_top_left.x + 1, pos_top_left.y - 1), channel);
-    map[0][3] = lightmap_sample(uint2(pos_top_left.x + 2, pos_top_left.y - 1), channel);
-    map[1][0] = lightmap_sample(uint2(pos_top_left.x - 1, pos_top_left.y    ), channel);
-    map[1][1] = lightmap_sample(pos_top_left                                 , channel);
-    map[1][2] = lightmap_sample(uint2(pos_top_left.x + 1, pos_top_left.y    ), channel);
-    map[1][3] = lightmap_sample(uint2(pos_top_left.x + 2, pos_top_left.y    ), channel);
-    map[2][0] = lightmap_sample(uint2(pos_top_left.x - 1, pos_top_left.y + 1), channel);
-    map[2][1] = lightmap_sample(uint2(pos_top_left.x    , pos_top_left.y + 1), channel);
-    map[2][2] = lightmap_sample(uint2(pos_top_left.x + 1, pos_top_left.y + 1), channel);
-    map[2][3] = lightmap_sample(uint2(pos_top_left.x + 2, pos_top_left.y + 1), channel);
-    map[3][0] = lightmap_sample(uint2(pos_top_left.x - 1, pos_top_left.y + 2), channel);
-    map[3][1] = lightmap_sample(uint2(pos_top_left.x    , pos_top_left.y + 2), channel);
-    map[3][2] = lightmap_sample(uint2(pos_top_left.x + 1, pos_top_left.y + 2), channel);
-    map[3][3] = lightmap_sample(uint2(pos_top_left.x + 2, pos_top_left.y + 2), channel);
-
-    // there are several common overlapping 3x3 samples (marked as X).
-    //
-    // ----
-    // -XX-
-    // -XX-
-    // ----
-    // 
-    // m00 m01 m02 m03
-    // m10 m11 m12 m13
-    // m20 m21 m22 m23
-    // m30 m31 m32 m33
-    //
-    float common = map[1][1] + map[1][2] + map[2][1] + map[2][2];
-
-    // for the top 3x3 samples there are more overlapping samples:
-    //
-    // -XX-
-    // -XX-
-    // -XX-
-    // ----
-    //
-    float tcommon = common + map[0][1] + map[0][2];
-
-    float tl = (tcommon + map[0][0] + map[1][0] + map[2][0]) / 9.0;
-    float tr = (tcommon + map[0][3] + map[1][3] + map[2][3]) / 9.0;
-
-    // for the bottom 3x3 samples there are more overlapping samples:
-    //
-    // ----
-    // -XX-
-    // -XX-
-    // -XX-
-    //
-    float bcommon = common + map[3][1] + map[3][2];
-
-    float bl = (bcommon + map[1][0] + map[2][0] + map[3][0]) / 9.0;
-    float br = (bcommon + map[1][3] + map[2][3] + map[3][3]) / 9.0;
-
-    // bilinear interpolation.
-    return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y);
-}
 
 // [dynamic triangles technique]
 //

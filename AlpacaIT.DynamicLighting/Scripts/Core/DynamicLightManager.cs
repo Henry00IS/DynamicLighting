@@ -56,6 +56,11 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Whether an instance of the dynamic lighting manager has been created.</summary>
         public static bool hasInstance => s_Instance;
 
+        /// <summary>The version number used during the tracing of the scene (legacy: 0).</summary>
+        [SerializeField]
+        [HideInInspector]
+        internal int version;
+
         /// <summary>
         /// The ambient lighting color is added to the whole scene, thus making it look like there
         /// is always some scattered light, even when there is no direct light source. This prevents
@@ -167,9 +172,15 @@ namespace AlpacaIT.DynamicLighting
             raycastedDynamicLights.Clear();
 
             // delete the lightmap files from disk.
-            Utilities.DeleteLightmapData("Lightmap");
-            Utilities.DeleteLightmapData("Triangles");
-            Utilities.DeleteLightmapData("DynamicLightsBvh");
+            if (version == 0)
+            {
+                Utilities.DeleteLightmapData("Lightmap"); // legacy.
+                Utilities.DeleteLightmapData("Triangles"); // legacy.
+                Utilities.DeleteLightmapData("DynamicLightsBvh"); // legacy.
+            }
+
+            Utilities.DeleteLightmapData("DynamicLighting2-");
+            Utilities.DeleteLightmapData("DynamicLightingBvh2-");
 
             // make sure the user gets prompted to save their scene.
             UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
@@ -308,33 +319,23 @@ namespace AlpacaIT.DynamicLighting
                 if (meshRenderer.HasPropertyBlock())
                     meshRenderer.GetPropertyBlock(materialPropertyBlock);
 
-                // assign the lightmap data to the material property block.
-                if (Utilities.ReadLightmapData(lightmap.identifier, "Lightmap", out uint[] pixels))
-                {
-                    lightmap.buffer = new ComputeBuffer(pixels.Length, 4);
-                    lightmap.buffer.SetData(pixels);
-                    materialPropertyBlock.SetBuffer("lightmap", lightmap.buffer);
-                    materialPropertyBlock.SetInt("lightmap_resolution", lightmap.resolution);
-                    meshRenderer.SetPropertyBlock(materialPropertyBlock);
-                }
-                else Debug.LogError("Unable to read the lightmap " + lightmap.identifier + " data file! Please raytrace your scene again.");
-
                 // assign the dynamic triangles data to the material property block.
-                if (Utilities.ReadLightmapData(lightmap.identifier, "Shadows", out uint[] triangles))
+                if (Utilities.ReadLightmapData(lightmap.identifier, "DynamicLighting2", out uint[] triangles))
                 {
-                    lightmap.trianglebuffer = new ComputeBuffer(triangles.Length, 4);
-                    lightmap.trianglebuffer.SetData(triangles);
-                    materialPropertyBlock.SetBuffer("dynamic_triangles", lightmap.trianglebuffer);
+                    lightmap.buffer = new ComputeBuffer(triangles.Length, 4);
+                    lightmap.buffer.SetData(triangles);
+                    materialPropertyBlock.SetBuffer("dynamic_triangles", lightmap.buffer);
+                    materialPropertyBlock.SetInt("lightmap_resolution", lightmap.resolution); // legacy- required in shader to detect raytraced meshes.
                     meshRenderer.SetPropertyBlock(materialPropertyBlock);
                 }
-                else Debug.LogError("Unable to read the shadows " + lightmap.identifier + " data file! Probably because you upgraded from an older version. Please raytrace your scene again.");
+                else Debug.LogError("Unable to read the dynamic lighting " + lightmap.identifier + " data file! Probably because you upgraded from an older version. Please raytrace your scene again.");
             }
 
             // the scene may not have lights which would not be an error:
             if (raycastedDynamicLights.Count > 0)
             {
                 // assign the dynamic lights bounding volume hierarchy to a global buffer.
-                if (Utilities.ReadLightmapData(0, "DynamicLightsBvh", out uint[] bvhData))
+                if (Utilities.ReadLightmapData(0, "DynamicLightingBvh2", out uint[] bvhData))
                 {
                     dynamicLightsBvhBuffer = new ComputeBuffer(bvhData.Length / 8, dynamicLightsBvhNodeStride, ComputeBufferType.Default);
                     dynamicLightsBvhBuffer.SetData(bvhData);
@@ -381,11 +382,6 @@ namespace AlpacaIT.DynamicLighting
                 {
                     raycastedMeshRenderer.buffer.Release();
                     raycastedMeshRenderer.buffer = null;
-                }
-                if (raycastedMeshRenderer.trianglebuffer != null && raycastedMeshRenderer.trianglebuffer.IsValid())
-                {
-                    raycastedMeshRenderer.trianglebuffer.Release();
-                    raycastedMeshRenderer.trianglebuffer = null;
                 }
 
                 // make sure the scene reference is still valid.

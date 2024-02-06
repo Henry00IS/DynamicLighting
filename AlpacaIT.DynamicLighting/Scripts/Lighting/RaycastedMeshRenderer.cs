@@ -19,10 +19,7 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>The lightmap resolution equal width and height.</summary>
         public int resolution;
 
-        /// <summary>The binary data buffer uploaded to the graphics card.</summary>
-        public ComputeBuffer buffer;
-
         /// <summary>The binary triangle data buffer uploaded to the graphics card.</summary>
-        public ComputeBuffer trianglebuffer;
+        public ComputeBuffer buffer;
     }
 }

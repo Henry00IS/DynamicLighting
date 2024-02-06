@@ -109,7 +109,7 @@ namespace AlpacaIT.DynamicLighting.Internal
                     memory.CopyTo(gzip);
                     gzip.Close();
 
-                    var lightmapFilePath = resourcesPath + Path.DirectorySeparatorChar + sceneName + "-" + name + identifier + ".bytes";
+                    var lightmapFilePath = resourcesPath + Path.DirectorySeparatorChar + sceneName + "-" + name + "-" + identifier + ".bytes";
                     File.WriteAllBytes(lightmapFilePath, compressed.ToArray());
                 }
 
@@ -128,10 +128,10 @@ namespace AlpacaIT.DynamicLighting.Internal
             {
                 string scene = Path.GetFileNameWithoutExtension(SceneManager.GetActiveScene().path);
 
-                var lightmap = Resources.Load<TextAsset>(scene + "-" + name + identifier);
+                var lightmap = Resources.Load<TextAsset>(scene + "-" + name + "-" + identifier);
                 if (lightmap == null)
                 {
-                    Debug.LogError("Cannot find '" + scene + "-" + name + identifier + ".bytes'!");
+                    Debug.LogError("Cannot find '" + scene + "-" + name + "-" + identifier + ".bytes'!");
                     pixels = null;
                     return false;
                 }

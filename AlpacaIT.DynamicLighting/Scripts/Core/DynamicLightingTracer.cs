@@ -26,7 +26,7 @@ namespace AlpacaIT.DynamicLighting
         private BenchmarkTimer seamTime;
         private BenchmarkTimer optimizationTime;
         private BenchmarkTimer bvhTime;
-        private ulong vramLightmapTotal = 0;
+        private ulong vramLegacyTotal = 0;
         private ulong vramDynamicTrianglesTotal = 0;
         private ulong vramBvhTotal = 0;
         private DynamicLight[] pointLights;
@@ -64,7 +64,7 @@ namespace AlpacaIT.DynamicLighting
             seamTime = new BenchmarkTimer();
             optimizationTime = new BenchmarkTimer();
             bvhTime = new BenchmarkTimer();
-            vramLightmapTotal = 0;
+            vramLegacyTotal = 0;
             vramDynamicTrianglesTotal = 0;
             vramBvhTotal = 0;
             lightmapSizeMin1 = lightmapSize - 1;
@@ -94,7 +94,7 @@ namespace AlpacaIT.DynamicLighting
                 var bvhDynamicLights = new BvhLightStructure(dynamicLights);
                 var bvhDynamicLights32 = bvhDynamicLights.ToUInt32Array();
                 vramBvhTotal += (ulong)bvhDynamicLights32.Length * 4;
-                if (!Utilities.WriteLightmapData(0, "DynamicLightsBvh", bvhDynamicLights32))
+                if (!Utilities.WriteLightmapData(0, "DynamicLightingBvh2", bvhDynamicLights32))
                     Debug.LogError($"Unable to write the dynamic lights bounding volume hierarchy file in the active scene resources directory!");
 
                 // create the point lights array with the order the bvh tree desires.
@@ -132,6 +132,9 @@ namespace AlpacaIT.DynamicLighting
                 // delete all of the old lightmap data in the scene and on disk.
                 dynamicLightManager.EditorDeleteLightmaps();
 #endif
+                // try to remember the version used.
+                dynamicLightManager.version = 2;
+
                 // find all light sources and calculate the bounding volume hierarchy.
                 CreateDynamicLightsBvh();
 
@@ -176,10 +179,9 @@ namespace AlpacaIT.DynamicLighting
                 log.Append("Occlusion Bits Seams Padding: ").AppendLine(seamTime.ToString());
                 log.Append("Dynamic Triangles Optimization: ").Append(optimizationLightsRemoved).Append(" Light Sources Removed (").Append(optimizationTime.ToString()).AppendLine(")");
                 log.AppendLine("--------------------------------");
-                log.Append("VRAM Occlusion Bits: ").AppendLine(MathEx.BytesToUnitString(vramLightmapTotal));
-                log.Append("VRAM Dynamic Triangles: ").AppendLine(MathEx.BytesToUnitString(vramDynamicTrianglesTotal));
+                log.Append("VRAM Dynamic Triangles: ").Append(MathEx.BytesToUnitString(vramDynamicTrianglesTotal)).Append(" (Legacy: ").Append(MathEx.BytesToUnitString(vramLegacyTotal)).AppendLine(")");
                 log.Append("VRAM Bounding Volume Hierarchy: ").AppendLine(MathEx.BytesToUnitString(vramBvhTotal));
-                log.Insert(0, $"The lighting requires {MathEx.BytesToUnitString(vramLightmapTotal + vramDynamicTrianglesTotal + vramBvhTotal)} VRAM on the graphics card to render the current scene.{System.Environment.NewLine}");
+                log.Insert(0, $"The lighting requires {MathEx.BytesToUnitString(vramDynamicTrianglesTotal + vramBvhTotal)} VRAM on the graphics card to render the current scene.{System.Environment.NewLine}");
 
                 Debug.Log(log.ToString());
                 dynamicLightManager.Reload();
@@ -224,7 +226,7 @@ namespace AlpacaIT.DynamicLighting
             {
                 // estimate the amount of vram required (purely statistical).
                 ulong vramLightmap = (ulong)(lightmapSize * lightmapSize * 4); // uint32
-                vramLightmapTotal += vramLightmap;
+                vramLegacyTotal += vramLightmap;
 
                 log.AppendLine(meshFilter.name + " surface area: " + meshBuilder.surfaceArea.ToString("0.00") + "m² lightmap size: " + lightmapSize + "x" + lightmapSize + " VRAM: " + MathEx.BytesToUnitString(vramLightmap));
             }
@@ -429,15 +431,11 @@ namespace AlpacaIT.DynamicLighting
             lightmap.identifier = uniqueIdentifier++;
             dynamicLightManager.raycastedMeshRenderers.Add(lightmap);
 
-            // write the lightmap shadow bits to disk.
-            if (!Utilities.WriteLightmapData(lightmap.identifier, "Lightmap", pixels_lightmap))
-                Debug.LogError($"Unable to write the lightmap {lightmap.identifier} file in the active scene resources directory!");
-
             // write the dynamic triangles to disk.
             var dynamic_triangles32 = dynamic_triangles.BuildDynamicTrianglesData().ToArray();
             vramDynamicTrianglesTotal += (ulong)dynamic_triangles32.Length * 4;
-            if (!Utilities.WriteLightmapData(lightmap.identifier, "Shadows", dynamic_triangles32))
-                Debug.LogError($"Unable to write the shadows {lightmap.identifier} file in the active scene resources directory!");
+            if (!Utilities.WriteLightmapData(lightmap.identifier, "DynamicLighting2", dynamic_triangles32))
+                Debug.LogError($"Unable to write the dynamic lighting {lightmap.identifier} data file in the active scene resources directory!");
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
