@@ -186,7 +186,7 @@ namespace AlpacaIT.DynamicLighting
             UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
         }
 
-        [UnityEditor.MenuItem("Dynamic Lighting/Delete Scene Lightmaps", false, 20)]
+        [UnityEditor.MenuItem("Dynamic Lighting/Delete Scene Lightmaps", false, 40)]
         private static void EditorDeleteLightmapsNow()
         {
             Instance.EditorDeleteLightmaps();

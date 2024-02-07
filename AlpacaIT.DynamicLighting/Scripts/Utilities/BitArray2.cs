@@ -23,6 +23,8 @@
 ////////////////////// https://github.com/Henry00IS/CSharp ////////// http://00laboratories.com/ //
 
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Text;
 
 namespace AlpacaIT.DynamicLighting
@@ -31,7 +33,7 @@ namespace AlpacaIT.DynamicLighting
     /// Manages a compact two-dimensional array of bit values, which are represented as Booleans,
     /// where true indicates that the bit is on (1) and false indicates the bit is off (0).
     /// </summary>
-    public class BitArray2 : ICloneable
+    public class BitArray2 : IReadOnlyCollection<bool>, ICloneable
     {
         /// <summary>The internal one-dimensional array of bits.</summary>
         private readonly BitArray _Bits;
@@ -255,6 +257,10 @@ namespace AlpacaIT.DynamicLighting
         /// The <paramref name="amount"/> can not be a negative number.
         /// </exception>
         public void Ror(int amount) => _Bits.Ror(amount);
+
+        /// <summary>Checks whether all bits in the bit array are zero.</summary>
+        /// <returns>True when all bits are zero else false.</returns>
+        public bool IsZero() => _Bits.IsZero();
 
         #endregion Bit Operators
 
@@ -783,6 +789,23 @@ namespace AlpacaIT.DynamicLighting
         }
 
         #endregion Setting and Getting Bytes, Integers and Floats
+
+        #region IReadOnlyCollection<bool> Implementation
+
+        int IReadOnlyCollection<bool>.Count => _Bits.Length;
+
+        public IEnumerator<bool> GetEnumerator()
+        {
+            for (int i = 0; i < _Bits.Length; i++)
+                yield return _Bits[i];
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        #endregion IReadOnlyCollection<bool> Implementation
 
         #region ICloneable Implementation
 

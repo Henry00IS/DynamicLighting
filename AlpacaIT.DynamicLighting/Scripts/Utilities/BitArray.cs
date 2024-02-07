@@ -423,6 +423,17 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
+        /// <summary>Checks whether all bits in the bit array are zero.</summary>
+        /// <returns>True when all bits are zero else false.</returns>
+        public bool IsZero()
+        {
+            // iterate over the full 32-bit elements to make this process faster.
+            for (int i = 0; i < _Data.Length; i++)
+                if (_Data[i] != 0)
+                    return false;
+            return true;
+        }
+
         #endregion Bit Operators
 
         #region Setting and Getting Bytes, Integers and Floats

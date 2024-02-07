@@ -1,38 +1,62 @@
-using AlpacaIT.DynamicLighting.Internal;
+﻿using AlpacaIT.DynamicLighting.Internal;
 using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting.Editor
 {
     public class EditorMenus : MonoBehaviour
     {
-        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 512", false, 0)]
+        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: Unlimited", false, 0)]
+        private static void EditorRaytraceUnlimited()
+        {
+            DynamicLightManager.Instance.Raytrace(23170); // 46340 squared is 2,147,395,600 but had OutOfMemoryException.
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 512", false, 20)]
         private static void EditorRaytrace512()
         {
             DynamicLightManager.Instance.Raytrace(512);
         }
 
-        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 1024", false, 1)]
+        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 1024", false, 21)]
         private static void EditorRaytrace1024()
         {
             DynamicLightManager.Instance.Raytrace(1024);
         }
 
-        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 2048 (Recommended)", false, 1)]
+        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 2048 (Recommended)", false, 21)]
         private static void EditorRaytrace2048()
         {
             DynamicLightManager.Instance.Raytrace(2048);
         }
 
-        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 4096", false, 1)]
+        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 4096", false, 21)]
         private static void EditorRaytrace4096()
         {
             DynamicLightManager.Instance.Raytrace(4096);
         }
 
-        [UnityEditor.MenuItem("Dynamic Lighting/PayPal Donation", false, 41)]
-        private static void EditorPayPalDonation()
+        [UnityEditor.MenuItem("Dynamic Lighting/Thank You/PayPal Donation 🎁", false, 60)]
+        private static void EditorMenuPayPal()
         {
             Application.OpenURL("https://paypal.me/henrydejongh");
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Thank You/Patreon Support", false, 60)]
+        private static void EditorMenuPatreon()
+        {
+            Application.OpenURL("https://patreon.com/henrydejongh");
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Thank You/Join Discord Server", false, 80)]
+        private static void EditorMenuDiscord()
+        {
+            Application.OpenURL("https://discord.gg/sKEvrBwHtq");
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Thank You/GitHub Repository (Star Me!)", false, 100)]
+        private static void EditorMenuRepository()
+        {
+            Application.OpenURL("https://github.com/Henry00IS/DynamicLighting");
         }
 
         [UnityEditor.MenuItem("GameObject/Light/Dynamic Point Light", false, 40)]
