@@ -48,7 +48,7 @@ namespace AlpacaIT.DynamicLighting
         {
             shadowCameraDepthShader = DynamicLightingResources.Instance.shadowCameraDepthShader;
 
-#if UNITY_2021_3_OR_NEWER
+#if UNITY_2021_3_OR_GREATER
             shadowCameraRenderTextureDescriptor = new RenderTextureDescriptor(shadowCameraResolution, shadowCameraResolution, RenderTextureFormat.RHalf, 16, 0, RenderTextureReadWrite.Linear);
 #else
             shadowCameraRenderTextureDescriptor = new RenderTextureDescriptor(shadowCameraResolution, shadowCameraResolution, RenderTextureFormat.RHalf, 16, 0);
