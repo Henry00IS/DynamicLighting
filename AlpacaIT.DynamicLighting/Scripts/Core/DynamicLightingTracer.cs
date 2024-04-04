@@ -157,7 +157,7 @@ namespace AlpacaIT.DynamicLighting
                 for (int i = 0; i < meshFilters.Length; i++)
                 {
                     var meshFilter = meshFilters[i];
-                    if (meshFilter.gameObject.isStatic)
+                    if (meshFilter.gameObject.isStatic && meshFilter.sharedMesh != null)
                     {
                         float progressMin = i / (float)meshFilters.Length;
                         float progressMax = (i + 1) / (float)meshFilters.Length;
