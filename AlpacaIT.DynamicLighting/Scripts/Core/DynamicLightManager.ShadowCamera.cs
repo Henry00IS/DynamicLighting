@@ -152,7 +152,7 @@ namespace AlpacaIT.DynamicLighting
 
             // we do not need shadows beyond the light radius.
             shadowCamera.farClipPlane = light.lightRadius * 2f;
-            shadowCamera.cullingMask = ~0; // todo: per light or global?
+            shadowCamera.cullingMask = realtimeShadowLayers;
 
             // render the 6 sides of the cubemap:
             for (int face = 0; face < 6; face++)

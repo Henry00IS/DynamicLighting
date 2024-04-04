@@ -101,6 +101,14 @@ namespace AlpacaIT.DynamicLighting
         public LayerMask raytraceLayers = ~0;
 
         /// <summary>
+        /// The layer mask used for real-time shadows to discern which objects are shadow casters.
+        /// In some cases, specific objects may require raytracing for baked lighting and visual
+        /// appeal, yet they shouldn't contribute to real-time shadow casting (e.g. thin objects).
+        /// </summary>
+        [Tooltip("The layer mask used for real-time shadows to discern which objects are shadow casters. In some cases, specific objects may require raytracing for baked lighting and visual appeal, yet they shouldn't contribute to real-time shadow casting (e.g. thin objects).")]
+        public LayerMask realtimeShadowLayers = ~(4 | 16 | 32);
+
+        /// <summary>
         /// The desired pixel density (e.g. 128 for 128x128 per meter squared). This lighting system
         /// does not require "power of two" textures. You may have heard this term before because
         /// graphics cards can render textures in such sizes much faster. This system relies on

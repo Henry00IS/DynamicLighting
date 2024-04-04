@@ -228,7 +228,7 @@ namespace AlpacaIT.DynamicLighting
                 ulong vramLightmap = (ulong)(lightmapSize * lightmapSize * 4); // uint32
                 vramLegacyTotal += vramLightmap;
 
-                log.AppendLine(meshFilter.name + " surface area: " + meshBuilder.surfaceArea.ToString("0.00") + "m² lightmap size: " + lightmapSize + "x" + lightmapSize + " VRAM: " + MathEx.BytesToUnitString(vramLightmap));
+                log.AppendLine(meshFilter.name + " surface area: " + meshBuilder.surfaceArea.ToString("0.00") + "m² lightmap size: " + lightmapSize + "x" + lightmapSize + " (Legacy VRAM: " + MathEx.BytesToUnitString(vramLightmap) + ")");
             }
 
             tracingTime.Begin();
