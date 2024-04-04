@@ -78,8 +78,11 @@ Shader "Dynamic Lighting/Diffuse"
                 
                 DYNLIT_FRAGMENT_INTERNAL
                 
+                // sample the unity baked lightmap (i.e. progressive lightmapper).
+                half3 unity_lightmap_color = DecodeLightmap(UNITY_SAMPLE_TEX2D(unity_Lightmap, i.uv2));
+
                 // sample the main texture, multiply by the light and add vertex colors.
-                fixed4 col = tex2D(_MainTex, i.uv0) * half4(_Color.rgb, 1) * half4(light_final, 1) * i.color;
+                fixed4 col = tex2D(_MainTex, i.uv0) * half4(_Color.rgb, 1) * half4(light_final + unity_lightmap_color, 1) * i.color;
                 
                 // apply fog.
                 UNITY_APPLY_FOG(i.fogCoord, col);
