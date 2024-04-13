@@ -1,4 +1,4 @@
-Shader "Dynamic Lighting/Metallic"
+Shader "Dynamic Lighting/Metallic (Progressive Lightmapper)"
 {
     // special thanks to https://learnopengl.com/PBR/Lighting
 
@@ -18,7 +18,7 @@ Shader "Dynamic Lighting/Metallic"
     CustomEditor "AlpacaIT.DynamicLighting.Editor.MetallicShaderGUI"
     SubShader
     {
-        Tags { "RenderType" = "Opaque" }
+        Tags { "RenderType" = "Opaque" "DisableBatching" = "True" }
         LOD 100
 
         Pass

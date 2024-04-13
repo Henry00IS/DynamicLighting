@@ -1,4 +1,4 @@
-Shader "Dynamic Lighting/Transparent"
+Shader "Dynamic Lighting/Transparent (Progressive Lightmapper)"
 {
     Properties
     {
@@ -9,7 +9,7 @@ Shader "Dynamic Lighting/Transparent"
     CustomEditor "AlpacaIT.DynamicLighting.Editor.DefaultShaderGUI"
     SubShader
     {
-        Tags { "Queue"="Transparent" "IgnoreProjector"="True" "RenderType"="Transparent" }
+        Tags { "Queue"="Transparent" "IgnoreProjector"="True" "RenderType"="Transparent" "DisableBatching" = "True" }
         LOD 100
 
         Pass

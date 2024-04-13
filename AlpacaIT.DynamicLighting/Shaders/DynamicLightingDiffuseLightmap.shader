@@ -1,4 +1,4 @@
-Shader "Dynamic Lighting/Diffuse"
+﻿Shader "Dynamic Lighting/Diffuse (Progressive Lightmapper)"
 {
     Properties
     {
@@ -9,7 +9,7 @@ Shader "Dynamic Lighting/Diffuse"
     CustomEditor "AlpacaIT.DynamicLighting.Editor.DefaultShaderGUI"
     SubShader
     {
-        Tags { "RenderType" = "Opaque" }
+        Tags { "RenderType" = "Opaque" "DisableBatching" = "True" }
         LOD 100
 
         Pass

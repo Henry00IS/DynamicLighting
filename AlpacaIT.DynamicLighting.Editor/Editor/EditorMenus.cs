@@ -35,13 +35,19 @@ namespace AlpacaIT.DynamicLighting.Editor
             DynamicLightManager.Instance.Raytrace(4096);
         }
 
-        [UnityEditor.MenuItem("Dynamic Lighting/Thank You/PayPal Donation 🎁", false, 60)]
+        [UnityEditor.MenuItem("Dynamic Lighting/Thank You/Donation: PayPal", false, 60)]
         private static void EditorMenuPayPal()
         {
             Application.OpenURL("https://paypal.me/henrydejongh");
         }
 
-        [UnityEditor.MenuItem("Dynamic Lighting/Thank You/Patreon Support", false, 60)]
+        [UnityEditor.MenuItem("Dynamic Lighting/Thank You/Donation: Ko-fi", false, 60)]
+        private static void EditorMenuKofi()
+        {
+            Application.OpenURL("https://ko-fi.com/henry00");
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Thank You/Donation: Patreon", false, 60)]
         private static void EditorMenuPatreon()
         {
             Application.OpenURL("https://patreon.com/henrydejongh");
