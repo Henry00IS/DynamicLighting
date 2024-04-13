@@ -22,6 +22,7 @@ Shader "Dynamic Lighting/Diffuse"
             #pragma multi_compile __ DYNAMIC_LIGHTING_SHADOW_SOFT
             #pragma multi_compile __ DYNAMIC_LIGHTING_LIT
             #pragma multi_compile __ DYNAMIC_LIGHTING_BVH
+            #pragma multi_compile __ LIGHTMAP_ON
 
             #include "UnityCG.cginc"
             #include "DynamicLighting.cginc"
@@ -79,7 +80,11 @@ Shader "Dynamic Lighting/Diffuse"
                 DYNLIT_FRAGMENT_INTERNAL
                 
                 // sample the unity baked lightmap (i.e. progressive lightmapper).
-                half3 unity_lightmap_color = DecodeLightmap(UNITY_SAMPLE_TEX2D(unity_Lightmap, i.uv2));
+                #if LIGHTMAP_ON
+                    half3 unity_lightmap_color = DecodeLightmap(UNITY_SAMPLE_TEX2D(unity_Lightmap, i.uv2));
+                #else
+                    half3 unity_lightmap_color = half3(0.0, 0.0, 0.0);
+                #endif
 
                 // sample the main texture, multiply by the light and add vertex colors.
                 fixed4 col = tex2D(_MainTex, i.uv0) * half4(_Color.rgb, 1) * half4(light_final + unity_lightmap_color, 1) * i.color;

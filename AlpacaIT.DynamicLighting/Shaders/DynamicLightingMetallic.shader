@@ -31,6 +31,7 @@ Shader "Dynamic Lighting/Metallic"
             #pragma multi_compile __ DYNAMIC_LIGHTING_SHADOW_SOFT
             #pragma multi_compile __ DYNAMIC_LIGHTING_LIT
             #pragma multi_compile __ DYNAMIC_LIGHTING_BVH
+            #pragma multi_compile __ LIGHTMAP_ON
             #pragma shader_feature METALLIC_TEXTURE_UNASSIGNED
 
             #include "UnityCG.cginc"
@@ -152,7 +153,11 @@ Shader "Dynamic Lighting/Metallic"
                 float3 specular = skyColor * F;
                 
                 // sample the unity baked lightmap (i.e. progressive lightmapper).
-                half3 unity_lightmap_color = DecodeLightmap(UNITY_SAMPLE_TEX2D(unity_Lightmap, i.uv2));
+                #if LIGHTMAP_ON
+                    half3 unity_lightmap_color = DecodeLightmap(UNITY_SAMPLE_TEX2D(unity_Lightmap, i.uv2));
+                #else
+                    half3 unity_lightmap_color = half3(0.0, 0.0, 0.0);
+                #endif
                 
                 // the final lighting calculation combining all of the parts.
                 float3 ambient = kD * albedo * (unity_lightmap_color + dynamic_ambient_color);
