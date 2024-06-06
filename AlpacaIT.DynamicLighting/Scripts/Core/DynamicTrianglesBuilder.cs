@@ -174,10 +174,11 @@ namespace AlpacaIT.DynamicLighting
                 buffer.Add(0);
 
                 // add the triangle bounds used as the shadow data resolution.
+                // pre-compute the 2px padding to prevent these calculations on the GPU.
 
-                buffer.Add(triangle.boundsX);
-                buffer.Add(triangle.boundsY);
-                buffer.Add(triangle.boundsW);
+                buffer.Add(triangle.boundsX - 2);
+                buffer.Add(triangle.boundsY - 2);
+                buffer.Add(triangle.boundsW + 4);
             }
 
             //                       +------------------+

@@ -654,14 +654,18 @@ namespace AlpacaIT.DynamicLighting
             {
                 var pointLight = pointLights[triangleRaycastedLightIndices[i]];
                 var lightChannelBit = (uint)1 << ((int)pointLight.lightChannel);
-                var shadowBits = new BitArray2(1 + maxX - minX, 1 + maxY - minY);
 
-                var yy = 0;
+                // intentionally add 2px padding, as the shader with bilinear filtering will
+                // otherwise read outside the bounds on the UV borders, causing visual artifacts to
+                // appear as lines of shadow.
+                var shadowBits = new BitArray2(5 + maxX - minX, 5 + maxY - minY);
+
+                var yy = 2;
                 for (int y = minY; y <= maxY; y++)
                 {
                     int yPtr = y * lightmapSize;
 
-                    var xx = 0;
+                    var xx = 2;
                     for (int x = minX; x <= maxX; x++)
                     {
                         int xyPtr = yPtr + x;
@@ -677,8 +681,46 @@ namespace AlpacaIT.DynamicLighting
                     yy++;
                 }
 
+                // todo: optimize this (two calls are necessary).
+                DilateShadowBits(shadowBits);
+                DilateShadowBits(shadowBits);
+
                 dynamic_triangles.SetShadowOcclusionBits(triangle_index, i, shadowBits);
             }
+        }
+
+        private void DilateShadowBits(BitArray2 shadowBits)
+        {
+            BitArray2 copy = new BitArray2(shadowBits);
+
+            for (int y = 0; y < shadowBits.Height; y++)
+            {
+                for (int x = 0; x < shadowBits.Width; x++)
+                {
+                    // todo: optimize this (very wasteful iterations).
+                    if (x >= 2 && y >= 2 && x < shadowBits.Width - 2 && y < shadowBits.Height - 2)
+                        continue;
+
+                    bool c = copy[x, y];
+                    c = c ? c : TryGetShadowBit(copy, x - 1, y - 1);
+                    c = c ? c : TryGetShadowBit(copy, x, y - 1);
+                    c = c ? c : TryGetShadowBit(copy, x + 1, y - 1);
+                    c = c ? c : TryGetShadowBit(copy, x - 1, y);
+                    c = c ? c : TryGetShadowBit(copy, x + 1, y);
+                    c = c ? c : TryGetShadowBit(copy, x - 1, y + 1);
+                    c = c ? c : TryGetShadowBit(copy, x, y + 1);
+                    c = c ? c : TryGetShadowBit(copy, x + 1, y + 1);
+                    shadowBits[x, y] = c;
+                }
+            }
+        }
+
+        // todo: optimize this.
+        private bool TryGetShadowBit(BitArray2 shadowBits, int x, int y)
+        {
+            if (x >= 0 && y >= 0 && x < shadowBits.Width && y < shadowBits.Height)
+                return shadowBits[x, y];
+            return false;
         }
     }
 }
