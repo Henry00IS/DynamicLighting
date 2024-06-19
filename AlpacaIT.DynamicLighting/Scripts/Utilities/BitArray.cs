@@ -590,18 +590,18 @@ namespace AlpacaIT.DynamicLighting
         /// <param name="value">The 32-bit single-precision floating-point number.</param>
         public void SetSingle(int index, float value) => SetUInt32(index, new Bytes64(value).vUInt32);
 
-        /// <summary>Reads 64 bits starting at the specified bit array index as a double-precision floating-point value in big-endian order.</summary>
+        /// <summary>Reads 32 bits starting at the specified bit array index as a single-precision floating-point value in big-endian order.</summary>
         /// <param name="index">The bit array index to start reading at.</param>
-        /// <returns>The 64-bit double-precision floating-point number.</returns>
+        /// <returns>The 32-bit single-precision floating-point number.</returns>
         public float GetSingleBigEndian(int index)
         {
-            if (index < 0 || index > _Size - 64) throw new IndexOutOfRangeException("Index was outside; or reading beyond the bounds of the array.");
+            if (index < 0 || index > _Size - 32) throw new IndexOutOfRangeException("Index was outside; or reading beyond the bounds of the array.");
             return new Bytes64(GetByte(index + 24), GetByte(index + 16), GetByte(index + 8), GetByte(index)).vSingle;
         }
 
-        /// <summary>Reads 64 bits starting at the specified bit array index as a double-precision floating-point value in big-endian order.</summary>
+        /// <summary>Reads 32 bits starting at the specified bit array index as a single-precision floating-point value in big-endian order.</summary>
         /// <param name="index">The bit array index to start reading at.</param>
-        /// <returns>The 64-bit double-precision floating-point number.</returns>
+        /// <returns>The 32-bit single-precision floating-point number.</returns>
         public void SetSingleBigEndian(int index, float value)
         {
             var bytes = new Bytes64(value);
