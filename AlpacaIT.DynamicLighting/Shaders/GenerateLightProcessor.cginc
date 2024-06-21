@@ -47,8 +47,6 @@ if (light.is_shadow_available())
 float map = 1.0;
 if (lightmap_resolution > 0 && light.is_dynamic())
 {
-    uint shadow_channel = light.get_shadow_channel();
-
 #if DYNAMIC_LIGHTING_SHADOW_SOFT
     // retrieve the shadow bit at this position with bilinear filtering.
     map = dynamic_triangle.shadow_sample_bilinear(i.uv1);

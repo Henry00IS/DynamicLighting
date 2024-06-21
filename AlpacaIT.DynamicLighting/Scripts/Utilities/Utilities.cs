@@ -7,6 +7,7 @@ using UnityEngine.SceneManagement;
 
 namespace AlpacaIT.DynamicLighting.Internal
 {
+    /// <summary>Utilities class mostly related to Unity Editor and the File System.</summary>
     public static class Utilities
     {
         /// <summary>Gets whether the active scene has been saved to disk in Unity Editor.</summary>

@@ -2,6 +2,10 @@ using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
+    /// <summary>
+    /// A dynamic light source that illuminates the scene. Use this to control all aspects of a
+    /// dynamic light source in the scene such as color changes or flickering.
+    /// </summary>
     [ExecuteInEditMode]
     public class DynamicLight : MonoBehaviour
     {

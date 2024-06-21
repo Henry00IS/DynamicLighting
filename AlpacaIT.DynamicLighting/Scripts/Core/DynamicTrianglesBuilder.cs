@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
@@ -146,9 +145,6 @@ namespace AlpacaIT.DynamicLighting
         /// <returns>The StructuredBuffer&lt;uint&gt; data for the graphics card.</returns>
         public List<uint> BuildDynamicTrianglesData()
         {
-            var trianglesCount = triangles.Count;
-            List<uint> buffer = new List<uint>(trianglesCount);
-
             // +---------------+     +------------------+
             // |SV_PrimitiveID |--+->|Light Data Offset |
             // |(TriangleIndex)|  |  +------------------+
@@ -163,6 +159,9 @@ namespace AlpacaIT.DynamicLighting
             //                       |...               |
             //                       +------------------+
             int triangleHeaderSize = 4;
+
+            var trianglesCount = triangles.Count;
+            List<uint> buffer = new List<uint>(trianglesCount * triangleHeaderSize);
 
             // iterate over all of the triangles:
             for (int triangleIndex = 0; triangleIndex < trianglesCount; triangleIndex++)
@@ -189,8 +188,6 @@ namespace AlpacaIT.DynamicLighting
             uint lightDataOffset = (uint)buffer.Count;
             for (int triangleIndex = 0; triangleIndex < trianglesCount; triangleIndex++)
             {
-                var triangle = triangles[triangleIndex];
-
                 // add the light count.
                 var triangleDynamicLightIndices = GetRaycastedLightIndices(triangleIndex);
                 var triangleDynamicLightIndicesCount = triangleDynamicLightIndices.Count;
@@ -229,7 +226,6 @@ namespace AlpacaIT.DynamicLighting
             // iterate over all of the triangles:
             for (int triangleIndex = 0; triangleIndex < trianglesCount; triangleIndex++)
             {
-                var triangle = triangles[triangleIndex];
                 var bufferTriangleOffset = buffer[triangleIndex * triangleHeaderSize];
 
                 // iterate over all of the associated light indices:

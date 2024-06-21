@@ -3,6 +3,10 @@ using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting.Editor
 {
+    /// <summary>
+    /// Customizes the material inspector for Dynamic Lighting shaders to display an additional
+    /// button that will fix the material preview (if needed).
+    /// </summary>
     public class DefaultShaderGUI : ShaderGUI
     {
         public override void OnGUI(MaterialEditor materialEditor, MaterialProperty[] properties)

@@ -2,6 +2,10 @@ using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
+    /// <summary>
+    /// Post-processing image effect for a <see cref="Camera"/>, rendering volumetric fog on <see
+    /// cref="DynamicLight"/> sources in the scene.
+    /// </summary>
     [ExecuteInEditMode]
     [ImageEffectAllowedInSceneView]
     [RequireComponent(typeof(Camera))]

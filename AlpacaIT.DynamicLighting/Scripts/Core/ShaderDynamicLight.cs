@@ -16,8 +16,8 @@ namespace AlpacaIT.DynamicLighting
         // -- 16 byte boundary --
 
         /// <summary>
-        /// The channel 0-31 representing the bit in the lightmap that the light uses for raytraced shadows.
-        /// <para>32 is used to indicate a realtime light without raytraced shadows.</para>
+        /// The channel contains bit flags that determine how the light gets rendered.
+        /// <para>32 (bit 6) is used to indicate a realtime light without raytraced shadows.</para>
         /// <para>All other bits are reserved for internal use.</para>
         /// </summary>
         public uint channel;

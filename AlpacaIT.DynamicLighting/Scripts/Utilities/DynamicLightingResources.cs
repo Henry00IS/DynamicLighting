@@ -2,6 +2,12 @@
 
 namespace AlpacaIT.DynamicLighting
 {
+    /// <summary>
+    /// Provides access to resources for the Dynamic Lighting package using the properties of a <see
+    /// cref="ScriptableObject"/> stored in the "Resources" folder. This allows Unity to manage and
+    /// serialize the asset references. Use the static property <see cref="Instance"/> to access
+    /// (and load once) the singleton into memory.
+    /// </summary>
     [CreateAssetMenu(fileName = "DynamicLightingResources", menuName = "ScriptableObjects/DynamicLightingResources", order = 1)]
     internal class DynamicLightingResources : ScriptableObject
     {

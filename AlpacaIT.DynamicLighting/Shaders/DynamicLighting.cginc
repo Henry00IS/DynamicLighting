@@ -33,11 +33,7 @@ struct DynamicLight
     uint   shadowCubemapIndex;
     // -- 16 byte boundary --
     
-    // the first 5 bits contain a valid channel index so mask by 31.
-    uint get_shadow_channel()
-    {
-        return 1u << (channel & 31u);
-    }
+    // the first 5 bits are unused (used to be channel index).
 
     // bit 6 determines whether the light is realtime and does not have shadows.
     bool is_realtime()
@@ -405,9 +401,9 @@ struct DynamicTriangle
     }
     
     // fetches a shadow bit at the specified uv coordinates from the shadow data.
+    // note: requires 'uv -= bounds.xy' to be calculated up front.
     bool shadow_sample(uint2 uv)
     {
-        uv -= bounds.xy;
         uint index = uv.y * bounds.z + uv.x;
         return dynamic_triangles[activeLightShadowDataOffset + index / 32] & (1 << index % 32);
     }
@@ -418,6 +414,9 @@ struct DynamicTriangle
     float shadow_sample3x3(uint2 uv)
     {
         float map;
+        
+        // offset the lightmap triangle uv to the top-left corner to read near zero, zero.
+        uv -= bounds.xy;
 
         map  = shadow_sample(uint2(uv.x - 1u, uv.y - 1u));
         map += shadow_sample(uint2(uv.x     , uv.y - 1u));
@@ -449,10 +448,13 @@ struct DynamicTriangle
 
         // we wish to do the following but with as few instructions as possible:
         //
-        //float tl = lightmap_sample3x3(pos_top_left, channel);
-        //float tr = lightmap_sample3x3(pos_top_left + uint2(1, 0), channel);
-        //float bl = lightmap_sample3x3(pos_top_left + uint2(0, 1), channel);
-        //float br = lightmap_sample3x3(pos_top_left + uint2(1, 1), channel);
+        //float tl = lightmap_sample3x3(pos_top_left);
+        //float tr = lightmap_sample3x3(pos_top_left + uint2(1, 0));
+        //float bl = lightmap_sample3x3(pos_top_left + uint2(0, 1));
+        //float br = lightmap_sample3x3(pos_top_left + uint2(1, 1));
+        
+        // offset the lightmap triangle uv to the top-left corner to read near zero, zero.
+        pos_top_left -= bounds.xy;
 
         // read all of the lightmap samples we need in advance.
         float4x4 map;

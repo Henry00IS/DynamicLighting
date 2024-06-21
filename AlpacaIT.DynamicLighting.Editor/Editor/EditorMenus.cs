@@ -3,7 +3,8 @@ using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting.Editor
 {
-    public class EditorMenus : MonoBehaviour
+    /// <summary>Adds the "Dynamic Lighting" menu to Unity Editor.</summary>
+    public static class EditorMenus
     {
         [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: Unlimited", false, 0)]
         private static void EditorRaytraceUnlimited()

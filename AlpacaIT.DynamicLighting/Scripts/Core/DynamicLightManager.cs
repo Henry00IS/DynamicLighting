@@ -7,6 +7,14 @@ using Random = UnityEngine.Random;
 
 namespace AlpacaIT.DynamicLighting
 {
+    /// <summary>
+    /// The <see cref="DynamicLightManager"/> is responsible for updating all of the <see
+    /// cref="DynamicLight"/> sources. It handles raytracing the scene, loading data from disk,
+    /// updating shaders, acceleration structures, light effects, light cookies, volumetric fog
+    /// post-processing, real-time shadows, material previews in the editor and much more. Use the
+    /// static property <see cref="Instance"/> to access (and create) the singleton <see
+    /// cref="DynamicLightManager"/> in the current scene.
+    /// </summary>
     [ExecuteInEditMode]
     public partial class DynamicLightManager : MonoBehaviour
     {
@@ -754,8 +762,9 @@ namespace AlpacaIT.DynamicLighting
             var lightRadius = light.lightRadius;
             var lightColor = light.lightColor;
 
-            // we ignore the channel for realtime lights without shadows.
-            shaderLight->channel = realtime ? 32 : light.lightChannel;
+            // the first 5 bits are unused (used to be channel index).
+            // bit 6 marks lights as realtime without shadows.
+            shaderLight->channel = realtime ? 32 : (uint)0;
             // -> the light intensity is set by the effects update step.
             shaderLight->position = lightCache.transformPosition;
 
