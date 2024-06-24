@@ -55,6 +55,8 @@ if (lightmap_resolution > 0 && light.is_dynamic())
     map = dynamic_triangle.shadow_sample3x3(i.uv1);
 #endif
 
+//map = 0.0;
+
     // whenever the fragment is fully in shadow we can early out.
     // confirmed with NVIDIA Quadro K1000M improving the framerate.
     if (map == 0.0) return;

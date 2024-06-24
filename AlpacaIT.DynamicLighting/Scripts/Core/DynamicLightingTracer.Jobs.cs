@@ -136,6 +136,15 @@ namespace AlpacaIT.DynamicLighting
                     if (hit.colliderInstanceID == 0)
 #endif
                     {
+                        float t = (meta.lightDistance / meta.lightRadius);
+
+                        //if (UnityEngine.Random.value > t && UnityEngine.Random.value < 0.01f)
+                        if (UnityEngine.Random.value > t && UnityEngine.Random.value < 0.01f)
+                        {
+                            //Debug.DrawLine(meta.world, meta.world + Vector3.up * 0.05f, Color.blue, 30f);
+                            meta.illuminationSamples.Add(new IlluminationSample(meta.world, meta.normal));
+                        }
+
                         p[meta.y * pixelsLightmapSize + meta.x] |= (uint)1 << ((int)meta.lightChannel);
                     }
                 }

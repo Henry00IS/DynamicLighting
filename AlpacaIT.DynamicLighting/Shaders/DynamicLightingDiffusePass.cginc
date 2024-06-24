@@ -32,6 +32,7 @@ struct v2f
 };
 
 sampler2D _MainTex;
+sampler2D _BounceTex;
 float4 _MainTex_ST;
 fixed4 _Color;
 
@@ -64,10 +65,13 @@ DYNLIT_FRAGMENT_FUNCTION
                 
     // sample the unity baked lightmap (i.e. progressive lightmapper).
     #if LIGHTMAP_ON
-        half3 unity_lightmap_color = DecodeLightmap(UNITY_SAMPLE_TEX2D(unity_Lightmap, i.uv2));
+        //half3 unity_lightmap_color = DecodeLightmap(UNITY_SAMPLE_TEX2D(unity_Lightmap, i.uv2));
     #else
-        half3 unity_lightmap_color = half3(0.0, 0.0, 0.0);
+        //half3 unity_lightmap_color = half3(0.0, 0.0, 0.0);
     #endif
+
+    // sample the light bounce texture test.
+    half3 unity_lightmap_color = tex2D(_BounceTex, i.uv2).rrr;
 
     // sample the main texture, multiply by the light and add vertex colors.
     fixed4 col = tex2D(_MainTex, i.uv0) * half4(_Color.rgb, 1) * half4(light_final + unity_lightmap_color, 1) * i.color;

@@ -18,6 +18,8 @@ namespace AlpacaIT.DynamicLighting
     [ExecuteInEditMode]
     public partial class DynamicLightManager : MonoBehaviour
     {
+        public RenderTexture bounceTexture;
+
         /// <summary>Called when a <see cref="DynamicLight"/> gets registered (i.e. enabled).</summary>
         public event EventHandler<DynamicLightRegisteredEventArgs> lightRegistered;
 
