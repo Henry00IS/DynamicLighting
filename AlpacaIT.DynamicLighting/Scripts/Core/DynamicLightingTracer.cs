@@ -23,6 +23,7 @@ namespace AlpacaIT.DynamicLighting
 
         private int traces = 0;
         private int bounces = 0;
+        private int samples = 0;
         private int optimizationLightsRemoved = 0;
         private BenchmarkTimer tracingTime;
         private BenchmarkTimer bouncingTime;
@@ -63,6 +64,7 @@ namespace AlpacaIT.DynamicLighting
 
             traces = 0;
             bounces = 0;
+            samples = 0;
             optimizationLightsRemoved = 0;
             tracingTime = new BenchmarkTimer();
             bouncingTime = new BenchmarkTimer();
@@ -96,7 +98,7 @@ namespace AlpacaIT.DynamicLighting
             if (dynamicLights.Length > 0)
             {
                 // create the dynamic lights bounding volume hierarchy and write it to disk.
-                var bvhDynamicLights = new BvhLightStructure(dynamicLights);
+                var bvhDynamicLights = new BvhAccelerationStructure<DynamicLight>(dynamicLights);
                 var bvhDynamicLights32 = bvhDynamicLights.ToUInt32Array();
                 vramBvhTotal += (ulong)bvhDynamicLights32.Length * 4;
                 if (!Utilities.WriteLightmapData(0, "DynamicLightingBvh2", bvhDynamicLights32))
@@ -105,7 +107,7 @@ namespace AlpacaIT.DynamicLighting
                 // create the point lights array with the order the bvh tree desires.
                 pointLights = new DynamicLight[dynamicLights.Length];
                 for (int i = 0; i < dynamicLights.Length; i++)
-                    pointLights[i] = dynamicLights[bvhDynamicLights.dynamicLightsIdx[i]]; // pigeonhole sort!
+                    pointLights[i] = dynamicLights[bvhDynamicLights.itemsIdx[i]]; // pigeonhole sort!
             }
             else
             {
@@ -174,6 +176,10 @@ namespace AlpacaIT.DynamicLighting
                     }
                 }
 
+                // count illumination samples.
+                for (int i = 0; i < pointLightsCache.Length; i++)
+                    samples += pointLightsCache[i].illuminationSamples.Count;
+
 #if UNITY_EDITOR
                 // have unity editor reload the modified assets.
                 UnityEditor.AssetDatabase.Refresh();
@@ -181,6 +187,7 @@ namespace AlpacaIT.DynamicLighting
                 log.AppendLine("--------------------------------");
                 log.Append("Raycasts: ").Append(traces).Append(" (").Append(tracingTime.ToString()).AppendLine(")");
                 log.Append("Bounces: ").Append(bounces).Append(" (").Append(bouncingTime.ToString()).AppendLine(")");
+                log.Append("Samples: ").AppendLine(samples.ToString());
                 log.Append("Bounding Volume Hierarchy: ").AppendLine(bvhTime.ToString());
                 log.Append("Occlusion Bits Seams Padding: ").AppendLine(seamTime.ToString());
                 log.Append("Dynamic Triangles Optimization: ").Append(optimizationLightsRemoved).Append(" Light Sources Removed (").Append(optimizationTime.ToString()).AppendLine(")");
@@ -280,9 +287,6 @@ namespace AlpacaIT.DynamicLighting
 #endif
             bouncingTime.Begin();
 
-            var bounceTexture = dynamicLightManager.bounceTexture;
-            var bounceTextureData = new Color[bounceTexture.width * bounceTexture.height];
-
             // iterate over all triangles in the mesh.
             for (int i = 0; i < meshBuilder.triangleCount; i++)
             {
@@ -300,13 +304,8 @@ namespace AlpacaIT.DynamicLighting
                 var (v1, v2, v3) = meshBuilder.GetTriangleVertices(i);
                 var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
 
-                BounceTriangle(i, dynamic_triangles, bounceTextureData, v1, v2, v3, t1, t2, t3);
+                BounceTriangle(i, dynamic_triangles, v1, v2, v3, t1, t2, t3);
             }
-
-            var bounceTexture2d = new Texture2D(bounceTexture.width, bounceTexture.height);
-            bounceTexture2d.SetPixels(bounceTextureData);
-            bounceTexture2d.Apply();
-            Graphics.Blit(bounceTexture2d, bounceTexture);
 
             bouncingTime.Stop();
 
@@ -317,7 +316,7 @@ namespace AlpacaIT.DynamicLighting
             {
                 var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
 
-                OptimizeTriangle(i, pixels_lightmap_ptr, dynamic_triangles, t1, t2, t3);
+                //OptimizeTriangle(i, pixels_lightmap_ptr, dynamic_triangles, t1, t2, t3);
             }
             optimizationTime.Stop();
 
@@ -507,7 +506,9 @@ namespace AlpacaIT.DynamicLighting
                 var lightPosition = pointLightsCache[i].position;
 
                 // if we have the triangle normal then exclude triangles facing away from the light.
-                if (triangleNormalValid)
+                // indirect light can bounce onto a triangle with any normal, so the following
+                // optimization only works when light bouncing is disabled for this light source.
+                if (triangleNormalValid && !light.lightBouncesEnabled)
                     if (math.dot(triangleNormal, (lightPosition - triangleCenter).normalized) <= -0.1f)
                         continue;
 
@@ -578,7 +579,7 @@ namespace AlpacaIT.DynamicLighting
                         if (lightDistanceToWorld > lightRadius)
                             continue;
 
-                        // early out by normal.
+                        // early out by normal (fixme: why does this not match shader behavior, why -0.1f?).
                         var lightDirection = (lightPosition - world).normalized;
                         if (math.dot(triangleNormal, lightDirection) < -0.1f)
                             continue;
@@ -587,7 +588,7 @@ namespace AlpacaIT.DynamicLighting
                         traces++;
                         raycastProcessor.Add(
                             new RaycastCommand(world + triangleNormalOffset, lightDirection, lightDistanceToWorld, raycastLayermask),
-                            new RaycastCommandMeta(x, y, world + triangleNormalOffset, triangleNormal, pointLight.lightChannel, pointLightCache.illuminationSamples, lightDistanceToWorld, lightRadius)
+                            new RaycastCommandMeta(x, y, world + triangleNormalOffset, triangleNormal, pointLight.lightChannel, pointLightCache.illuminationSamples, lightRadius, lightPosition, pointLightCache.illuminatedVoxels)
                         );
                     }
 
@@ -765,36 +766,14 @@ namespace AlpacaIT.DynamicLighting
             return false;
         }
 
-        private unsafe void BounceTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, Color[] pixels_bounce, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        private unsafe void BounceTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
-            var myLightmapSize = 512;
-
             // calculate the triangle normal (this may fail when degenerate or very small).
             var trianglePlane = new Plane(v1, v2, v3);
             var triangleNormal = trianglePlane.normal;
             var triangleCenter = (v1 + v2 + v3) / 3.0f;
             var triangleNormalValid = !triangleNormal.Equals(Vector3.zero);
             var triangleBounds = MathEx.GetTriangleBounds(v1, v2, v3);
-
-            var bounceLightIndices = new List<uint>(pointLights.Length);
-
-            for (uint i = 0; i < pointLights.Length; i++)
-            {
-                var light = pointLights[i];
-                var lightPosition = pointLightsCache[i].position;
-
-                // cheap test using bounding boxes whether the light intersects the triangle.
-                var lightBounds = pointLightsCache[i].bounds;
-                if (!lightBounds.Intersects(triangleBounds))
-                    continue;
-
-                // ensure the triangle intersects with the light sphere.
-                if (!MathEx.CheckSphereIntersectsTriangle(lightPosition, light.lightRadius, v1, v2, v3))
-                    continue;
-
-                // this light can affect the current triangle by bouncing.
-                bounceLightIndices.Add(i);
-            }
 
             // skip degenerate triangles.
             if (!triangleNormalValid) return;
@@ -806,38 +785,44 @@ namespace AlpacaIT.DynamicLighting
             // calculate the bounding box of the polygon in UV space.
             // we only have to raycast these pixels and can skip the rest.
             var triangleBoundingBox = MathEx.ComputeTriangleBoundingBox(t1, t2, t3);
-            var minX = Mathf.FloorToInt(triangleBoundingBox.xMin * myLightmapSize);
-            var minY = Mathf.FloorToInt(triangleBoundingBox.yMin * myLightmapSize);
-            var maxX = Mathf.CeilToInt(triangleBoundingBox.xMax * myLightmapSize);
-            var maxY = Mathf.CeilToInt(triangleBoundingBox.yMax * myLightmapSize);
+            var minX = Mathf.FloorToInt(triangleBoundingBox.xMin * lightmapSize);
+            var minY = Mathf.FloorToInt(triangleBoundingBox.yMin * lightmapSize);
+            var maxX = Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSize);
+            var maxY = Mathf.CeilToInt(triangleBoundingBox.yMax * lightmapSize);
 
             // clamp the pixel coordinates so that we can safely write to our arrays.
-            minX = Mathf.Clamp(minX, 0, myLightmapSize - 1);
-            minY = Mathf.Clamp(minY, 0, myLightmapSize - 1);
-            maxX = Mathf.Clamp(maxX, 0, myLightmapSize - 1);
-            maxY = Mathf.Clamp(maxY, 0, myLightmapSize - 1);
+            minX = Mathf.Clamp(minX, 0, lightmapSize - 1);
+            minY = Mathf.Clamp(minY, 0, lightmapSize - 1);
+            maxX = Mathf.Clamp(maxX, 0, lightmapSize - 1);
+            maxY = Mathf.Clamp(maxY, 0, lightmapSize - 1);
 
             // prepare to only iterate over lights potentially affecting the current triangle.
-            var triangleLightIndices = bounceLightIndices;
+            var triangleLightIndices = dynamic_triangles.GetRaycastedLightIndices(triangle_index);
             var triangleLightIndicesCount = triangleLightIndices.Count;
+
+            // prepare bounce color data for every light source.
+            var pixels_bounce = new List<Color[]>(triangleLightIndicesCount);
+            var hasBounceTexture = new bool[triangleLightIndicesCount];
+            for (int i = 0; i < triangleLightIndicesCount; i++)
+                pixels_bounce.Add(new Color[lightmapSize * lightmapSize]);
 
             // calculate some values in advance.
             var triangleNormalOffset = triangleNormal * 0.001f;
-
-            float half = 1.0f / (myLightmapSize * 2f);
+            float half = 1.0f / (lightmapSize * 2f);
 
             for (int y = minY; y <= maxY; y++)
             {
-                float yy = y / (float)myLightmapSize;
-                int yPtr = y * myLightmapSize;
+                float yy = y / (float)lightmapSize;
+                int yPtr = y * lightmapSize;
 
                 for (int x = minX; x <= maxX; x++)
                 {
-                    float xx = x / (float)myLightmapSize;
+                    float xx = x / (float)lightmapSize;
                     int xyPtr = yPtr + x;
 
                     var world = MathEx.UvTo3dFast(triangleSurfaceArea, new Vector2(xx + half, yy + half), v1, v2, v3, t1, t2, t3);
                     if (world.Equals(Vector3.zero)) continue;
+                    var worldPosition = world + triangleNormalOffset;
 
                     // iterate over the lights potentially affecting this triangle.
                     for (int i = 0; i < triangleLightIndicesCount; i++)
@@ -846,37 +831,130 @@ namespace AlpacaIT.DynamicLighting
                         var pointLightCache = pointLightsCache[triangleLightIndices[i]];
                         var lightPosition = pointLightCache.position;
                         var lightRadius = pointLight.lightRadius;
-                        var lightDistanceToWorld = Vector3.Distance(lightPosition, world);
+                        var lightRadiusSqr = lightRadius * lightRadius;
 
-                        // early out by distance.
-                        if (lightDistanceToWorld > lightRadius)
+                        // early out by distance (the world position is beyond the light radius sphere).
+                        var lightDirectionToWorld = lightPosition - world;
+                        var lightDistanceToWorldSqr = Vector3.SqrMagnitude(lightDirectionToWorld);
+                        if (lightDistanceToWorldSqr > lightRadiusSqr)
                             continue;
+                        lightDirectionToWorld.Normalize();
 
-                        var acc = 0f;
-                        var total = 0;
+                        // calculate the original light attenuation used in the shader.
+                        //float pointLightAttenuation = math.pow(math.saturate(1.0f - lightDistanceToWorldSqr / lightRadiusSqr), 2.0f);
+
+                        // sort the illumination samples so that the closest ones come first.
+                        // this only occurs when we switch to a different quadrant.
+                        //SortIlluminationSamples(world, triangleNormal, pointLight, ref pointLightsCache[triangleLightIndices[i]]);
+
                         var illuminationSamples = pointLightCache.illuminationSamples;
                         var illuminationSamplesCount = illuminationSamples.Count;
 
+                        var acc = 0f;
+                        var total = 0;
+
+                        // iterate over the important illumination samples (closest come first):
                         for (int j = 0; j < illuminationSamplesCount; j++)
                         {
+                            // stop processing after collecting light from enough samples.
+                            //if (total > 32)
+                            //    break;
+
+                            // calculate sample related variables.
+                            var sample = illuminationSamples[j];
+                            var sampleToWorldDirection = (sample.world - worldPosition).normalized;
+
+                            var sampleToWorldDistance = Vector3.Distance(sample.world, worldPosition);
+
+                            // prepare to trace from the world to the sample position.
+
+                            // check whether the illuminated sample is visible from the world position.
+                            bounces++;
+                            if (!Physics.Raycast(worldPosition, sampleToWorldDirection, sampleToWorldDistance))
+                            //if (!Physics.Raycast(sample.world, sampleToWorldDirection, Vector3.Distance(sample.world, worldPosition)))
+                            {
+                                // we treat every sample as a point light with attenuation.
+
+                                // compute the total distance the photon can bounce.
+                                var sampleRadiusSqr = lightRadiusSqr - lightDistanceToWorldSqr;
+
+                                //float sampleToWorldDistanceSqr = sampleToWorldDistance * sampleToWorldDistance;
+
+                                var sampleToLightDistance = Vector3.Distance(sample.world, lightPosition);
+                                var sampleToLightDistanceSqr = sampleToLightDistance * sampleToLightDistance;
+
+                                float sampleAttenuation = math.pow(math.saturate(1.0f - sampleToLightDistanceSqr / sampleRadiusSqr), 2.0f);
+
+                                //if (attenuation > 0f)
+                                {
+                                    acc += sampleAttenuation;
+                                    total++;
+                                }
+                            }
+                            else
+                            {
+                                total++;
+                            }
+
+                            /*
+
+                            var sampleAttenuation = pointLightAttenuation;
+
+                            var lightDirectionToSample = lightPosition - sample.world;
+                            var lightDistanceToSampleSqr = Vector3.SqrMagnitude(lightDirectionToSample);
+                            lightDirectionToSample.Normalize();
+
+                            var worldDirectionToSample = world - sample.world;
+                            var worldDistanceToSampleSqr = Vector3.SqrMagnitude(worldDirectionToSample);
+                            worldDirectionToSample.Normalize();
+
+                            // Calculate the attenuation factor (1 / distance^2)
+                            var attenuationFactor = 1.0f / lightDistanceToSampleSqr;
+
+                            // Assuming a Lambertian surface, the BRDF is constant and can be simplified to albedo / Pi.
+                            var brdf = 7f / Mathf.PI;
+
+                            // Calculate the dot product of the light direction and the surface normal to get the cosine of the angle of incidence
+                            var cosTheta = Mathf.Max(0.0f, Vector3.Dot(triangleNormal, lightDirectionToSample));
+
+                            // Calculate the final color contribution from this sample
+                            var sampleIllumination = sampleAttenuation * sampleAttenuation * brdf * cosTheta * attenuationFactor;
+
+                            acc += sampleIllumination;
+                            total++;
+
+                            /*
                             var sample = illuminationSamples[j];
 
+                            // the full distance between the light position and the illumination
+                            // sample may for example be 2.0 of a total light radius of 2.5.
                             var sampleDistanceToLight = Vector3.Distance(sample.world, lightPosition);
+
+                            // 0.5 light radius remaining in the example.
+                            var radiusRemaining = lightRadius - sampleDistanceToLight;
+
+                            // bounce light can not exceed this radius and will lose intensity (but not distance).
+
+                            // the illumination sample must be within range of the world position using the remaining radius.
                             var sampleDistanceToTexel = Vector3.Distance(sample.world, world);
 
-                            // Total distance travelled by the photon:
+                            // early out by distance.
+                            if (sampleDistanceToTexel > radiusRemaining)
+                                continue;
+
+                            // total distance travelled by the photon:
                             var photonDistanceTravelled = sampleDistanceToLight + sampleDistanceToTexel;
 
-                            // Early out if the photon distance exceeds the light radius.
+                            // early out if the photon distance exceeds the light radius.
                             if (photonDistanceTravelled > lightRadius)
                                 continue;
 
-                            // Early out by distance of sample radius.
+                            // early out by distance of sample radius.
                             var sampleRadius = lightRadius - photonDistanceTravelled;
                             if (sampleDistanceToTexel > sampleRadius)
                                 continue;
 
-                            // Calculate the photon bounce reflection directions.
+                            // calculate the photon bounce reflection directions.
                             var worldToSampleDirection = (sample.world - (world + triangleNormalOffset)).normalized;
                             var sampleToLightDirection = (lightPosition - sample.world).normalized;
 
@@ -886,7 +964,83 @@ namespace AlpacaIT.DynamicLighting
                             var angleFactorLightToSample = Mathf.Max(0.0f, angleOfIncidenceLightToSample);
 
                             // calculate attenuation considering the inverse square law and angle factor.
-                            float attenuationOfPointLightMatchingShader = math.pow(math.saturate(1.0f - (lightDistanceToWorld * lightDistanceToWorld) / (lightRadius * lightRadius)), 2.0f);
+                            float attenuation = math.pow(math.saturate(1.0f - (sampleDistanceToTexel * sampleDistanceToTexel) / (sampleRadius * sampleRadius)), 2.0f) * pointLightAttenuation * angleFactorLightToSample;
+
+                            // prepare to trace from the world to the sample position.
+                            bounces++;
+
+                            if (!Physics.Raycast(world + triangleNormalOffset, worldToSampleDirection, Vector3.Distance(sample.world, world + triangleNormalOffset)))
+                            {
+                                //if (attenuation > 0f)
+                                {
+                                    acc += attenuation;
+                                    total++;
+                                }
+                            }*/
+                        }
+
+                        if (total != 0 && pixels_bounce[i][xyPtr].r < acc / total)
+                            pixels_bounce[i][xyPtr].r = acc / total;
+
+                        // if we have a bounce pixel set then associate the data with the triangle.
+                        if (!hasBounceTexture[i] && acc > 0.0f)
+                        {
+                            hasBounceTexture[i] = true;
+                            dynamic_triangles.SetBounceTexture(triangle_index, i, pixels_bounce[i]);
+                        }
+
+                        /*
+                        var illuminationSamples = pointLightCache.illuminationSamples;
+                        var illuminationSamplesCount = illuminationSamples.Count;
+
+                        bvhPointLightIlluminationSamples[i].TraverseAction(world, sampleIndex =>
+                        {
+                            // once we're pretty bright we can stop...
+                            //if (total > 16)
+                            //{
+                            //    return false;
+                            //}
+
+                            var sample = illuminationSamples[sampleIndex];
+
+                            // the full distance between the light position and the illumination
+                            // sample may for example be 2.0 of a total light radius of 2.5.
+                            var sampleDistanceToLight = Vector3.Distance(sample.world, lightPosition);
+
+                            // 0.5 light radius remaining in the example.
+                            var radiusRemaining = lightRadius - sampleDistanceToLight;
+
+                            // bounce light can not exceed this radius and will lose intensity (but not distance).
+
+                            // the illumination sample must be within range of the world position using the remaining radius.
+                            var sampleDistanceToTexel = Vector3.Distance(sample.world, world);
+
+                            // early out by distance.
+                            if (sampleDistanceToTexel > radiusRemaining)
+                                return true;
+
+                            // total distance travelled by the photon:
+                            var photonDistanceTravelled = sampleDistanceToLight + sampleDistanceToTexel;
+
+                            // early out if the photon distance exceeds the light radius.
+                            if (photonDistanceTravelled > lightRadius)
+                                return true;
+
+                            // early out by distance of sample radius.
+                            var sampleRadius = lightRadius - photonDistanceTravelled;
+                            if (sampleDistanceToTexel > sampleRadius)
+                                return true;
+
+                            // calculate the photon bounce reflection directions.
+                            var worldToSampleDirection = (sample.world - (world + triangleNormalOffset)).normalized;
+                            var sampleToLightDirection = (lightPosition - sample.world).normalized;
+
+                            // calculate angle of incidence.
+                            var reflected = Vector3.Reflect(worldToSampleDirection, sample.normal);
+                            var angleOfIncidenceLightToSample = Vector3.Dot(reflected, sampleToLightDirection);
+                            var angleFactorLightToSample = Mathf.Max(0.0f, angleOfIncidenceLightToSample);
+
+                            // calculate attenuation considering the inverse square law and angle factor.
                             float attenuation = math.pow(math.saturate(1.0f - (sampleDistanceToTexel * sampleDistanceToTexel) / (sampleRadius * sampleRadius)), 2.0f) * attenuationOfPointLightMatchingShader * angleFactorLightToSample;
 
                             // prepare to trace from the world to the sample position.
@@ -900,54 +1054,100 @@ namespace AlpacaIT.DynamicLighting
                                     total++;
                                 }
                             }
-                        }
 
-                        if (total != 0 && pixels_bounce[xyPtr].r < acc / total)
-                            pixels_bounce[xyPtr].r = acc / total;
+                            return true;
+                        });*/
+
+                        // write this pixel into the visited map.
+                        //pixels_visited[y * lightmapSize + x] = 1;
                     }
-
-                    // write this pixel into the visited map.
-                    //pixels_visited[y * lightmapSize + x] = 1;
                 }
             }
         }
 
-        private List<IlluminationSample> GetIlluminationSamples(Vector3 world, uint pointLightIndex)
+        private void SortIlluminationSamples(Vector3 world, Vector3 triangleNormal, DynamicLight pointLight, ref CachedLightData pointLightCache)
         {
-            var results = new List<IlluminationSample>(1000);
-
-            var pointLight = pointLights[pointLightIndex];
-            var pointLightCache = pointLightsCache[pointLightIndex];
             var illuminationSamples = pointLightCache.illuminationSamples;
+            var illuminationQuadrant = pointLightCache.illuminationQuadrant;
             var lightPosition = pointLightCache.position;
             var lightRadius = pointLight.lightRadius;
 
-            // we basically assume that every illumination sample is a point light.
-            var illuminationSamplesCount = illuminationSamples.Count;
-            for (int i = 0; i < illuminationSamplesCount; i++)
+            // calculate the current quadrant of 1m³ in world space by rounding.
+            //var quadrant = triangleNormal;
+            //var quadrant = new Vector3(Mathf.Floor(world.x), Mathf.Floor(world.y), Mathf.Floor(world.z));
+            //var quadrant = new Vector3(Mathf.Floor(world.x * 10f), Mathf.Floor(world.y * 10f), Mathf.Floor(world.z * 10f));
+            //if (illuminationQuadrant.FastNotEquals(quadrant))
             {
-                var illuminationSample = illuminationSamples[i];
+                //pointLightCache.illuminationQuadrant = quadrant;
+                //var quadrant3 = new Vector3(quadrant.x, quadrant.y, quadrant.z);
 
-                // the full distance between the light position and the illumination sample may be
-                // 2.0 of a total light radius of 2.5.
-                var illuminationSampleDistanceToLight = Vector3.Distance(illuminationSample.world, lightPosition);
+                // we switched to a new quadrant and want to sort the illumination samples so that
+                // the closest ones appear first in the collection. by using the quadrant position
+                // we can keep the used illumination samples consistant throughout the world,
+                // preventing obvious seams.
 
-                // 0.5 light radius remaining in the example.
-                var radiusRemaining = lightRadius - illuminationSampleDistanceToLight;
+                //illuminationSamples.Sort((a, b) => (quadrant3 - a.world).sqrMagnitude.CompareTo((quadrant3 - b.world).sqrMagnitude));
 
-                // bounce light can not exceed this radius and will lose intensity (but not distance).
+                illuminationSamples.Sort((a, b) =>
+                {
+                    // Calculate dot products with the reference normal
+                    float dotA = Vector3.Dot(triangleNormal, a.normal);
+                    float dotB = Vector3.Dot(triangleNormal, b.normal);
 
-                // the illumination sample must be within range of the world position using the remaining radius.
-                var illuminationSampleDistanceToWorld = Vector3.Distance(illuminationSample.world, world);
+                    // Calculate distances
+                    float disA = (world - a.world).sqrMagnitude;
+                    float disB = (world - b.world).sqrMagnitude;
 
-                // early out by distance.
-                if (illuminationSampleDistanceToWorld > radiusRemaining)
-                    continue;
+                    // Define weights for dot product and distance
+                    float weightDot = 0.7f; // weight for dot product
+                    float weightDistance = 0.3f; // weight for distance
 
-                results.Add(illuminationSample);
+                    // Normalize the dot products and distances (assuming distances and dot products are already normalized or comparable)
+                    float scoreA = weightDot * dotA - weightDistance * disA;
+                    float scoreB = weightDot * dotB - weightDistance * disB;
+
+                    return scoreB.CompareTo(scoreA); // higher score is better
+
+                    //float dotA = Vector3.Dot(triangleNormal, a.normal);
+                    //float dotB = Vector3.Dot(triangleNormal, b.normal);
+                    //
+                    //// Higher dot product means closer alignment with the reference normal
+                    //return dotA.CompareTo(dotB);
+                });
             }
 
-            return results;
+            //
+            //illuminationSamples.Sort((a, b) => (world - a.world).sqrMagnitude
+            //.CompareTo((world - b.world).sqrMagnitude));
+            //
+            //return illuminationSamples;
+            //
+            //// we basically assume that every illumination sample is a point light.
+            ////var illuminationSamplesCount = illuminationSamples.Count;
+            ////for (int i = 0; i < illuminationSamplesCount; i++)
+            ////{
+            ////    var illuminationSample = illuminationSamples[i];
+            ////
+            ////    // the full distance between the light position and the illumination sample may be
+            ////    // 2.0 of a total light radius of 2.5.
+            ////    var illuminationSampleDistanceToLight = Vector3.Distance(illuminationSample.world, lightPosition);
+            ////
+            ////    // 0.5 light radius remaining in the example.
+            ////    var radiusRemaining = lightRadius - illuminationSampleDistanceToLight;
+            ////
+            ////    // bounce light can not exceed this radius and will lose intensity (but not distance).
+            ////
+            ////    // the illumination sample must be within range of the world position using the remaining radius.
+            ////    var illuminationSampleDistanceToWorld = Vector3.Distance(illuminationSample.world, world);
+            ////
+            ////    // early out by distance.
+            ////    if (illuminationSampleDistanceToWorld > radiusRemaining)
+            ////        continue;
+            ////
+            ////    results.Add(illuminationSample);
+            ////}
+            //
+            //return results;
         }
     }
 }

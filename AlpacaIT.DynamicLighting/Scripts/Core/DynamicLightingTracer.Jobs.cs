@@ -136,16 +136,34 @@ namespace AlpacaIT.DynamicLighting
                     if (hit.colliderInstanceID == 0)
 #endif
                     {
-                        float t = (meta.lightDistance / meta.lightRadius);
-
-                        //if (UnityEngine.Random.value > t && UnityEngine.Random.value < 0.01f)
-                        if (UnityEngine.Random.value > t && UnityEngine.Random.value < 0.01f)
-                        {
-                            //Debug.DrawLine(meta.world, meta.world + Vector3.up * 0.05f, Color.blue, 30f);
-                            meta.illuminationSamples.Add(new IlluminationSample(meta.world, meta.normal));
-                        }
-
                         p[meta.y * pixelsLightmapSize + meta.x] |= (uint)1 << ((int)meta.lightChannel);
+
+                        if (UnityEngine.Random.value < 0.01f)
+                        {
+                            var size = Mathf.FloorToInt(Mathf.Max(1.0f, meta.lightRadius * 4f));
+
+                            var voxelPosition = (meta.world - meta.lightPosition) * 4f;
+                            voxelPosition += new Vector3(size * 0.5f, size * 0.5f, size * 0.5f);
+
+                            if (voxelPosition.x < 0f || voxelPosition.y < 0f || voxelPosition.z < 0f)
+                            {
+                                continue;
+                            }
+
+                            if (voxelPosition.x >= meta.illuminatedVoxels.Width || voxelPosition.y >= meta.illuminatedVoxels.Height || voxelPosition.z >= meta.illuminatedVoxels.Depth)
+                            {
+                                continue;
+                            }
+
+                            if (meta.illuminatedVoxels[Mathf.FloorToInt(voxelPosition.x), Mathf.FloorToInt(voxelPosition.y), Mathf.FloorToInt(voxelPosition.z)])
+                                continue;
+
+                            //Debug.DrawLine(meta.world, meta.world + Vector3.up * 0.05f, Color.blue, 30f);
+                            // store this illuminated sample for the bounce lighting pass.
+                            meta.illuminationSamples.Add(new IlluminationSample(meta.world, meta.normal));
+
+                            meta.illuminatedVoxels[Mathf.FloorToInt(voxelPosition.x), Mathf.FloorToInt(voxelPosition.y), Mathf.FloorToInt(voxelPosition.z)] = true;
+                        }
                     }
                 }
             }

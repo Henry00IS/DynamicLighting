@@ -18,8 +18,6 @@ namespace AlpacaIT.DynamicLighting
     [ExecuteInEditMode]
     public partial class DynamicLightManager : MonoBehaviour
     {
-        public RenderTexture bounceTexture;
-
         /// <summary>Called when a <see cref="DynamicLight"/> gets registered (i.e. enabled).</summary>
         public event EventHandler<DynamicLightRegisteredEventArgs> lightRegistered;
 
@@ -155,7 +153,7 @@ namespace AlpacaIT.DynamicLighting
         private ShaderDynamicLight[] shaderDynamicLights;
         private ComputeBuffer dynamicLightsBuffer;
 
-        /// <summary>The memory size in bytes of the <see cref="BvhLightNode"/> struct.</summary>
+        /// <summary>The memory size in bytes of the <see cref="BvhNode"/> struct.</summary>
         private int dynamicLightsBvhNodeStride;
         private ComputeBuffer dynamicLightsBvhBuffer;
 
@@ -290,7 +288,7 @@ namespace AlpacaIT.DynamicLighting
             ShadersInitialize();
 
             dynamicLightStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(ShaderDynamicLight));
-            dynamicLightsBvhNodeStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(BvhLightNode));
+            dynamicLightsBvhNodeStride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(BvhNode));
 
             // prepare to store realtime dynamic lights that will register themselves to us.
             sceneRealtimeLights = new List<DynamicLight>(realtimeLightBudget);

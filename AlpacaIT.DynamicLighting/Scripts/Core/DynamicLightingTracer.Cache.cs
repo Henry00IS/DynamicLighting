@@ -14,11 +14,12 @@ namespace AlpacaIT.DynamicLighting
             public Vector3 world;
             public Vector3 normal;
             public uint lightChannel;
-            public float lightDistance;
             public float lightRadius;
+            public Vector3 lightPosition;
             public List<IlluminationSample> illuminationSamples;
+            public BitArray3 illuminatedVoxels;
 
-            public RaycastCommandMeta(int x, int y, Vector3 world, Vector3 normal, uint lightChannel, List<IlluminationSample> illuminationSamples, float lightDistance, float lightRadius)
+            public RaycastCommandMeta(int x, int y, Vector3 world, Vector3 normal, uint lightChannel, List<IlluminationSample> illuminationSamples, float lightRadius, Vector3 lightPosition, BitArray3 illuminatedVoxels)
             {
                 this.x = x;
                 this.y = y;
@@ -26,8 +27,9 @@ namespace AlpacaIT.DynamicLighting
                 this.normal = normal;
                 this.illuminationSamples = illuminationSamples;
                 this.lightChannel = lightChannel;
-                this.lightDistance = lightDistance;
                 this.lightRadius = lightRadius;
+                this.lightPosition = lightPosition;
+                this.illuminatedVoxels = illuminatedVoxels;
             }
         }
 
@@ -36,12 +38,18 @@ namespace AlpacaIT.DynamicLighting
             public Vector3 position;
             public Bounds bounds;
             public List<IlluminationSample> illuminationSamples;
+            public Vector3 illuminationQuadrant;
+            public BitArray3 illuminatedVoxels;
 
             public CachedLightData(DynamicLight dynamicLight)
             {
                 position = dynamicLight.transform.position;
                 bounds = MathEx.GetSphereBounds(position, dynamicLight.lightRadius);
                 illuminationSamples = new List<IlluminationSample>();
+                illuminationQuadrant = new Vector3(float.NegativeInfinity, float.NegativeInfinity, float.NegativeInfinity);
+
+                var size = Mathf.FloorToInt(Mathf.Max(1.0f, dynamicLight.lightRadius * 4f));
+                illuminatedVoxels = new BitArray3(size, size, size);
             }
         }
     }

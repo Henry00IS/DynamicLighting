@@ -7,7 +7,7 @@ namespace AlpacaIT.DynamicLighting
     /// dynamic light source in the scene such as color changes or flickering.
     /// </summary>
     [ExecuteInEditMode]
-    public class DynamicLight : MonoBehaviour
+    public class DynamicLight : MonoBehaviour, IBvhObject
     {
         /// <summary>
         /// The color of the light. It would be best to keep this number within the RGB range (i.e.
@@ -60,6 +60,8 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>The shadow casting mode of the dynamic light (e.g. enabling real-time shadows).</summary>
         [Tooltip("The shadow casting mode of the dynamic light (e.g. enabling real-time shadows).")]
         public DynamicLightShadowMode lightShadows = DynamicLightShadowMode.RaytracedShadows;
+
+        public bool lightBouncesEnabled = true;
 
         /// <summary>
         /// When using the 'Spot' light type, this specifies the outer cutoff angle in degrees where
@@ -387,5 +389,17 @@ namespace AlpacaIT.DynamicLighting
         }
 
 #endif
+
+        #region IBvhObject Implementation
+
+        /// <summary>
+        /// Gets the <see cref="Bounds"/> encompassing a sphere of the <see cref="lightRadius"/>
+        /// inside of the Bounding Volume Hierarchy.
+        /// </summary>
+        Bounds IBvhObject.bounds => MathEx.GetSphereBounds(transform.position, lightRadius);
+
+        Vector3 IBvhObject.position => transform.position;
+
+        #endregion IBvhObject Implementation
     }
 }

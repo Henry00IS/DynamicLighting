@@ -20,12 +20,14 @@ namespace AlpacaIT.DynamicLighting
             /// <summary>The collection of 1bpp shadow occlusion data.</summary>
             public BitArray2 shadowOcclusionBits;
 
+            /// <summary>The collection of bounce texture data.</summary>
+            public Color[] bounceTexture;
+
             /// <summary>Creates a new light with the specified dynamic light index.</summary>
             /// <param name="dynamicLightIndex">The dynamic light source index.</param>
             public DtbTriangleLightData(uint dynamicLightIndex)
             {
                 this.dynamicLightIndex = dynamicLightIndex;
-                shadowOcclusionBits = null;
             }
         }
 
@@ -138,12 +140,30 @@ namespace AlpacaIT.DynamicLighting
             return triangles[triangleIndex].lights[lightIndex].shadowOcclusionBits;
         }
 
+        /// <summary>Gets the bounce texture data for the specified light index in a triangle.</summary>
+        /// <param name="triangleIndex">The triangle index in the mesh.</param>
+        /// <param name="lightIndex">The triangle light index.</param>
+        /// <returns>The bounce texture data.</returns>
+        public Color[] GetBounceTexture(int triangleIndex, int lightIndex)
+        {
+            return triangles[triangleIndex].lights[lightIndex].bounceTexture;
+        }
+
+        /// <summary>Sets the bounce texture data for the specified light index in a triangle.</summary>
+        /// <param name="triangleIndex">The triangle index in the mesh.</param>
+        /// <param name="lightIndex">The triangle light index.</param>
+        /// <param name="shadowBits">The bounce texture data.</param>
+        public void SetBounceTexture(int triangleIndex, int lightIndex, Color[] bounceTexture)
+        {
+            triangles[triangleIndex].lights[lightIndex].bounceTexture = bounceTexture;
+        }
+
         /// <summary>
         /// Builds an acceleration structure for the graphics card, containing pre-calculated
         /// raycasted light and shadow data for the scene.
         /// </summary>
         /// <returns>The StructuredBuffer&lt;uint&gt; data for the graphics card.</returns>
-        public List<uint> BuildDynamicTrianglesData()
+        public unsafe List<uint> BuildDynamicTrianglesData()
         {
             // +---------------+     +------------------+
             // |SV_PrimitiveID |--+->|Light Data Offset |
@@ -198,9 +218,13 @@ namespace AlpacaIT.DynamicLighting
                 // +--------------------+
                 // |Shadow Data Offset 1| --> dynamic_lights[+1]
                 // +--------------------+
+                // |Bounce Data Offset 1| --> dynamic_lights[+2]
+                // +--------------------+
                 // |Light Index 2       | --> dynamic_lights[Light Index 2]
                 // +--------------------+
                 // |Shadow Data Offset 2| --> dynamic_lights[+1]
+                // +--------------------+
+                // |Bounce Data Offset 2| --> dynamic_lights[+2]
                 // +--------------------+
                 // |...                 |
                 // +--------------------+
@@ -212,6 +236,10 @@ namespace AlpacaIT.DynamicLighting
                     buffer.Add(triangleDynamicLightIndices[lightIndex]);
 
                     // create a shadow data offset entry for every light.
+                    // this will be filled out later.
+                    buffer.Add(0);
+
+                    // create a bounce data offset entry for every light.
                     // this will be filled out later.
                     buffer.Add(0);
                 }
@@ -236,10 +264,32 @@ namespace AlpacaIT.DynamicLighting
                     buffer.AddRange(GetShadowOcclusionBits(triangleIndex, lightIndex).ToUInt32Array());
 
                     // fill out the shadow data offset.
-                    bufferTriangleOffset++;
+                    bufferTriangleOffset++; // Shadow Data Offset
                     buffer[(int)(bufferTriangleOffset)] = lightDataOffset;
-                    bufferTriangleOffset++;
                     lightDataOffset = (uint)buffer.Count;
+                    bufferTriangleOffset++; // Bounce Data Offset
+
+                    // fill out the bounce data offset.
+                    var bounceTexture = GetBounceTexture(triangleIndex, lightIndex);
+                    if (bounceTexture != null)
+                    {
+                        foreach (var color in bounceTexture)
+                        {
+                            var hi = new HighColor(color);
+
+                            buffer.Add((uint)hi.r);
+                        }
+                        //var bounceTextureBytes = Utilities.StructArrayToByteArray(bounceTexture);
+                        //uint[] decoded = new uint[bounceTextureBytes.Length / 4];
+                        //Buffer.BlockCopy(bounceTextureBytes, 0, decoded, 0, bounceTextureBytes.Length);
+                        //
+                        //buffer.AddRange(decoded);
+
+                        buffer[(int)(bufferTriangleOffset)] = lightDataOffset;
+                        lightDataOffset = (uint)buffer.Count;
+                    }
+
+                    bufferTriangleOffset++; // Light Index
                 }
             }
 
