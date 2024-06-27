@@ -61,7 +61,9 @@ namespace AlpacaIT.DynamicLighting
         [Tooltip("The shadow casting mode of the dynamic light (e.g. enabling real-time shadows).")]
         public DynamicLightShadowMode lightShadows = DynamicLightShadowMode.RaytracedShadows;
 
-        public bool lightBouncesEnabled = true;
+        /// <summary>The illumination mode of the dynamic light (e.g. indirect illumination).</summary>
+        [Tooltip("The illumination mode of the dynamic light (e.g. indirect illumination).")]
+        public DynamicLightIlluminationMode lightIllumination = DynamicLightIlluminationMode.DirectIllumination;
 
         /// <summary>
         /// When using the 'Spot' light type, this specifies the outer cutoff angle in degrees where

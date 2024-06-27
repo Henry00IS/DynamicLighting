@@ -176,10 +176,6 @@ namespace AlpacaIT.DynamicLighting
                     }
                 }
 
-                // count illumination samples.
-                for (int i = 0; i < pointLightsCache.Length; i++)
-                    samples += pointLightsCache[i].illuminationSamples.Count;
-
 #if UNITY_EDITOR
                 // have unity editor reload the modified assets.
                 UnityEditor.AssetDatabase.Refresh();
@@ -202,8 +198,9 @@ namespace AlpacaIT.DynamicLighting
                 UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
 #endif
             }
-            catch
+            catch (System.Exception ex)
             {
+                Debug.LogException(ex);
                 throw;
             }
             finally
@@ -220,11 +217,14 @@ namespace AlpacaIT.DynamicLighting
 
         private unsafe void Raytrace(MeshFilter meshFilter, float progressMin, float progressMax)
         {
-            var meshBuilder = new MeshBuilder(meshFilter.transform.localToWorldMatrix, meshFilter.sharedMesh);
-            lightmapSize = MathEx.SurfaceAreaToTextureSize(meshBuilder.surfaceArea, pixelDensityPerSquareMeter);
-            if (lightmapSize > maximumLightmapSize)
-                lightmapSize = maximumLightmapSize;
+            var meshBuilder = new MeshBuilder(meshFilter.transform.localToWorldMatrix, meshFilter.sharedMesh, pixelDensityPerSquareMeter, maximumLightmapSize);
+            lightmapSize = meshBuilder.textureSize;
             lightmapSizeMin1 = lightmapSize - 1;
+
+            //lightmapSize = MathEx.SurfaceAreaToTextureSize(meshBuilder.surfaceArea, pixelDensityPerSquareMeter);
+            //if (lightmapSize > maximumLightmapSize)
+            //    lightmapSize = maximumLightmapSize;
+            //lightmapSizeMin1 = lightmapSize - 1;
 
 #if UNITY_EDITOR
             var progressTitle = "Raytracing Scene " + meshBuilder.surfaceArea.ToString("0.00") + "m² (" + lightmapSize + "x" + lightmapSize + ")";
@@ -274,7 +274,7 @@ namespace AlpacaIT.DynamicLighting
                 var (v1, v2, v3) = meshBuilder.GetTriangleVertices(i);
                 var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
 
-                RaycastTriangle(i, dynamic_triangles, pixels_visited_ptr, v1, v2, v3, t1, t2, t3);
+                RaycastTriangle(i, meshBuilder, dynamic_triangles, pixels_visited_ptr, v1, v2, v3, t1, t2, t3);
             }
 
             // finish any remaining raycasting work.
@@ -304,7 +304,7 @@ namespace AlpacaIT.DynamicLighting
                 var (v1, v2, v3) = meshBuilder.GetTriangleVertices(i);
                 var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
 
-                BounceTriangle(i, dynamic_triangles, v1, v2, v3, t1, t2, t3);
+                BounceTriangle(i, meshBuilder, dynamic_triangles, v1, v2, v3, t1, t2, t3);
             }
 
             bouncingTime.Stop();
@@ -316,7 +316,7 @@ namespace AlpacaIT.DynamicLighting
             {
                 var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
 
-                //OptimizeTriangle(i, pixels_lightmap_ptr, dynamic_triangles, t1, t2, t3);
+                OptimizeTriangle(i, meshBuilder, pixels_lightmap_ptr, dynamic_triangles, t1, t2, t3);
             }
             optimizationTime.Stop();
 
@@ -459,7 +459,7 @@ namespace AlpacaIT.DynamicLighting
             {
                 var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
 
-                BuildShadows(i, pixels_lightmap_ptr, dynamic_triangles, t1, t2, t3);
+                BuildShadows(i, meshBuilder, pixels_lightmap_ptr, dynamic_triangles, t1, t2, t3);
             }
 
             pixels_lightmap_gc.Free();
@@ -487,11 +487,10 @@ namespace AlpacaIT.DynamicLighting
             return pixels[offset];
         }
 
-        private unsafe void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, uint* pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        private unsafe void RaycastTriangle(int triangle_index, MeshBuilder meshBuilder, DynamicTrianglesBuilder dynamic_triangles, uint* pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
-            // calculate the triangle normal (this may fail when degenerate or very small).
-            var trianglePlane = new Plane(v1, v2, v3);
-            var triangleNormal = trianglePlane.normal;
+            // get the triangle normal (this may have failed when degenerate or very small).
+            var triangleNormal = meshBuilder.triangleNormals[triangle_index];
             var triangleCenter = (v1 + v2 + v3) / 3.0f;
             var triangleNormalValid = !triangleNormal.Equals(Vector3.zero);
             var triangleBounds = MathEx.GetTriangleBounds(v1, v2, v3);
@@ -508,7 +507,7 @@ namespace AlpacaIT.DynamicLighting
                 // if we have the triangle normal then exclude triangles facing away from the light.
                 // indirect light can bounce onto a triangle with any normal, so the following
                 // optimization only works when light bouncing is disabled for this light source.
-                if (triangleNormalValid && !light.lightBouncesEnabled)
+                if (triangleNormalValid && light.lightIllumination == DynamicLightIlluminationMode.DirectIllumination)
                     if (math.dot(triangleNormal, (lightPosition - triangleCenter).normalized) <= -0.1f)
                         continue;
 
@@ -534,17 +533,11 @@ namespace AlpacaIT.DynamicLighting
 
             // calculate the bounding box of the polygon in UV space.
             // we only have to raycast these pixels and can skip the rest.
-            var triangleBoundingBox = MathEx.ComputeTriangleBoundingBox(t1, t2, t3);
-            var minX = Mathf.FloorToInt(triangleBoundingBox.xMin * lightmapSize);
-            var minY = Mathf.FloorToInt(triangleBoundingBox.yMin * lightmapSize);
-            var maxX = Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSize);
-            var maxY = Mathf.CeilToInt(triangleBoundingBox.yMax * lightmapSize);
-
-            // clamp the pixel coordinates so that we can safely write to our arrays.
-            minX = Mathf.Clamp(minX, 0, lightmapSize - 1);
-            minY = Mathf.Clamp(minY, 0, lightmapSize - 1);
-            maxX = Mathf.Clamp(maxX, 0, lightmapSize - 1);
-            maxY = Mathf.Clamp(maxY, 0, lightmapSize - 1);
+            var triangleBoundingBox = meshBuilder.triangleUv1BoundingBoxes[triangle_index];
+            var minX = triangleBoundingBox.xMin;
+            var minY = triangleBoundingBox.yMin;
+            var maxX = triangleBoundingBox.xMax;
+            var maxY = triangleBoundingBox.yMax;
 
             // prepare to only iterate over lights potentially affecting the current triangle.
             var triangleLightIndices = dynamic_triangles.GetRaycastedLightIndices(triangle_index);
@@ -598,7 +591,7 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
-        private unsafe void OptimizeTriangle(int triangle_index, uint* pixels_lightmap, DynamicTrianglesBuilder dynamic_triangles, Vector2 t1, Vector2 t2, Vector2 t3)
+        private unsafe void OptimizeTriangle(int triangle_index, MeshBuilder meshBuilder, uint* pixels_lightmap, DynamicTrianglesBuilder dynamic_triangles, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // during the raycasting process, lights were associated per-triangle. This was
             // determined by the normal of the triangle (must face the light) and that the radius of
@@ -609,16 +602,16 @@ namespace AlpacaIT.DynamicLighting
             // doubling the framerate.
 
             // calculate the bounding box of the polygon in UV space.
-            var triangleBoundingBox = MathEx.ComputeTriangleBoundingBox(t1, t2, t3);
+            var triangleBoundingBox = meshBuilder.triangleUv1BoundingBoxes[triangle_index];
 
             // triangles may be so thin and small that they do not have their own UV texels, so we
             // expand the bounding box by one pixel on the shadow occlusion map to include the
             // neighbouring texels, as failure to do so will leave them without all of their light
             // sources (i.e. fully black).
-            var minX = Mathf.FloorToInt(triangleBoundingBox.xMin * lightmapSizeMin1) - 1;
-            var minY = Mathf.FloorToInt(triangleBoundingBox.yMin * lightmapSizeMin1) - 1;
-            var maxX = Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSizeMin1) + 1;
-            var maxY = Mathf.CeilToInt(triangleBoundingBox.yMax * lightmapSizeMin1) + 1;
+            var minX = triangleBoundingBox.xMin - 1;
+            var minY = triangleBoundingBox.yMin - 1;
+            var maxX = triangleBoundingBox.xMax + 1;
+            var maxY = triangleBoundingBox.yMax + 1;
 
             // clamp the pixel coordinates so that we can safely read from our arrays.
             minX = Mathf.Clamp(minX, 0, (int)lightmapSizeMin1);
@@ -633,6 +626,12 @@ namespace AlpacaIT.DynamicLighting
             // only iterate over lights associated with the current triangle.
             for (int i = triangleRaycastedLightIndicesCount; i-- > 0;)
             {
+                // the bounce texture is only set on a triangle when actually receiving bounced lighting.
+                var bounceTexture = dynamic_triangles.GetBounceTexture(triangle_index, i);
+                if (bounceTexture != null)
+                    continue;
+
+                // check the shadow bits for unused light sources.
                 var pointLight = pointLights[triangleRaycastedLightIndices[i]];
                 var lightChannelBit = (uint)1 << ((int)pointLight.lightChannel);
                 var lightFound = false;
@@ -664,23 +663,23 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
-        private unsafe void BuildShadows(int triangle_index, uint* pixels_lightmap, DynamicTrianglesBuilder dynamic_triangles, Vector2 t1, Vector2 t2, Vector2 t3)
+        private unsafe void BuildShadows(int triangle_index, MeshBuilder meshBuilder, uint* pixels_lightmap, DynamicTrianglesBuilder dynamic_triangles, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // now the lightmap pixels have also been padded and all the unused light sources have
             // been removed from the triangle, so we only have to store the 1bpp light occlusion
             // bits per light source (instead of always using 32 bits per fragment).
 
             // calculate the bounding box of the polygon in UV space.
-            var triangleBoundingBox = MathEx.ComputeTriangleBoundingBox(t1, t2, t3);
+            var triangleBoundingBox = meshBuilder.triangleUv1BoundingBoxes[triangle_index];
 
             // triangles may be so thin and small that they do not have their own UV texels, so we
             // expand the bounding box by one pixel on the shadow occlusion map to include the
             // neighbouring texels, as failure to do so will leave them without all of their light
             // sources (i.e. fully black).
-            var minX = Mathf.FloorToInt(triangleBoundingBox.xMin * lightmapSize) - 2;
-            var minY = Mathf.FloorToInt(triangleBoundingBox.yMin * lightmapSize) - 2;
-            var maxX = Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSize) + 2;
-            var maxY = Mathf.CeilToInt(triangleBoundingBox.yMax * lightmapSize) + 2;
+            var minX = triangleBoundingBox.xMin - 2;
+            var minY = triangleBoundingBox.yMin - 2;
+            var maxX = triangleBoundingBox.xMax + 2;
+            var maxY = triangleBoundingBox.yMax + 2;
 
             // clamp the pixel coordinates so that we can safely read from our arrays.
             minX = Mathf.Clamp(minX, 0, lightmapSize - 1);
@@ -701,7 +700,7 @@ namespace AlpacaIT.DynamicLighting
                 // intentionally add 2px padding, as the shader with bilinear filtering will
                 // otherwise read outside the bounds on the UV borders, causing visual artifacts to
                 // appear as lines of shadow.
-                var shadowBits = new BitArray2(5 + maxX - minX, 5 + maxY - minY);
+                var shadowBits = new BitArray2(4 + maxX - minX, 4 + maxY - minY);
 
                 var yy = 2;
                 for (int y = minY; y <= maxY; y++)
@@ -766,11 +765,10 @@ namespace AlpacaIT.DynamicLighting
             return false;
         }
 
-        private unsafe void BounceTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        private unsafe void BounceTriangle(int triangle_index, MeshBuilder meshBuilder, DynamicTrianglesBuilder dynamic_triangles, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
-            // calculate the triangle normal (this may fail when degenerate or very small).
-            var trianglePlane = new Plane(v1, v2, v3);
-            var triangleNormal = trianglePlane.normal;
+            // get the triangle normal (this may have failed when degenerate or very small).
+            var triangleNormal = meshBuilder.triangleNormals[triangle_index];
             var triangleCenter = (v1 + v2 + v3) / 3.0f;
             var triangleNormalValid = !triangleNormal.Equals(Vector3.zero);
             var triangleBounds = MathEx.GetTriangleBounds(v1, v2, v3);
@@ -784,11 +782,11 @@ namespace AlpacaIT.DynamicLighting
 
             // calculate the bounding box of the polygon in UV space.
             // we only have to raycast these pixels and can skip the rest.
-            var triangleBoundingBox = MathEx.ComputeTriangleBoundingBox(t1, t2, t3);
-            var minX = Mathf.FloorToInt(triangleBoundingBox.xMin * lightmapSize);
-            var minY = Mathf.FloorToInt(triangleBoundingBox.yMin * lightmapSize);
-            var maxX = Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSize);
-            var maxY = Mathf.CeilToInt(triangleBoundingBox.yMax * lightmapSize);
+            var triangleBoundingBox = meshBuilder.triangleUv1BoundingBoxes[triangle_index];
+            var minX = triangleBoundingBox.xMin; // Mathf.FloorToInt(triangleBoundingBox.xMin * lightmapSize);
+            var minY = triangleBoundingBox.yMin; // Mathf.FloorToInt(triangleBoundingBox.yMin * lightmapSize);
+            var maxX = triangleBoundingBox.xMax; // Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSize);
+            var maxY = triangleBoundingBox.yMax; // Mathf.CeilToInt(triangleBoundingBox.yMax * lightmapSize);
 
             // clamp the pixel coordinates so that we can safely write to our arrays.
             minX = Mathf.Clamp(minX, 0, lightmapSize - 1);
@@ -800,11 +798,13 @@ namespace AlpacaIT.DynamicLighting
             var triangleLightIndices = dynamic_triangles.GetRaycastedLightIndices(triangle_index);
             var triangleLightIndicesCount = triangleLightIndices.Count;
 
+            var pixels_bounce_size = (1 + maxX - minX) * (1 + maxY - minY);
+
             // prepare bounce color data for every light source.
-            var pixels_bounce = new List<Color[]>(triangleLightIndicesCount);
+            var pixels_bounce = new List<HighColor[]>(triangleLightIndicesCount);
             var hasBounceTexture = new bool[triangleLightIndicesCount];
             for (int i = 0; i < triangleLightIndicesCount; i++)
-                pixels_bounce.Add(new Color[lightmapSize * lightmapSize]);
+                pixels_bounce.Add(new HighColor[pixels_bounce_size]);
 
             // calculate some values in advance.
             var triangleNormalOffset = triangleNormal * 0.001f;
@@ -828,6 +828,11 @@ namespace AlpacaIT.DynamicLighting
                     for (int i = 0; i < triangleLightIndicesCount; i++)
                     {
                         var pointLight = pointLights[triangleLightIndices[i]];
+
+                        // early out when this light is direct illumination only.
+                        if (pointLight.lightIllumination == DynamicLightIlluminationMode.DirectIllumination)
+                            continue;
+
                         var pointLightCache = pointLightsCache[triangleLightIndices[i]];
                         var lightPosition = pointLightCache.position;
                         var lightRadius = pointLight.lightRadius;
@@ -840,26 +845,16 @@ namespace AlpacaIT.DynamicLighting
                             continue;
                         lightDirectionToWorld.Normalize();
 
-                        // calculate the original light attenuation used in the shader.
-                        //float pointLightAttenuation = math.pow(math.saturate(1.0f - lightDistanceToWorldSqr / lightRadiusSqr), 2.0f);
-
-                        // sort the illumination samples so that the closest ones come first.
-                        // this only occurs when we switch to a different quadrant.
-                        //SortIlluminationSamples(world, triangleNormal, pointLight, ref pointLightsCache[triangleLightIndices[i]]);
-
+                        // find the direct illumination samples that can potentially bounce light.
                         var illuminationSamples = pointLightCache.illuminationSamples;
                         var illuminationSamplesCount = illuminationSamples.Count;
 
-                        var acc = 0f;
+                        var accumulator = 0f;
                         var total = 0;
 
                         // iterate over the important illumination samples (closest come first):
                         for (int j = 0; j < illuminationSamplesCount; j++)
                         {
-                            // stop processing after collecting light from enough samples.
-                            //if (total > 32)
-                            //    break;
-
                             // calculate sample related variables.
                             var sample = illuminationSamples[j];
                             var sampleToWorldDirection = (sample.world - worldPosition).normalized;
@@ -871,25 +866,19 @@ namespace AlpacaIT.DynamicLighting
                             // check whether the illuminated sample is visible from the world position.
                             bounces++;
                             if (!Physics.Raycast(worldPosition, sampleToWorldDirection, sampleToWorldDistance))
-                            //if (!Physics.Raycast(sample.world, sampleToWorldDirection, Vector3.Distance(sample.world, worldPosition)))
                             {
                                 // we treat every sample as a point light with attenuation.
 
                                 // compute the total distance the photon can bounce.
                                 var sampleRadiusSqr = lightRadiusSqr - lightDistanceToWorldSqr;
 
-                                //float sampleToWorldDistanceSqr = sampleToWorldDistance * sampleToWorldDistance;
-
                                 var sampleToLightDistance = Vector3.Distance(sample.world, lightPosition);
                                 var sampleToLightDistanceSqr = sampleToLightDistance * sampleToLightDistance;
 
                                 float sampleAttenuation = math.pow(math.saturate(1.0f - sampleToLightDistanceSqr / sampleRadiusSqr), 2.0f);
 
-                                //if (attenuation > 0f)
-                                {
-                                    acc += sampleAttenuation;
-                                    total++;
-                                }
+                                accumulator += sampleAttenuation;
+                                total++;
                             }
                             else
                             {
@@ -979,11 +968,14 @@ namespace AlpacaIT.DynamicLighting
                             }*/
                         }
 
-                        if (total != 0 && pixels_bounce[i][xyPtr].r < acc / total)
-                            pixels_bounce[i][xyPtr].r = acc / total;
+                        var offset = (y - minY) * (1 + maxX - minX) + (x - minX);
+
+                        // we only visit a pixel once, so we can store the compressed result.
+                        if (total != 0)
+                            pixels_bounce[i][offset] = new HighColor(accumulator / total, accumulator / total, accumulator / total);
 
                         // if we have a bounce pixel set then associate the data with the triangle.
-                        if (!hasBounceTexture[i] && acc > 0.0f)
+                        if (!hasBounceTexture[i] && accumulator > 0.0f)
                         {
                             hasBounceTexture[i] = true;
                             dynamic_triangles.SetBounceTexture(triangle_index, i, pixels_bounce[i]);

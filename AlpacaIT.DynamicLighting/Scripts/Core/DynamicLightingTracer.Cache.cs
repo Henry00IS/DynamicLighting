@@ -45,11 +45,21 @@ namespace AlpacaIT.DynamicLighting
             {
                 position = dynamicLight.transform.position;
                 bounds = MathEx.GetSphereBounds(position, dynamicLight.lightRadius);
-                illuminationSamples = new List<IlluminationSample>();
-                illuminationQuadrant = new Vector3(float.NegativeInfinity, float.NegativeInfinity, float.NegativeInfinity);
 
-                var size = Mathf.FloorToInt(Mathf.Max(1.0f, dynamicLight.lightRadius * 4f));
-                illuminatedVoxels = new BitArray3(size, size, size);
+                // only collect illumination samples when the light is not direct illumination only.
+                if (dynamicLight.lightIllumination != DynamicLightIlluminationMode.DirectIllumination)
+                {
+                    illuminationSamples = new List<IlluminationSample>();
+                    illuminationQuadrant = new Vector3(float.NegativeInfinity, float.NegativeInfinity, float.NegativeInfinity);
+                    var size = Mathf.FloorToInt(Mathf.Max(1.0f, dynamicLight.lightRadius * 4f));
+                    illuminatedVoxels = new BitArray3(size, size, size);
+                }
+                else
+                {
+                    illuminationSamples = null;
+                    illuminationQuadrant = Vector3.zero;
+                    illuminatedVoxels = null;
+                }
             }
         }
     }

@@ -21,7 +21,7 @@ namespace AlpacaIT.DynamicLighting
             public BitArray2 shadowOcclusionBits;
 
             /// <summary>The collection of bounce texture data.</summary>
-            public Color[] bounceTexture;
+            public HighColor[] bounceTexture;
 
             /// <summary>Creates a new light with the specified dynamic light index.</summary>
             /// <param name="dynamicLightIndex">The dynamic light source index.</param>
@@ -72,20 +72,18 @@ namespace AlpacaIT.DynamicLighting
             triangles = new List<DtbTriangle>(meshBuilder.triangleCount);
             for (int i = 0; i < meshBuilder.triangleCount; i++)
             {
-                var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
-
                 // calculate the bounding box of the polygon in UV space.
-                var triangleBoundingBox = MathEx.ComputeTriangleBoundingBox(t1, t2, t3);
+                var triangleBoundingBox = meshBuilder.triangleUv1BoundingBoxes[i];
 
-                var minX = Mathf.FloorToInt(triangleBoundingBox.xMin * lightmapSize) - 2;
-                var minY = Mathf.FloorToInt(triangleBoundingBox.yMin * lightmapSize) - 2;
-                var maxX = Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSize) + 2;
+                var minX = triangleBoundingBox.xMin - 2;
+                var minY = triangleBoundingBox.yMin - 2;
+                var maxX = triangleBoundingBox.xMax + 2;
 
                 minX = Mathf.Clamp(minX, 0, lightmapSize - 1);
                 minY = Mathf.Clamp(minY, 0, lightmapSize - 1);
                 maxX = Mathf.Clamp(maxX, 0, lightmapSize - 1);
 
-                triangles.Add(new DtbTriangle((uint)minX, (uint)minY, (uint)(1 + maxX - minX)));
+                triangles.Add(new DtbTriangle((uint)minX, (uint)minY, (uint)(maxX - minX)));
             }
         }
 
@@ -144,7 +142,7 @@ namespace AlpacaIT.DynamicLighting
         /// <param name="triangleIndex">The triangle index in the mesh.</param>
         /// <param name="lightIndex">The triangle light index.</param>
         /// <returns>The bounce texture data.</returns>
-        public Color[] GetBounceTexture(int triangleIndex, int lightIndex)
+        public HighColor[] GetBounceTexture(int triangleIndex, int lightIndex)
         {
             return triangles[triangleIndex].lights[lightIndex].bounceTexture;
         }
@@ -153,7 +151,7 @@ namespace AlpacaIT.DynamicLighting
         /// <param name="triangleIndex">The triangle index in the mesh.</param>
         /// <param name="lightIndex">The triangle light index.</param>
         /// <param name="shadowBits">The bounce texture data.</param>
-        public void SetBounceTexture(int triangleIndex, int lightIndex, Color[] bounceTexture)
+        public void SetBounceTexture(int triangleIndex, int lightIndex, HighColor[] bounceTexture)
         {
             triangles[triangleIndex].lights[lightIndex].bounceTexture = bounceTexture;
         }
@@ -275,9 +273,7 @@ namespace AlpacaIT.DynamicLighting
                     {
                         foreach (var color in bounceTexture)
                         {
-                            var hi = new HighColor(color);
-
-                            buffer.Add((uint)hi.r);
+                            buffer.Add((uint)color.r);
                         }
                         //var bounceTextureBytes = Utilities.StructArrayToByteArray(bounceTexture);
                         //uint[] decoded = new uint[bounceTextureBytes.Length / 4];

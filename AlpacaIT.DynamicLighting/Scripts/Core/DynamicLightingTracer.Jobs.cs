@@ -138,6 +138,10 @@ namespace AlpacaIT.DynamicLighting
                     {
                         p[meta.y * pixelsLightmapSize + meta.x] |= (uint)1 << ((int)meta.lightChannel);
 
+                        // skip further processing when this light is direct illumination only.
+                        if (meta.illuminationSamples == null)
+                            continue;
+
                         if (UnityEngine.Random.value < 0.01f)
                         {
                             var size = Mathf.FloorToInt(Mathf.Max(1.0f, meta.lightRadius * 4f));
