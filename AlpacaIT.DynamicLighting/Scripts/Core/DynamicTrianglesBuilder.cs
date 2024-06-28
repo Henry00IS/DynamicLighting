@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using static AlpacaIT.DynamicLighting.DynamicLightingTracer;
 
 namespace AlpacaIT.DynamicLighting
 {
@@ -66,7 +67,7 @@ namespace AlpacaIT.DynamicLighting
 
         /// <summary>Creates a new instance of <see cref="DynamicTrianglesBuilder"/>.</summary>
         /// <param name="triangleCount">The amount of triangles in the static mesh in the scene.</param>
-        public DynamicTrianglesBuilder(MeshBuilder meshBuilder, int lightmapSize)
+        public DynamicTrianglesBuilder(ProcessMeshDataStep meshBuilder, int lightmapSize)
         {
             // create triangle data for every triangle in the mesh.
             triangles = new List<DtbTriangle>(meshBuilder.triangleCount);

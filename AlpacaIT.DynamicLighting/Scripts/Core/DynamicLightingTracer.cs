@@ -25,6 +25,7 @@ namespace AlpacaIT.DynamicLighting
         private int bounces = 0;
         private int samples = 0;
         private int optimizationLightsRemoved = 0;
+        private bool bounceLightingInScene = false;
         private BenchmarkTimer tracingTime;
         private BenchmarkTimer bouncingTime;
         private BenchmarkTimer seamTime;
@@ -66,6 +67,7 @@ namespace AlpacaIT.DynamicLighting
             bounces = 0;
             samples = 0;
             optimizationLightsRemoved = 0;
+            bounceLightingInScene = false;
             tracingTime = new BenchmarkTimer();
             bouncingTime = new BenchmarkTimer();
             seamTime = new BenchmarkTimer();
@@ -82,39 +84,6 @@ namespace AlpacaIT.DynamicLighting
             progressBarLastUpdate = 0f;
             progressBarCancel = false;
 #endif
-        }
-
-        /// <summary>
-        /// Finds all dynamic light sources in the scene and calculates the Bounding Volume Hierarchy.
-        /// </summary>
-        private void CreateDynamicLightsBvh()
-        {
-            bvhTime.Begin();
-
-            // find all of the dynamic lights in the scene.
-            var dynamicLights = DynamicLightManager.FindDynamicLightsInScene().ToArray();
-
-            // there must be at least one light in order to create the bounding volume hierarchy.
-            if (dynamicLights.Length > 0)
-            {
-                // create the dynamic lights bounding volume hierarchy and write it to disk.
-                var bvhDynamicLights = new BvhAccelerationStructure<DynamicLight>(dynamicLights);
-                var bvhDynamicLights32 = bvhDynamicLights.ToUInt32Array();
-                vramBvhTotal += (ulong)bvhDynamicLights32.Length * 4;
-                if (!Utilities.WriteLightmapData(0, "DynamicLightingBvh2", bvhDynamicLights32))
-                    Debug.LogError($"Unable to write the dynamic lights bounding volume hierarchy file in the active scene resources directory!");
-
-                // create the point lights array with the order the bvh tree desires.
-                pointLights = new DynamicLight[dynamicLights.Length];
-                for (int i = 0; i < dynamicLights.Length; i++)
-                    pointLights[i] = dynamicLights[bvhDynamicLights.itemsIdx[i]]; // pigeonhole sort!
-            }
-            else
-            {
-                pointLights = dynamicLights;
-            }
-
-            bvhTime.Stop();
         }
 
         /// <summary>Starts raytracing the world.</summary>
@@ -142,11 +111,25 @@ namespace AlpacaIT.DynamicLighting
                 // try to remember the version used.
                 dynamicLightManager.version = 2;
 
+                // [STEP]
                 // find all light sources and calculate the bounding volume hierarchy.
-                CreateDynamicLightsBvh();
+                bvhTime.Begin();
+                var generateLightsBvhStep = new GenerateLightsBvhStep();
+                {
+                    generateLightsBvhStep.Execute();
+                    pointLights = generateLightsBvhStep.dynamicLights;
 
-                // assign channels to all dynamic lights in the scene.
-                ChannelsUpdatePointLightsInScene();
+                    generateLightsBvhStep.WriteBoundingVolumeHierarchyToDisk();
+                    vramBvhTotal += generateLightsBvhStep.vramRequired;
+                }
+                bvhTime.Stop();
+
+                // [STEP]
+                // assign channels to all dynamic lights that made it into the bounding volume hierarchy.
+                {
+                    var assignLightChannelsStep = new AssignLightChannelsStep(generateLightsBvhStep.dynamicLights);
+                    assignLightChannelsStep.Execute();
+                }
 
                 // cache the light properties.
                 pointLightsCache = new CachedLightData[pointLights.Length];
@@ -158,22 +141,30 @@ namespace AlpacaIT.DynamicLighting
                     var light = pointLights[i];
                     dynamicLightManager.raycastedDynamicLights.Add(new RaycastedDynamicLight(light));
                     pointLightsCache[i] = new CachedLightData(light);
+
+                    // while we are iterating we can check whether bounce lighting is used in the scene.
+                    // this allows us to skip steps and checks later on.
+                    if (!bounceLightingInScene && light.lightIllumination == DynamicLightIlluminationMode.SingleBounce)
+                        bounceLightingInScene = true;
                 }
 
-                var meshFilters = Object.FindObjectsOfType<MeshFilter>();
+                // [STEP]
+                // find compatible mesh renderers in the scene that can be raytraced.
+                var findMeshFiltersStep = new FindMeshFiltersStep();
+                findMeshFiltersStep.Execute();
+
+                // [PASS: DIRECT ILLUMINATION]
+                var meshFilters = findMeshFiltersStep.staticMeshFilters;
                 for (int i = 0; i < meshFilters.Length; i++)
                 {
                     var meshFilter = meshFilters[i];
-                    if (meshFilter.gameObject.isStatic && meshFilter.sharedMesh != null)
-                    {
-                        float progressMin = i / (float)meshFilters.Length;
-                        float progressMax = (i + 1) / (float)meshFilters.Length;
+                    float progressMin = i / (float)meshFilters.Length;
+                    float progressMax = (i + 1) / (float)meshFilters.Length;
 
-                        Raytrace(meshFilter, progressMin, progressMax);
+                    Raytrace(meshFilter, progressMin, progressMax);
 #if UNITY_EDITOR
-                        if (progressBarCancel) { cancelled?.Invoke(this, null); break; }
+                    if (progressBarCancel) { cancelled?.Invoke(this, null); break; }
 #endif
-                    }
                 }
 
 #if UNITY_EDITOR
@@ -217,14 +208,10 @@ namespace AlpacaIT.DynamicLighting
 
         private unsafe void Raytrace(MeshFilter meshFilter, float progressMin, float progressMax)
         {
-            var meshBuilder = new MeshBuilder(meshFilter.transform.localToWorldMatrix, meshFilter.sharedMesh, pixelDensityPerSquareMeter, maximumLightmapSize);
+            var meshBuilder = new ProcessMeshDataStep(meshFilter.transform.localToWorldMatrix, meshFilter.sharedMesh, pixelDensityPerSquareMeter, maximumLightmapSize);
+            meshBuilder.Execute();
             lightmapSize = meshBuilder.textureSize;
             lightmapSizeMin1 = lightmapSize - 1;
-
-            //lightmapSize = MathEx.SurfaceAreaToTextureSize(meshBuilder.surfaceArea, pixelDensityPerSquareMeter);
-            //if (lightmapSize > maximumLightmapSize)
-            //    lightmapSize = maximumLightmapSize;
-            //lightmapSizeMin1 = lightmapSize - 1;
 
 #if UNITY_EDITOR
             var progressTitle = "Raytracing Scene " + meshBuilder.surfaceArea.ToString("0.00") + "m² (" + lightmapSize + "x" + lightmapSize + ")";
@@ -233,6 +220,7 @@ namespace AlpacaIT.DynamicLighting
             if (!meshBuilder.hasLightmapCoordinates)
             {
                 Debug.LogWarning("Raytracer skipping " + meshFilter.name + " because it does not have uv1 lightmap coordinates!");
+                meshBuilder.Dispose();
                 return;
             }
             else
@@ -287,24 +275,27 @@ namespace AlpacaIT.DynamicLighting
 #endif
             bouncingTime.Begin();
 
-            // iterate over all triangles in the mesh.
-            for (int i = 0; i < meshBuilder.triangleCount; i++)
+            if (bounceLightingInScene)
             {
-#if UNITY_EDITOR
-                if (Time.realtimeSinceStartup - progressBarLastUpdate > 0.25f)
+                // iterate over all triangles in the mesh.
+                for (int i = 0; i < meshBuilder.triangleCount; i++)
                 {
-                    progressBarLastUpdate = Time.realtimeSinceStartup;
-                    if (UnityEditor.EditorUtility.DisplayCancelableProgressBar(progressTitle, progressDescription, Mathf.Lerp(progressMin, progressMax, i / (float)meshBuilder.triangleCount)))
+#if UNITY_EDITOR
+                    if (Time.realtimeSinceStartup - progressBarLastUpdate > 0.25f)
                     {
-                        progressBarCancel = true;
-                        break;
+                        progressBarLastUpdate = Time.realtimeSinceStartup;
+                        if (UnityEditor.EditorUtility.DisplayCancelableProgressBar(progressTitle, progressDescription, Mathf.Lerp(progressMin, progressMax, i / (float)meshBuilder.triangleCount)))
+                        {
+                            progressBarCancel = true;
+                            break;
+                        }
                     }
-                }
 #endif
-                var (v1, v2, v3) = meshBuilder.GetTriangleVertices(i);
-                var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
+                    var (v1, v2, v3) = meshBuilder.GetTriangleVertices(i);
+                    var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
 
-                BounceTriangle(i, meshBuilder, dynamic_triangles, v1, v2, v3, t1, t2, t3);
+                    BounceTriangle(i, meshBuilder, dynamic_triangles, v1, v2, v3, t1, t2, t3);
+                }
             }
 
             bouncingTime.Stop();
@@ -462,6 +453,8 @@ namespace AlpacaIT.DynamicLighting
                 BuildShadows(i, meshBuilder, pixels_lightmap_ptr, dynamic_triangles, t1, t2, t3);
             }
 
+            meshBuilder.Dispose();
+
             pixels_lightmap_gc.Free();
             pixels_visited_gc.Free();
 
@@ -487,7 +480,7 @@ namespace AlpacaIT.DynamicLighting
             return pixels[offset];
         }
 
-        private unsafe void RaycastTriangle(int triangle_index, MeshBuilder meshBuilder, DynamicTrianglesBuilder dynamic_triangles, uint* pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        private unsafe void RaycastTriangle(int triangle_index, ProcessMeshDataStep meshBuilder, DynamicTrianglesBuilder dynamic_triangles, uint* pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // get the triangle normal (this may have failed when degenerate or very small).
             var triangleNormal = meshBuilder.triangleNormals[triangle_index];
@@ -548,15 +541,19 @@ namespace AlpacaIT.DynamicLighting
 
             float half = 1.0f / (lightmapSize * 2f);
 
+            // [STEP]
+            // calculate the world position for every UV position on a triangle.
+            var triangleUvTo3dStep = new TriangleUvTo3dStep(v1, v2, v3, t1, t2, t3, triangleSurfaceArea, triangleBoundingBox, lightmapSize);
+            triangleUvTo3dStep.Execute();
+            var uvWorldPositions = triangleUvTo3dStep.worldPositions;
+
+            int ptr = 0;
             for (int y = minY; y <= maxY; y++)
             {
-                float yy = y / (float)lightmapSize;
-
                 for (int x = minX; x <= maxX; x++)
                 {
-                    float xx = x / (float)lightmapSize;
-
-                    var world = MathEx.UvTo3dFast(triangleSurfaceArea, new Vector2(xx + half, yy + half), v1, v2, v3, t1, t2, t3);
+                    // fetch the world position for the current uv coordinate.
+                    var world = uvWorldPositions[ptr++];
                     if (world.Equals(Vector3.zero)) continue;
 
                     // iterate over the lights potentially affecting this triangle.
@@ -589,9 +586,11 @@ namespace AlpacaIT.DynamicLighting
                     pixels_visited[y * lightmapSize + x] = 1;
                 }
             }
+
+            triangleUvTo3dStep.Dispose();
         }
 
-        private unsafe void OptimizeTriangle(int triangle_index, MeshBuilder meshBuilder, uint* pixels_lightmap, DynamicTrianglesBuilder dynamic_triangles, Vector2 t1, Vector2 t2, Vector2 t3)
+        private unsafe void OptimizeTriangle(int triangle_index, ProcessMeshDataStep meshBuilder, uint* pixels_lightmap, DynamicTrianglesBuilder dynamic_triangles, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // during the raycasting process, lights were associated per-triangle. This was
             // determined by the normal of the triangle (must face the light) and that the radius of
@@ -663,7 +662,7 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
-        private unsafe void BuildShadows(int triangle_index, MeshBuilder meshBuilder, uint* pixels_lightmap, DynamicTrianglesBuilder dynamic_triangles, Vector2 t1, Vector2 t2, Vector2 t3)
+        private unsafe void BuildShadows(int triangle_index, ProcessMeshDataStep meshBuilder, uint* pixels_lightmap, DynamicTrianglesBuilder dynamic_triangles, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // now the lightmap pixels have also been padded and all the unused light sources have
             // been removed from the triangle, so we only have to store the 1bpp light occlusion
@@ -765,7 +764,7 @@ namespace AlpacaIT.DynamicLighting
             return false;
         }
 
-        private unsafe void BounceTriangle(int triangle_index, MeshBuilder meshBuilder, DynamicTrianglesBuilder dynamic_triangles, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        private unsafe void BounceTriangle(int triangle_index, ProcessMeshDataStep meshBuilder, DynamicTrianglesBuilder dynamic_triangles, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // get the triangle normal (this may have failed when degenerate or very small).
             var triangleNormal = meshBuilder.triangleNormals[triangle_index];

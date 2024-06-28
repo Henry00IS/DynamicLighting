@@ -7,7 +7,7 @@ namespace AlpacaIT.DynamicLighting
     /// coordinates and can add padding. It guarantees a 2x2 texture size where min and max are
     /// within array bounds (0-1 in this example) and always encompasses a pixel.
     /// </summary>
-    internal class PixelTriangleRect
+    internal struct PixelTriangleRect
     {
         /// <summary>The given size of the texture (guaranteed to be at least 2).</summary>
         public readonly int textureSize;
@@ -89,5 +89,13 @@ namespace AlpacaIT.DynamicLighting
                 }
             }
         }
+
+        // todo: fact check this comment.
+        /// <summary>Gets the width of the rectangle (guaranteed to be at least 1).</summary>
+        public readonly int width => xMax - xMin;
+
+        // todo: fact check this comment.
+        /// <summary>Gets the height of the rectangle (guaranteed to be at least 1).</summary>
+        public readonly int height => yMax - yMin;
     }
 }
