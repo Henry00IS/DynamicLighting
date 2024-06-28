@@ -783,10 +783,10 @@ namespace AlpacaIT.DynamicLighting
             // calculate the bounding box of the polygon in UV space.
             // we only have to raycast these pixels and can skip the rest.
             var triangleBoundingBox = meshBuilder.triangleUv1BoundingBoxes[triangle_index];
-            var minX = triangleBoundingBox.xMin; // Mathf.FloorToInt(triangleBoundingBox.xMin * lightmapSize);
-            var minY = triangleBoundingBox.yMin; // Mathf.FloorToInt(triangleBoundingBox.yMin * lightmapSize);
-            var maxX = triangleBoundingBox.xMax; // Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSize);
-            var maxY = triangleBoundingBox.yMax; // Mathf.CeilToInt(triangleBoundingBox.yMax * lightmapSize);
+            var minX = triangleBoundingBox.xMin - 2;
+            var minY = triangleBoundingBox.yMin - 2;
+            var maxX = triangleBoundingBox.xMax + 2;
+            var maxY = triangleBoundingBox.yMax + 2;
 
             // clamp the pixel coordinates so that we can safely write to our arrays.
             minX = Mathf.Clamp(minX, 0, lightmapSize - 1);
@@ -798,13 +798,11 @@ namespace AlpacaIT.DynamicLighting
             var triangleLightIndices = dynamic_triangles.GetRaycastedLightIndices(triangle_index);
             var triangleLightIndicesCount = triangleLightIndices.Count;
 
-            var pixels_bounce_size = (1 + maxX - minX) * (1 + maxY - minY);
-
             // prepare bounce color data for every light source.
-            var pixels_bounce = new List<HighColor[]>(triangleLightIndicesCount);
+            var pixels_bounce = new List<HighColorTexture>(triangleLightIndicesCount);
             var hasBounceTexture = new bool[triangleLightIndicesCount];
             for (int i = 0; i < triangleLightIndicesCount; i++)
-                pixels_bounce.Add(new HighColor[pixels_bounce_size]);
+                pixels_bounce.Add(new HighColorTexture(4 + maxX - minX, 4 + maxY - minY));
 
             // calculate some values in advance.
             var triangleNormalOffset = triangleNormal * 0.001f;
@@ -813,12 +811,10 @@ namespace AlpacaIT.DynamicLighting
             for (int y = minY; y <= maxY; y++)
             {
                 float yy = y / (float)lightmapSize;
-                int yPtr = y * lightmapSize;
 
                 for (int x = minX; x <= maxX; x++)
                 {
                     float xx = x / (float)lightmapSize;
-                    int xyPtr = yPtr + x;
 
                     var world = MathEx.UvTo3dFast(triangleSurfaceArea, new Vector2(xx + half, yy + half), v1, v2, v3, t1, t2, t3);
                     if (world.Equals(Vector3.zero)) continue;
@@ -968,11 +964,11 @@ namespace AlpacaIT.DynamicLighting
                             }*/
                         }
 
-                        var offset = (y - minY) * (1 + maxX - minX) + (x - minX);
+                        //var offset = (y - minY) * (1 + maxX - minX) + (x - minX);
 
                         // we only visit a pixel once, so we can store the compressed result.
                         if (total != 0)
-                            pixels_bounce[i][offset] = new HighColor(accumulator / total, accumulator / total, accumulator / total);
+                            pixels_bounce[i][2 + x - minX, 2 + y - minY] = new HighColor(accumulator / total, accumulator / total, accumulator / total);
 
                         // if we have a bounce pixel set then associate the data with the triangle.
                         if (!hasBounceTexture[i] && accumulator > 0.0f)

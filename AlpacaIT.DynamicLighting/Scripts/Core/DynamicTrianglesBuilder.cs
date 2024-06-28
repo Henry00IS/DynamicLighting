@@ -21,7 +21,7 @@ namespace AlpacaIT.DynamicLighting
             public BitArray2 shadowOcclusionBits;
 
             /// <summary>The collection of bounce texture data.</summary>
-            public HighColor[] bounceTexture;
+            public HighColorTexture bounceTexture;
 
             /// <summary>Creates a new light with the specified dynamic light index.</summary>
             /// <param name="dynamicLightIndex">The dynamic light source index.</param>
@@ -142,7 +142,7 @@ namespace AlpacaIT.DynamicLighting
         /// <param name="triangleIndex">The triangle index in the mesh.</param>
         /// <param name="lightIndex">The triangle light index.</param>
         /// <returns>The bounce texture data.</returns>
-        public HighColor[] GetBounceTexture(int triangleIndex, int lightIndex)
+        public HighColorTexture GetBounceTexture(int triangleIndex, int lightIndex)
         {
             return triangles[triangleIndex].lights[lightIndex].bounceTexture;
         }
@@ -151,7 +151,7 @@ namespace AlpacaIT.DynamicLighting
         /// <param name="triangleIndex">The triangle index in the mesh.</param>
         /// <param name="lightIndex">The triangle light index.</param>
         /// <param name="shadowBits">The bounce texture data.</param>
-        public void SetBounceTexture(int triangleIndex, int lightIndex, HighColor[] bounceTexture)
+        public void SetBounceTexture(int triangleIndex, int lightIndex, HighColorTexture bounceTexture)
         {
             triangles[triangleIndex].lights[lightIndex].bounceTexture = bounceTexture;
         }
@@ -271,16 +271,7 @@ namespace AlpacaIT.DynamicLighting
                     var bounceTexture = GetBounceTexture(triangleIndex, lightIndex);
                     if (bounceTexture != null)
                     {
-                        foreach (var color in bounceTexture)
-                        {
-                            buffer.Add((uint)color.r);
-                        }
-                        //var bounceTextureBytes = Utilities.StructArrayToByteArray(bounceTexture);
-                        //uint[] decoded = new uint[bounceTextureBytes.Length / 4];
-                        //Buffer.BlockCopy(bounceTextureBytes, 0, decoded, 0, bounceTextureBytes.Length);
-                        //
-                        //buffer.AddRange(decoded);
-
+                        buffer.AddRange(bounceTexture.ToUInt32Array());
                         buffer[(int)(bufferTriangleOffset)] = lightDataOffset;
                         lightDataOffset = (uint)buffer.Count;
                     }

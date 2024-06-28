@@ -534,7 +534,7 @@ struct DynamicTriangle
         // offset the lightmap triangle uv to the top-left corner to read near zero, zero.
         uv -= bounds.xy;
         
-        uint index = (uv.y - 4) * (bounds.z - 7) + (uv.x - 4);
+        uint index = uv.y * bounds.z + uv.x;
         return pow(dynamic_triangles[activeLightBounceDataOffset + index] / 31.0, 2.0);
     }
     

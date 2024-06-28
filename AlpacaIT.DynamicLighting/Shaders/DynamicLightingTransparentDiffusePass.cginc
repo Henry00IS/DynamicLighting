@@ -89,6 +89,7 @@ DYNLIT_FRAGMENT_LIGHT
     // float NdotL; dot product with the normal and light direction (diffusion).
     // float map; the computed shadow of this fragment with effects.
     // float attenuation; the attenuation of the point light with maximum radius.
+    // float? bounce; the sampled bounce texture color of the point light.
     //
     // it may also early out and continue the loop to the next light.
     //
@@ -96,7 +97,7 @@ DYNLIT_FRAGMENT_LIGHT
     #include "GenerateLightProcessor.cginc"
                 
     // add this light to the final color of the fragment.
-    light_final += light.color * attenuation * NdotL * map;
+    light_final += (light.color * attenuation * NdotL * map) + (light.color * bounce * light.intensity);
 }
 
 #else
