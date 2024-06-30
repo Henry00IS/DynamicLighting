@@ -126,3 +126,13 @@ float3 fresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
 {
     return F0 + (max(1.0 - roughness, F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
+
+
+// gets the red, green and blue components as floating point 0.0 to 1.0.
+float3 unpackHighColor(uint color)
+{
+    float r = pow(((color >> 11) & 0x1F) / 31.0, 2.0);
+    float g = pow(((color >> 5) & 0x3F) / 63.0, 2.0);
+    float b = pow((color & 0x1F) / 31.0, 2.0);
+    return float3(r, g, b);
+}

@@ -529,13 +529,133 @@ struct DynamicTriangle
     
     // fetches a bounce pixel at the specified uv coordinates from the bounce texture data.
     // note: requires 'uv -= bounds.xy' to be calculated up front.
-    float bounce_sample(uint2 uv)
+    float3 bounce_sample(uint2 uv)
     {
         // offset the lightmap triangle uv to the top-left corner to read near zero, zero.
-        uv -= bounds.xy;
+        //uv -= bounds.xy;
         
         uint index = uv.y * bounds.z + uv.x;
-        return pow(dynamic_triangles[activeLightBounceDataOffset + index] / 31.0, 2.0);
+        return unpackHighColor(dynamic_triangles[activeLightBounceDataOffset + index]);
+        //return pow(dynamic_triangles[activeLightBounceDataOffset + index] / 31.0, 2.0);
+    }
+    
+    // x x x
+    // x   x apply a simple 3x3 sampling with averaged results to the bounce texture data.
+    // x x x
+    float3 bounce_sample3x3(uint2 uv)
+    {
+        float3 map;
+        
+        // offset the lightmap triangle uv to the top-left corner to read near zero, zero.
+        //uv -= bounds.xy;
+
+        map  = bounce_sample(uint2(uv.x - 1u, uv.y - 1u));
+        map += bounce_sample(uint2(uv.x     , uv.y - 1u));
+        map += bounce_sample(uint2(uv.x + 1u, uv.y - 1u));
+
+        map += bounce_sample(uint2(uv.x - 1u, uv.y     ));
+        map += bounce_sample(uv                         );
+        map += bounce_sample(uint2(uv.x + 1u, uv.y     ));
+
+        map += bounce_sample(uint2(uv.x - 1u, uv.y + 1u));
+        map += bounce_sample(uint2(uv.x     , uv.y + 1u));
+        map += bounce_sample(uint2(uv.x + 1u, uv.y + 1u));
+
+        return map / 9.0;
+    }
+    
+    // x x x
+    // x   x apply 4x 3x3 sampling with interpolation to get bilinear filtered bounce texture data.
+    // x x x
+    float3 bounce_sample_bilinear(float2 uv)
+    {
+        // huge shoutout to neu_graphic for their software bilinear filter shader.
+        // https://www.shadertoy.com/view/4sBSRK
+
+        // we are sample center, so it's the same as point sample.
+        float2 pos = uv - 0.5;
+        float2 f = frac(pos);
+        uint2 pos_top_left = floor(pos);
+
+        // we wish to do the following but with as few instructions as possible:
+        //
+        //float tl = lightmap_sample3x3(pos_top_left);
+        //float tr = lightmap_sample3x3(pos_top_left + uint2(1, 0));
+        //float bl = lightmap_sample3x3(pos_top_left + uint2(0, 1));
+        //float br = lightmap_sample3x3(pos_top_left + uint2(1, 1));
+        
+        // offset the lightmap triangle uv to the top-left corner to read near zero, zero.
+        pos_top_left -= bounds.xy;
+        
+        float3 tl = bounce_sample3x3(pos_top_left);
+        float3 tr = bounce_sample3x3(pos_top_left + uint2(1, 0));
+        float3 bl = bounce_sample3x3(pos_top_left + uint2(0, 1));
+        float3 br = bounce_sample3x3(pos_top_left + uint2(1, 1));
+        
+        //tl *= (1.0 - rand(pos) * 0.3);
+        //tr *= (1.0 - rand(pos + uint2(138, 722)) * 0.3);
+        //bl *= (1.0 - rand(pos - uint2(3123, 4837)) * 0.3);
+        //br *= (1.0 - rand(pos + uint2(1123, 231)) * 0.3);
+
+        // read all of the lightmap samples we need in advance.
+        //float4x4 map;
+        //map[0][0] = bounce_sample(uint2(pos_top_left.x - 1, pos_top_left.y - 1));
+        //map[0][1] = bounce_sample(uint2(pos_top_left.x    , pos_top_left.y - 1));
+        //map[0][2] = bounce_sample(uint2(pos_top_left.x + 1, pos_top_left.y - 1));
+        //map[0][3] = bounce_sample(uint2(pos_top_left.x + 2, pos_top_left.y - 1));
+        //map[1][0] = bounce_sample(uint2(pos_top_left.x - 1, pos_top_left.y    ));
+        //map[1][1] = bounce_sample(pos_top_left                                 );
+        //map[1][2] = bounce_sample(uint2(pos_top_left.x + 1, pos_top_left.y    ));
+        //map[1][3] = bounce_sample(uint2(pos_top_left.x + 2, pos_top_left.y    ));
+        //map[2][0] = bounce_sample(uint2(pos_top_left.x - 1, pos_top_left.y + 1));
+        //map[2][1] = bounce_sample(uint2(pos_top_left.x    , pos_top_left.y + 1));
+        //map[2][2] = bounce_sample(uint2(pos_top_left.x + 1, pos_top_left.y + 1));
+        //map[2][3] = bounce_sample(uint2(pos_top_left.x + 2, pos_top_left.y + 1));
+        //map[3][0] = bounce_sample(uint2(pos_top_left.x - 1, pos_top_left.y + 2));
+        //map[3][1] = bounce_sample(uint2(pos_top_left.x    , pos_top_left.y + 2));
+        //map[3][2] = bounce_sample(uint2(pos_top_left.x + 1, pos_top_left.y + 2));
+        //map[3][3] = bounce_sample(uint2(pos_top_left.x + 2, pos_top_left.y + 2));
+        //
+        //// there are several common overlapping 3x3 samples (marked as X).
+        ////
+        //// ----
+        //// -XX-
+        //// -XX-
+        //// ----
+        //// 
+        //// m00 m01 m02 m03
+        //// m10 m11 m12 m13
+        //// m20 m21 m22 m23
+        //// m30 m31 m32 m33
+        ////
+        //float common = map[1][1] + map[1][2] + map[2][1] + map[2][2];
+        //
+        //// for the top 3x3 samples there are more overlapping samples:
+        ////
+        //// -XX-
+        //// -XX-
+        //// -XX-
+        //// ----
+        ////
+        //float tcommon = common + map[0][1] + map[0][2];
+        //
+        //float tl = (tcommon + map[0][0] + map[1][0] + map[2][0]) / 9.0;
+        //float tr = (tcommon + map[0][3] + map[1][3] + map[2][3]) / 9.0;
+        //
+        //// for the bottom 3x3 samples there are more overlapping samples:
+        ////
+        //// ----
+        //// -XX-
+        //// -XX-
+        //// -XX-
+        ////
+        //float bcommon = common + map[3][1] + map[3][2];
+        //
+        //float bl = (bcommon + map[1][0] + map[2][0] + map[3][0]) / 9.0;
+        //float br = (bcommon + map[1][3] + map[2][3] + map[3][3]) / 9.0;
+        //
+        //// bilinear interpolation.
+        return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y);
     }
     
     // returns whether occlusion (1bpp shadow bitmask) data is available for this polygon.

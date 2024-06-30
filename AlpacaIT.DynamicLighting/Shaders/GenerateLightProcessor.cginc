@@ -48,7 +48,7 @@ if (light.is_shadow_available())
 // if this renderer has a lightmap we use shadow bits otherwise it's a dynamic object.
 // if this light is realtime we will skip this step.
 float map = 1.0;
-float bounce = 0.0;
+float3 bounce = 0.0;
 if (lightmap_resolution > 0 && light.is_dynamic())
 {
     // the triangle may be fully illuminated allowing us to skip over this:
@@ -65,7 +65,7 @@ if (lightmap_resolution > 0 && light.is_dynamic())
     
     // retrieve the bounce lighting sample.
     if (is_bounce_available)
-        bounce = dynamic_triangle.bounce_sample(i.uv1);
+        bounce = dynamic_triangle.bounce_sample_bilinear(i.uv1);
 }
 
 // whenever the fragment is fully in shadow we can early out.

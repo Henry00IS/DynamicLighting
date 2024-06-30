@@ -10,6 +10,9 @@ namespace AlpacaIT.DynamicLighting
     /// </summary>
     internal class DynamicTrianglesBuilder
     {
+        /// <summary>Used to pass the lightmap index to the bounce lighting pass.</summary>
+        public int lightmapIndex;
+
         private class DtbTriangleLightData
         {
             /// <summary>
@@ -87,6 +90,8 @@ namespace AlpacaIT.DynamicLighting
                 triangles.Add(new DtbTriangle((uint)minX, (uint)minY, (uint)(maxX - minX)));
             }
         }
+
+        // todo: load this file from disk so that we can make adjustments during bouncing and then write it back to disk.
 
         /// <summary>Adds the specified raycasted light index to a triangle.</summary>
         /// <param name="triangleIndex">The triangle index in the mesh.</param>

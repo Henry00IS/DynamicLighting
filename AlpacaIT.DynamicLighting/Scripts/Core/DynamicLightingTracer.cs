@@ -155,13 +155,14 @@ namespace AlpacaIT.DynamicLighting
 
                 // [PASS: DIRECT ILLUMINATION]
                 var meshFilters = findMeshFiltersStep.staticMeshFilters;
+                var dynamicTrianglesBuilders = new List<DynamicTrianglesBuilder>(meshFilters.Length);
                 for (int i = 0; i < meshFilters.Length; i++)
                 {
                     var meshFilter = meshFilters[i];
                     float progressMin = i / (float)meshFilters.Length;
                     float progressMax = (i + 1) / (float)meshFilters.Length;
 
-                    RaytraceDirectIllumination(meshFilter, progressMin, progressMax);
+                    RaytraceDirectIllumination(dynamicTrianglesBuilders, meshFilter, progressMin, progressMax);
 #if UNITY_EDITOR
                     if (progressBarCancel) { cancelled?.Invoke(this, null); break; }
 #endif
@@ -170,13 +171,15 @@ namespace AlpacaIT.DynamicLighting
                 // [PASS: BOUNCE LIGHTING]
                 if (bounceLightingInScene)
                 {
-                    for (int i = 0; i < meshFilters.Length; i++)
+                    var raycastedMeshRenderers = dynamicLightManager.raycastedMeshRenderers;
+                    var raycastedMeshRenderersCount = raycastedMeshRenderers.Count;
+                    for (int i = 0; i < raycastedMeshRenderersCount; i++)
                     {
-                        var meshFilter = meshFilters[i];
-                        float progressMin = i / (float)meshFilters.Length;
-                        float progressMax = (i + 1) / (float)meshFilters.Length;
+                        var raycastedMeshRenderer = raycastedMeshRenderers[i];
+                        float progressMin = i / (float)raycastedMeshRenderersCount;
+                        float progressMax = (i + 1) / (float)raycastedMeshRenderersCount;
 
-                        RaytraceBounceLighting(meshFilter, progressMin, progressMax);
+                        RaytraceBounceLighting(dynamicTrianglesBuilders[i], raycastedMeshRenderer, progressMin, progressMax);
 #if UNITY_EDITOR
                         if (progressBarCancel) { cancelled?.Invoke(this, null); break; }
 #endif
@@ -222,7 +225,7 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
-        private unsafe void RaytraceDirectIllumination(MeshFilter meshFilter, float progressMin, float progressMax)
+        private unsafe void RaytraceDirectIllumination(List<DynamicTrianglesBuilder> dynamicTrianglesBuilders, MeshFilter meshFilter, float progressMin, float progressMax)
         {
             // [STEP]
             // processes the mesh for fast data access and raycasting in the scene.
@@ -252,6 +255,7 @@ namespace AlpacaIT.DynamicLighting
 
             tracingTime.Begin();
             var dynamic_triangles = new DynamicTrianglesBuilder(meshBuilder, lightmapSize);
+            dynamicTrianglesBuilders.Add(dynamic_triangles);
             var pixels_lightmap = new uint[lightmapSize * lightmapSize];
             var pixels_visited = new uint[lightmapSize * lightmapSize];
             var pixels_lightmap_gc = GCHandle.Alloc(pixels_lightmap, GCHandleType.Pinned);
@@ -262,6 +266,7 @@ namespace AlpacaIT.DynamicLighting
             // prepare to raycast the entire mesh using multi-threading.
             raycastProcessor.pixelsLightmap = pixels_lightmap_ptr;
             raycastProcessor.lightmapSize = lightmapSize;
+            raycastProcessor.materialSampler = new MaterialSampler(meshFilter);
 
             // iterate over all triangles in the mesh.
             for (int i = 0; i < meshBuilder.triangleCount; i++)
@@ -286,6 +291,21 @@ namespace AlpacaIT.DynamicLighting
             // finish any remaining raycasting work.
             raycastProcessor.Complete();
             tracingTime.Stop();
+
+            // we can do this here when there is no bounce lighting.
+            if (!bounceLightingInScene)
+            {
+                // optimize the runtime performance.
+                // iterate over all triangles in the mesh.
+                optimizationTime.Begin();
+                for (int i = 0; i < meshBuilder.triangleCount; i++)
+                {
+                    var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
+
+                    OptimizeTriangle(i, meshBuilder, pixels_lightmap_ptr, dynamic_triangles, t1, t2, t3);
+                }
+                optimizationTime.Stop();
+            }
 
             seamTime.Begin();
             {
@@ -441,17 +461,22 @@ namespace AlpacaIT.DynamicLighting
             lightmap.identifier = uniqueIdentifier++;
             dynamicLightManager.raycastedMeshRenderers.Add(lightmap);
 
-            // write the dynamic triangles to disk.
-            var dynamic_triangles32 = dynamic_triangles.BuildDynamicTrianglesData().ToArray();
-            vramDynamicTrianglesTotal += (ulong)dynamic_triangles32.Length * 4;
-            if (!Utilities.WriteLightmapData(lightmap.identifier, "DynamicLighting2", dynamic_triangles32))
-                Debug.LogError($"Unable to write the dynamic lighting {lightmap.identifier} data file in the active scene resources directory!");
+            // we can do this here when there is no bounce lighting.
+            if (!bounceLightingInScene)
+            {
+                // write the dynamic triangles to disk.
+                var dynamic_triangles32 = dynamic_triangles.BuildDynamicTrianglesData().ToArray();
+                vramDynamicTrianglesTotal += (ulong)dynamic_triangles32.Length * 4;
+                if (!Utilities.WriteLightmapData(lightmap.identifier, "DynamicLighting2", dynamic_triangles32))
+                    Debug.LogError($"Unable to write the dynamic lighting {lightmap.identifier} data file in the active scene resources directory!");
+            }
         }
 
-        private unsafe void RaytraceBounceLighting(MeshFilter meshFilter, float progressMin, float progressMax)
+        private unsafe void RaytraceBounceLighting(DynamicTrianglesBuilder dynamic_triangles, RaycastedMeshRenderer meshRenderer, float progressMin, float progressMax)
         {
             // [STEP]
             // processes the mesh for fast data access and raycasting in the scene.
+            var meshFilter = meshRenderer.renderer.GetComponent<MeshFilter>();
             var meshBuilder = new ProcessMeshDataStep(meshFilter.transform.localToWorldMatrix, meshFilter.sharedMesh, pixelDensityPerSquareMeter, maximumLightmapSize);
             meshBuilder.Execute();
             lightmapSize = meshBuilder.textureSize;
@@ -461,12 +486,12 @@ namespace AlpacaIT.DynamicLighting
             var progressTitle = "Raytracing Scene " + meshBuilder.surfaceArea.ToString("0.00") + "m² (" + lightmapSize + "x" + lightmapSize + ")";
             var progressDescription = "Raytracing Bounce Lighting " + meshFilter.name;
 #endif
-            if (!meshBuilder.hasLightmapCoordinates)
-            {
-                //Debug.LogWarning("Raytracer skipping " + meshFilter.name + " because it does not have uv1 lightmap coordinates!");
-                meshBuilder.Dispose();
-                return;
-            }
+            //if (!meshBuilder.hasLightmapCoordinates)
+            //{
+            //    //Debug.LogWarning("Raytracer skipping " + meshFilter.name + " because it does not have uv1 lightmap coordinates!");
+            //    meshBuilder.Dispose();
+            //    return;
+            //}
             //else
             //{
             //    // estimate the amount of vram required (purely statistical).
@@ -477,7 +502,7 @@ namespace AlpacaIT.DynamicLighting
             //}
 
             //bouncingTime.Begin();
-            var dynamic_triangles = new DynamicTrianglesBuilder(meshBuilder, lightmapSize);
+            //new DynamicTrianglesBuilder(meshBuilder, lightmapSize);
             //var pixels_lightmap = new uint[lightmapSize * lightmapSize];
             //var pixels_visited = new uint[lightmapSize * lightmapSize];
             //var pixels_lightmap_gc = GCHandle.Alloc(pixels_lightmap, GCHandleType.Pinned);
@@ -520,204 +545,46 @@ namespace AlpacaIT.DynamicLighting
 #endif
             bouncingTime.Begin();
 
-            if (bounceLightingInScene)
+            // iterate over all triangles in the mesh.
+            for (int i = 0; i < meshBuilder.triangleCount; i++)
             {
-                // iterate over all triangles in the mesh.
-                for (int i = 0; i < meshBuilder.triangleCount; i++)
-                {
 #if UNITY_EDITOR
-                    if (Time.realtimeSinceStartup - progressBarLastUpdate > 0.25f)
+                if (Time.realtimeSinceStartup - progressBarLastUpdate > 0.25f)
+                {
+                    progressBarLastUpdate = Time.realtimeSinceStartup;
+                    if (UnityEditor.EditorUtility.DisplayCancelableProgressBar(progressTitle, progressDescription, Mathf.Lerp(progressMin, progressMax, i / (float)meshBuilder.triangleCount)))
                     {
-                        progressBarLastUpdate = Time.realtimeSinceStartup;
-                        if (UnityEditor.EditorUtility.DisplayCancelableProgressBar(progressTitle, progressDescription, Mathf.Lerp(progressMin, progressMax, i / (float)meshBuilder.triangleCount)))
-                        {
-                            progressBarCancel = true;
-                            break;
-                        }
+                        progressBarCancel = true;
+                        break;
                     }
-#endif
-                    var (v1, v2, v3) = meshBuilder.GetTriangleVertices(i);
-                    var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
-
-                    BounceTriangle(i, meshBuilder, dynamic_triangles, v1, v2, v3, t1, t2, t3);
                 }
+#endif
+                var (v1, v2, v3) = meshBuilder.GetTriangleVertices(i);
+                var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
+
+                BounceTriangle(i, meshBuilder, dynamic_triangles, v1, v2, v3, t1, t2, t3);
             }
 
             bouncingTime.Stop();
 
-            meshBuilder.Dispose();
-            /*
             // optimize the runtime performance.
             // iterate over all triangles in the mesh.
-            optimizationTime.Begin();
-            for (int i = 0; i < meshBuilder.triangleCount; i++)
-            {
-                var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
-
-                OptimizeTriangle(i, meshBuilder, pixels_lightmap_ptr, dynamic_triangles, t1, t2, t3);
-            }
-            optimizationTime.Stop();
-
-            seamTime.Begin();
-            {
-                for (int y = 0; y < lightmapSize; y++)
-                {
-                    int yPtr = y * lightmapSize;
-
-                    for (int x = 0; x < lightmapSize; x++)
-                    {
-                        int xyPtr = yPtr + x;
-
-                        // if we find an unvisited pixel it will appear as a black seam in the scene.
-                        uint visited = pixels_visited_ptr[xyPtr];
-                        if (visited == 0)
-                        {
-                            uint res = 0;
-
-                            // fetch 5x5 "visited" pixels (where p22 is the center).
-
-                            // bool p00 = GetPixel(ref pixels_visited, x - 2, y - 2) == 1;
-                            // bool p10 = GetPixel(ref pixels_visited, x - 1, y - 2) == 1;
-                            bool p20 = GetPixel(pixels_visited_ptr, x, y - 2) == 1;
-                            // bool p30 = GetPixel(ref pixels_visited, x + 1, y - 2) == 1;
-                            // bool p40 = GetPixel(ref pixels_visited, x + 2, y - 2) == 1;
-
-                            // bool p01 = GetPixel(ref pixels_visited, x - 2, y - 1) == 1;
-                            // bool p11 = GetPixel(ref pixels_visited, x - 1, y - 1) == 1;
-                            bool p21 = GetPixel(pixels_visited_ptr, x, y - 1) == 1;
-                            // bool p31 = GetPixel(ref pixels_visited, x + 1, y - 1) == 1;
-                            // bool p41 = GetPixel(ref pixels_visited, x + 2, y - 1) == 1;
-
-                            bool p02 = GetPixel(pixels_visited_ptr, x - 2, y) == 1;
-                            bool p12 = GetPixel(pixels_visited_ptr, x - 1, y) == 1;
-                            bool p32 = GetPixel(pixels_visited_ptr, x + 1, y) == 1;
-                            bool p42 = GetPixel(pixels_visited_ptr, x + 2, y) == 1;
-
-                            // bool p03 = GetPixel(ref pixels_visited, x - 2, y + 1) == 1;
-                            // bool p13 = GetPixel(ref pixels_visited, x - 1, y + 1) == 1;
-                            bool p23 = GetPixel(pixels_visited_ptr, x, y + 1) == 1;
-                            // bool p33 = GetPixel(ref pixels_visited, x + 1, y + 1) == 1;
-                            // bool p43 = GetPixel(ref pixels_visited, x + 2, y + 1) == 1;
-
-                            // bool p04 = GetPixel(ref pixels_visited, x - 2, y + 2) == 1;
-                            // bool p14 = GetPixel(ref pixels_visited, x - 1, y + 2) == 1;
-                            bool p24 = GetPixel(pixels_visited_ptr, x, y + 2) == 1;
-                            // bool p34 = GetPixel(ref pixels_visited, x + 1, y + 2) == 1;
-                            // bool p44 = GetPixel(ref pixels_visited, x + 2, y + 2) == 1;
-
-                            // fetch 5x5 "lightmap" pixels (where p22 is the center).
-
-                            // uint l00 = GetPixel(ref pixels_lightmap, x - 2, y - 2);
-                            // uint l10 = GetPixel(ref pixels_lightmap, x - 1, y - 2);
-                            uint l20 = GetPixel(pixels_lightmap_ptr, x, y - 2);
-                            // uint l30 = GetPixel(ref pixels_lightmap, x + 1, y - 2);
-                            // uint l40 = GetPixel(ref pixels_lightmap, x + 2, y - 2);
-
-                            // uint l01 = GetPixel(ref pixels_lightmap, x - 2, y - 1);
-                            // uint l11 = GetPixel(ref pixels_lightmap, x - 1, y - 1);
-                            uint l21 = GetPixel(pixels_lightmap_ptr, x, y - 1);
-                            // uint l31 = GetPixel(ref pixels_lightmap, x + 1, y - 1);
-                            // uint l41 = GetPixel(ref pixels_lightmap, x + 2, y - 1);
-
-                            uint l02 = GetPixel(pixels_lightmap_ptr, x - 2, y);
-                            uint l12 = GetPixel(pixels_lightmap_ptr, x - 1, y);
-                            uint l32 = GetPixel(pixels_lightmap_ptr, x + 1, y);
-                            uint l42 = GetPixel(pixels_lightmap_ptr, x + 2, y);
-
-                            // uint l03 = GetPixel(ref pixels_lightmap, x - 2, y + 1);
-                            // uint l13 = GetPixel(ref pixels_lightmap, x - 1, y + 1);
-                            uint l23 = GetPixel(pixels_lightmap_ptr, x, y + 1);
-                            // uint l33 = GetPixel(ref pixels_lightmap, x + 1, y + 1);
-                            // uint l43 = GetPixel(ref pixels_lightmap, x + 2, y + 1);
-
-                            // uint l04 = GetPixel(ref pixels_lightmap, x - 2, y + 2);
-                            // uint l14 = GetPixel(ref pixels_lightmap, x - 1, y + 2);
-                            uint l24 = GetPixel(pixels_lightmap_ptr, x, y + 2);
-                            // uint l34 = GetPixel(ref pixels_lightmap, x + 1, y + 2);
-                            // uint l44 = GetPixel(ref pixels_lightmap, x + 2, y + 2);
-
-                            // x x x x x
-                            // x x x x x
-                            // x x C x x
-                            // x x x x x
-                            // x x x x x
-
-                            // p00 p10 p20 p30 p40
-                            // p01 p11 p21 p31 p41
-                            // p02 p12 p22 p32 p42
-                            // p03 p13 p23 p33 p43
-                            // p04 p14 p24 p34 p44
-
-                            //
-                            //     x
-                            //   x C x
-                            //     x
-                            //
-
-                            // left 1x
-                            if (p12)
-                                res |= l12;
-                            // right 1x
-                            if (p32)
-                                res |= l32;
-                            // up 1x
-                            if (p21)
-                                res |= l21;
-                            // down 1x
-                            if (p23)
-                                res |= l23;
-
-                            //     x
-                            //
-                            // x   C   x
-                            //
-                            //     x
-
-                            // left 2x
-                            if (!p12 && p02)
-                                res |= l02;
-                            // right 2x
-                            if (!p32 && p42)
-                                res |= l42;
-                            // up 2x
-                            if (!p21 && p20)
-                                res |= l20;
-                            // down 2x
-                            if (!p23 && p24)
-                                res |= l24;
-
-                            pixels_lightmap_ptr[xyPtr] = res;
-                        }
-                    }
-                }
-            }
-            seamTime.Stop();
-
-            for (int i = 0; i < meshBuilder.triangleCount; i++)
-            {
-                var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
-
-                BuildShadows(i, meshBuilder, pixels_lightmap_ptr, dynamic_triangles, t1, t2, t3);
-            }
+            //optimizationTime.Begin();
+            //for (int i = 0; i < meshBuilder.triangleCount; i++)
+            //{
+            //    var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
+            //
+            //    OptimizeTriangle(i, meshBuilder, pixels_lightmap_ptr, dynamic_triangles, t1, t2, t3);
+            //}
+            //optimizationTime.Stop();
 
             meshBuilder.Dispose();
-
-            pixels_lightmap_gc.Free();
-            pixels_visited_gc.Free();
-
-            // store the scene reference renderer in the dynamic light manager with lightmap metadata.
-            var lightmap = new RaycastedMeshRenderer();
-            lightmap.renderer = meshFilter.GetComponent<MeshRenderer>();
-            lightmap.resolution = lightmapSize;
-            lightmap.identifier = uniqueIdentifier++;
-            dynamicLightManager.raycastedMeshRenderers.Add(lightmap);
 
             // write the dynamic triangles to disk.
             var dynamic_triangles32 = dynamic_triangles.BuildDynamicTrianglesData().ToArray();
             vramDynamicTrianglesTotal += (ulong)dynamic_triangles32.Length * 4;
-            if (!Utilities.WriteLightmapData(lightmap.identifier, "DynamicLighting2", dynamic_triangles32))
-                Debug.LogError($"Unable to write the dynamic lighting {lightmap.identifier} data file in the active scene resources directory!");
-            */
+            if (!Utilities.WriteLightmapData(meshRenderer.identifier, "DynamicLighting2", dynamic_triangles32))
+                Debug.LogError($"Unable to write the dynamic lighting {meshRenderer.identifier} data file in the active scene resources directory!");
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -901,6 +768,8 @@ namespace AlpacaIT.DynamicLighting
                     if (lightFound)
                         break;
                 }
+
+                // todo: we can set this as a flag for the bounce lighting pass so we do not have to store the pixels_lightmap.
 
                 if (!lightFound)
                 {
@@ -1173,7 +1042,9 @@ namespace AlpacaIT.DynamicLighting
                         var illuminationSamples = pointLightCache.illuminationSamples;
                         var illuminationSamplesCount = illuminationSamples.Count;
 
-                        var accumulator = 0f;
+                        var accumulatorR = 0f;
+                        var accumulatorG = 0f;
+                        var accumulatorB = 0f;
                         var total = 0;
 
                         // iterate over the important illumination samples (closest come first):
@@ -1181,6 +1052,7 @@ namespace AlpacaIT.DynamicLighting
                         {
                             // calculate sample related variables.
                             var sample = illuminationSamples[j];
+                            var sampleColor = sample.color;
                             var sampleToWorldDirection = (sample.world - worldPosition).normalized;
 
                             var sampleToWorldDistance = Vector3.Distance(sample.world, worldPosition);
@@ -1201,7 +1073,9 @@ namespace AlpacaIT.DynamicLighting
 
                                 float sampleAttenuation = math.pow(math.saturate(1.0f - sampleToLightDistanceSqr / sampleRadiusSqr), 2.0f);
 
-                                accumulator += sampleAttenuation;
+                                accumulatorR += sampleAttenuation * sampleColor.x;
+                                accumulatorG += sampleAttenuation * sampleColor.y;
+                                accumulatorB += sampleAttenuation * sampleColor.z;
                                 total++;
                             }
                             else
@@ -1296,10 +1170,10 @@ namespace AlpacaIT.DynamicLighting
 
                         // we only visit a pixel once, so we can store the compressed result.
                         if (total != 0)
-                            pixels_bounce[i][2 + x - minX, 2 + y - minY] = new HighColor(accumulator / total, accumulator / total, accumulator / total);
+                            pixels_bounce[i][2 + x - minX, 2 + y - minY] = new HighColor(accumulatorR / total, accumulatorG / total, accumulatorB / total);
 
                         // if we have a bounce pixel set then associate the data with the triangle.
-                        if (!hasBounceTexture[i] && accumulator > 0.0f)
+                        if (!hasBounceTexture[i] && (accumulatorR > 0.0f || accumulatorG > 0.0f || accumulatorB > 0.0f))
                         {
                             hasBounceTexture[i] = true;
                             dynamic_triangles.SetBounceTexture(triangle_index, i, pixels_bounce[i]);

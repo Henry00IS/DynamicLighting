@@ -18,7 +18,7 @@ namespace AlpacaIT.DynamicLighting
         public Vector3 normal;
 
         /// <summary>The color of the surface the photon hit.</summary>
-        //public Vector3 color;
+        public Vector3 color;
 
         /// <summary>Creates a new illumination sample.</summary>
         /// <param name="world">
@@ -26,10 +26,11 @@ namespace AlpacaIT.DynamicLighting
         /// offset using the surface normal).
         /// </param>
         /// <param name="normal">The normal of the surface the photon hit.</param>
-        public IlluminationSample(Vector3 world, Vector3 normal)
+        public IlluminationSample(Vector3 world, Vector3 normal, Vector3 color)
         {
             this.world = world;
             this.normal = normal;
+            this.color = color;
         }
     }
 }

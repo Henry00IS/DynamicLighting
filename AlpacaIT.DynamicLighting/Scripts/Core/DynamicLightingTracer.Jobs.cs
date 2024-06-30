@@ -54,6 +54,9 @@ namespace AlpacaIT.DynamicLighting
             public uint* pixelsLightmap;
             public int lightmapSize;
 
+            /// <summary>Samples the <see cref="Material"/> color and texture.</summary>
+            public MaterialSampler materialSampler;
+
             public void Add(RaycastCommand raycastCommand, RaycastCommandMeta raycastCommandMeta)
             {
                 nativeRaycastCommandsAccumulator[countAccumulator] = raycastCommand;
@@ -164,7 +167,8 @@ namespace AlpacaIT.DynamicLighting
 
                             //Debug.DrawLine(meta.world, meta.world + Vector3.up * 0.05f, Color.blue, 30f);
                             // store this illuminated sample for the bounce lighting pass.
-                            meta.illuminationSamples.Add(new IlluminationSample(meta.world, meta.normal));
+                            var color = materialSampler.Sample(0, 0);
+                            meta.illuminationSamples.Add(new IlluminationSample(meta.world, meta.normal, new Vector3(color.r, color.g, color.b)));
 
                             meta.illuminatedVoxels[Mathf.FloorToInt(voxelPosition.x), Mathf.FloorToInt(voxelPosition.y), Mathf.FloorToInt(voxelPosition.z)] = true;
                         }

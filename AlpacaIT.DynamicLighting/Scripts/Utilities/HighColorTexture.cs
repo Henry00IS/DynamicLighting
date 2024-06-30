@@ -87,7 +87,7 @@ namespace AlpacaIT.DynamicLighting
             {
                 for (int x = 0; x < _Width; x++)
                 {
-                    result[index++] = _Data[y * _Width + x].r;
+                    result[index++] = _Data[y * _Width + x].color;
                 }
             }
             return result;
