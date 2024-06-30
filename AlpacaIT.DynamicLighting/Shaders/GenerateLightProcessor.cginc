@@ -51,13 +51,17 @@ float map = 1.0;
 float bounce = 0.0;
 if (lightmap_resolution > 0 && light.is_dynamic())
 {
+    // the triangle may be fully illuminated allowing us to skip over this:
+    if (dynamic_triangle.is_occlusion_available())
+    {
 #if DYNAMIC_LIGHTING_SHADOW_SOFT
-    // retrieve the shadow bit at this position with bilinear filtering.
-    map = dynamic_triangle.shadow_sample_bilinear(i.uv1);
+        // retrieve the shadow bit at this position with bilinear filtering.
+        map = dynamic_triangle.shadow_sample_bilinear(i.uv1);
 #else
-    // retrieve the shadow bit at this position with 3x3 average sampling.
-    map = dynamic_triangle.shadow_sample3x3(i.uv1);
+        // retrieve the shadow bit at this position with 3x3 average sampling.
+        map = dynamic_triangle.shadow_sample3x3(i.uv1);
 #endif
+    }
     
     // retrieve the bounce lighting sample.
     if (is_bounce_available)

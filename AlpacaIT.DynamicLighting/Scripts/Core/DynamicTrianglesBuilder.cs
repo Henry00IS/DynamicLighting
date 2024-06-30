@@ -259,12 +259,23 @@ namespace AlpacaIT.DynamicLighting
                 var bufferLightCount = buffer[(int)bufferTriangleOffset++];
                 for (int lightIndex = 0; lightIndex < bufferLightCount; lightIndex++)
                 {
-                    // add the shadow data.
-                    buffer.AddRange(GetShadowOcclusionBits(triangleIndex, lightIndex).ToUInt32Array());
-
                     // fill out the shadow data offset.
                     bufferTriangleOffset++; // Shadow Data Offset
-                    buffer[(int)(bufferTriangleOffset)] = lightDataOffset;
+
+                    // add the shadow data (null if the triangle is fully illuminated).
+                    var shadowOcclusionBits = GetShadowOcclusionBits(triangleIndex, lightIndex);
+                    if (shadowOcclusionBits != null)
+                    {
+                        buffer.AddRange(GetShadowOcclusionBits(triangleIndex, lightIndex).ToUInt32Array());
+                        buffer[(int)(bufferTriangleOffset)] = lightDataOffset;
+                    }
+                    else
+                    {
+                        // the shader can skip all shadow bits related work.
+                        buffer.Add(0);
+                        buffer[(int)(bufferTriangleOffset)] = 0;
+                    }
+
                     lightDataOffset = (uint)buffer.Count;
                     bufferTriangleOffset++; // Bounce Data Offset
 

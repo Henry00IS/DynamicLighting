@@ -269,6 +269,28 @@ namespace AlpacaIT.DynamicLighting
         }
 
         /// <summary>
+        /// Checks whether a triangle contains the given point.
+        /// <para>https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle</para>
+        /// </summary>
+        /// <param name="ax"></param>
+        /// <param name="ay"></param>
+        /// <param name="bx"></param>
+        /// <param name="by"></param>
+        /// <param name="cx"></param>
+        /// <param name="cy"></param>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        /// <returns></returns>
+        public static bool TriangleContainsPoint2D(float ax, float ay, float bx, float by, float cx, float cy, float x, float y)
+        {
+            var det = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+
+            return det * ((bx - ax) * (y - ay) - (by - ay) * (x - ax)) >= 0.0f &&
+                   det * ((cx - bx) * (y - by) - (cy - by) * (x - bx)) >= 0.0f &&
+                   det * ((ax - cx) * (y - cy) - (ay - cy) * (x - cx)) >= 0.0f;
+        }
+
+        /// <summary>
         /// Calculates a framerate independent fixed timestep.
         /// </summary>
         public class FixedTimestep

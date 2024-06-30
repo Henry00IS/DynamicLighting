@@ -37,7 +37,7 @@ namespace AlpacaIT.DynamicLighting
             /// <summary>The original unmodified triangle indices of the mesh (read only).</summary>
             public NativeArray<int> meshTriangles;
 
-            /// <summary>The original unmodified UV1 coordinates of the mesh.</summary>
+            /// <summary>The original unmodified UV1 coordinates of the mesh (read only).</summary>
             public NativeArray<Vector2> meshUv1;
 
             /// <summary>The vertices of the mesh in world-space coordinates (read only).</summary>
@@ -46,13 +46,13 @@ namespace AlpacaIT.DynamicLighting
             /// <summary>
             /// The flat triangle normals each calculated using a plane of 3 vertices (i.e. not the
             /// normals stored inside of the mesh data). Degenerate triangles have have a normal of
-            /// <see cref="Vector3.zero"/>.
+            /// <see cref="Vector3.zero"/> (read only).
             /// </summary>
             public NativeArray<Vector3> triangleNormals;
 
             /// <summary>
             /// The bounding boxes encompassing the triangles in UV1 coordinates. The flag <see
-            /// cref="hasLightmapCoordinates"/> must be true for this to be set.
+            /// cref="hasLightmapCoordinates"/> must be true for this to be set (read only).
             /// </summary>
             public NativeArray<PixelTriangleRect> triangleUv1BoundingBoxes;
 

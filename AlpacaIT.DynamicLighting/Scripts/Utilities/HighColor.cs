@@ -52,5 +52,8 @@ namespace AlpacaIT.DynamicLighting
         public HighColor(Color color) : this(color.r, color.g, color.b)
         {
         }
+
+        /// <summary>True when the color is solid black.</summary>
+        public readonly bool isBlack => color == 0;
     }
 }

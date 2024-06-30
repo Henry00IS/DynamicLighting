@@ -538,7 +538,13 @@ struct DynamicTriangle
         return pow(dynamic_triangles[activeLightBounceDataOffset + index] / 31.0, 2.0);
     }
     
-    // returns wether bounce texture data is available for this polygon.
+    // returns whether occlusion (1bpp shadow bitmask) data is available for this polygon.
+    bool is_occlusion_available()
+    {
+        return activeLightShadowDataOffset > 0;
+    }
+    
+    // returns whether bounce texture data is available for this polygon.
     bool is_bounce_available()
     {
         return activeLightBounceDataOffset > 0;

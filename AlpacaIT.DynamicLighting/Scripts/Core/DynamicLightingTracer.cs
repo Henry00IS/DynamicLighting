@@ -161,10 +161,26 @@ namespace AlpacaIT.DynamicLighting
                     float progressMin = i / (float)meshFilters.Length;
                     float progressMax = (i + 1) / (float)meshFilters.Length;
 
-                    Raytrace(meshFilter, progressMin, progressMax);
+                    RaytraceDirectIllumination(meshFilter, progressMin, progressMax);
 #if UNITY_EDITOR
                     if (progressBarCancel) { cancelled?.Invoke(this, null); break; }
 #endif
+                }
+
+                // [PASS: BOUNCE LIGHTING]
+                if (bounceLightingInScene)
+                {
+                    for (int i = 0; i < meshFilters.Length; i++)
+                    {
+                        var meshFilter = meshFilters[i];
+                        float progressMin = i / (float)meshFilters.Length;
+                        float progressMax = (i + 1) / (float)meshFilters.Length;
+
+                        RaytraceBounceLighting(meshFilter, progressMin, progressMax);
+#if UNITY_EDITOR
+                        if (progressBarCancel) { cancelled?.Invoke(this, null); break; }
+#endif
+                    }
                 }
 
 #if UNITY_EDITOR
@@ -206,8 +222,10 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
-        private unsafe void Raytrace(MeshFilter meshFilter, float progressMin, float progressMax)
+        private unsafe void RaytraceDirectIllumination(MeshFilter meshFilter, float progressMin, float progressMax)
         {
+            // [STEP]
+            // processes the mesh for fast data access and raycasting in the scene.
             var meshBuilder = new ProcessMeshDataStep(meshFilter.transform.localToWorldMatrix, meshFilter.sharedMesh, pixelDensityPerSquareMeter, maximumLightmapSize);
             meshBuilder.Execute();
             lightmapSize = meshBuilder.textureSize;
@@ -269,6 +287,233 @@ namespace AlpacaIT.DynamicLighting
             raycastProcessor.Complete();
             tracingTime.Stop();
 
+            seamTime.Begin();
+            {
+                for (int y = 0; y < lightmapSize; y++)
+                {
+                    int yPtr = y * lightmapSize;
+
+                    for (int x = 0; x < lightmapSize; x++)
+                    {
+                        int xyPtr = yPtr + x;
+
+                        // if we find an unvisited pixel it will appear as a black seam in the scene.
+                        uint visited = pixels_visited_ptr[xyPtr];
+                        if (visited == 0)
+                        {
+                            uint res = 0;
+
+                            // fetch 5x5 "visited" pixels (where p22 is the center).
+
+                            // bool p00 = GetPixel(ref pixels_visited, x - 2, y - 2) == 1;
+                            // bool p10 = GetPixel(ref pixels_visited, x - 1, y - 2) == 1;
+                            bool p20 = GetPixel(pixels_visited_ptr, x, y - 2) == 1;
+                            // bool p30 = GetPixel(ref pixels_visited, x + 1, y - 2) == 1;
+                            // bool p40 = GetPixel(ref pixels_visited, x + 2, y - 2) == 1;
+
+                            // bool p01 = GetPixel(ref pixels_visited, x - 2, y - 1) == 1;
+                            // bool p11 = GetPixel(ref pixels_visited, x - 1, y - 1) == 1;
+                            bool p21 = GetPixel(pixels_visited_ptr, x, y - 1) == 1;
+                            // bool p31 = GetPixel(ref pixels_visited, x + 1, y - 1) == 1;
+                            // bool p41 = GetPixel(ref pixels_visited, x + 2, y - 1) == 1;
+
+                            bool p02 = GetPixel(pixels_visited_ptr, x - 2, y) == 1;
+                            bool p12 = GetPixel(pixels_visited_ptr, x - 1, y) == 1;
+                            bool p32 = GetPixel(pixels_visited_ptr, x + 1, y) == 1;
+                            bool p42 = GetPixel(pixels_visited_ptr, x + 2, y) == 1;
+
+                            // bool p03 = GetPixel(ref pixels_visited, x - 2, y + 1) == 1;
+                            // bool p13 = GetPixel(ref pixels_visited, x - 1, y + 1) == 1;
+                            bool p23 = GetPixel(pixels_visited_ptr, x, y + 1) == 1;
+                            // bool p33 = GetPixel(ref pixels_visited, x + 1, y + 1) == 1;
+                            // bool p43 = GetPixel(ref pixels_visited, x + 2, y + 1) == 1;
+
+                            // bool p04 = GetPixel(ref pixels_visited, x - 2, y + 2) == 1;
+                            // bool p14 = GetPixel(ref pixels_visited, x - 1, y + 2) == 1;
+                            bool p24 = GetPixel(pixels_visited_ptr, x, y + 2) == 1;
+                            // bool p34 = GetPixel(ref pixels_visited, x + 1, y + 2) == 1;
+                            // bool p44 = GetPixel(ref pixels_visited, x + 2, y + 2) == 1;
+
+                            // fetch 5x5 "lightmap" pixels (where p22 is the center).
+
+                            // uint l00 = GetPixel(ref pixels_lightmap, x - 2, y - 2);
+                            // uint l10 = GetPixel(ref pixels_lightmap, x - 1, y - 2);
+                            uint l20 = GetPixel(pixels_lightmap_ptr, x, y - 2);
+                            // uint l30 = GetPixel(ref pixels_lightmap, x + 1, y - 2);
+                            // uint l40 = GetPixel(ref pixels_lightmap, x + 2, y - 2);
+
+                            // uint l01 = GetPixel(ref pixels_lightmap, x - 2, y - 1);
+                            // uint l11 = GetPixel(ref pixels_lightmap, x - 1, y - 1);
+                            uint l21 = GetPixel(pixels_lightmap_ptr, x, y - 1);
+                            // uint l31 = GetPixel(ref pixels_lightmap, x + 1, y - 1);
+                            // uint l41 = GetPixel(ref pixels_lightmap, x + 2, y - 1);
+
+                            uint l02 = GetPixel(pixels_lightmap_ptr, x - 2, y);
+                            uint l12 = GetPixel(pixels_lightmap_ptr, x - 1, y);
+                            uint l32 = GetPixel(pixels_lightmap_ptr, x + 1, y);
+                            uint l42 = GetPixel(pixels_lightmap_ptr, x + 2, y);
+
+                            // uint l03 = GetPixel(ref pixels_lightmap, x - 2, y + 1);
+                            // uint l13 = GetPixel(ref pixels_lightmap, x - 1, y + 1);
+                            uint l23 = GetPixel(pixels_lightmap_ptr, x, y + 1);
+                            // uint l33 = GetPixel(ref pixels_lightmap, x + 1, y + 1);
+                            // uint l43 = GetPixel(ref pixels_lightmap, x + 2, y + 1);
+
+                            // uint l04 = GetPixel(ref pixels_lightmap, x - 2, y + 2);
+                            // uint l14 = GetPixel(ref pixels_lightmap, x - 1, y + 2);
+                            uint l24 = GetPixel(pixels_lightmap_ptr, x, y + 2);
+                            // uint l34 = GetPixel(ref pixels_lightmap, x + 1, y + 2);
+                            // uint l44 = GetPixel(ref pixels_lightmap, x + 2, y + 2);
+
+                            // x x x x x
+                            // x x x x x
+                            // x x C x x
+                            // x x x x x
+                            // x x x x x
+
+                            // p00 p10 p20 p30 p40
+                            // p01 p11 p21 p31 p41
+                            // p02 p12 p22 p32 p42
+                            // p03 p13 p23 p33 p43
+                            // p04 p14 p24 p34 p44
+
+                            //
+                            //     x
+                            //   x C x
+                            //     x
+                            //
+
+                            // left 1x
+                            if (p12)
+                                res |= l12;
+                            // right 1x
+                            if (p32)
+                                res |= l32;
+                            // up 1x
+                            if (p21)
+                                res |= l21;
+                            // down 1x
+                            if (p23)
+                                res |= l23;
+
+                            //     x
+                            //
+                            // x   C   x
+                            //
+                            //     x
+
+                            // left 2x
+                            if (!p12 && p02)
+                                res |= l02;
+                            // right 2x
+                            if (!p32 && p42)
+                                res |= l42;
+                            // up 2x
+                            if (!p21 && p20)
+                                res |= l20;
+                            // down 2x
+                            if (!p23 && p24)
+                                res |= l24;
+
+                            pixels_lightmap_ptr[xyPtr] = res;
+                        }
+                    }
+                }
+            }
+            seamTime.Stop();
+
+            for (int i = 0; i < meshBuilder.triangleCount; i++)
+            {
+                var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
+
+                BuildShadows(i, meshBuilder, pixels_lightmap_ptr, dynamic_triangles, t1, t2, t3);
+            }
+
+            meshBuilder.Dispose();
+
+            pixels_lightmap_gc.Free();
+            pixels_visited_gc.Free();
+
+            // store the scene reference renderer in the dynamic light manager with lightmap metadata.
+            var lightmap = new RaycastedMeshRenderer();
+            lightmap.renderer = meshFilter.GetComponent<MeshRenderer>();
+            lightmap.resolution = lightmapSize;
+            lightmap.identifier = uniqueIdentifier++;
+            dynamicLightManager.raycastedMeshRenderers.Add(lightmap);
+
+            // write the dynamic triangles to disk.
+            var dynamic_triangles32 = dynamic_triangles.BuildDynamicTrianglesData().ToArray();
+            vramDynamicTrianglesTotal += (ulong)dynamic_triangles32.Length * 4;
+            if (!Utilities.WriteLightmapData(lightmap.identifier, "DynamicLighting2", dynamic_triangles32))
+                Debug.LogError($"Unable to write the dynamic lighting {lightmap.identifier} data file in the active scene resources directory!");
+        }
+
+        private unsafe void RaytraceBounceLighting(MeshFilter meshFilter, float progressMin, float progressMax)
+        {
+            // [STEP]
+            // processes the mesh for fast data access and raycasting in the scene.
+            var meshBuilder = new ProcessMeshDataStep(meshFilter.transform.localToWorldMatrix, meshFilter.sharedMesh, pixelDensityPerSquareMeter, maximumLightmapSize);
+            meshBuilder.Execute();
+            lightmapSize = meshBuilder.textureSize;
+            lightmapSizeMin1 = lightmapSize - 1;
+
+#if UNITY_EDITOR
+            var progressTitle = "Raytracing Scene " + meshBuilder.surfaceArea.ToString("0.00") + "m² (" + lightmapSize + "x" + lightmapSize + ")";
+            var progressDescription = "Raytracing Bounce Lighting " + meshFilter.name;
+#endif
+            if (!meshBuilder.hasLightmapCoordinates)
+            {
+                //Debug.LogWarning("Raytracer skipping " + meshFilter.name + " because it does not have uv1 lightmap coordinates!");
+                meshBuilder.Dispose();
+                return;
+            }
+            //else
+            //{
+            //    // estimate the amount of vram required (purely statistical).
+            //    //ulong vramLightmap = (ulong)(lightmapSize * lightmapSize * 4); // uint32
+            //    //vramLegacyTotal += vramLightmap;
+            //    //
+            //    //log.AppendLine(meshFilter.name + " surface area: " + meshBuilder.surfaceArea.ToString("0.00") + "m² lightmap size: " + lightmapSize + "x" + lightmapSize + " (Legacy VRAM: " + MathEx.BytesToUnitString(vramLightmap) + ")");
+            //}
+
+            //bouncingTime.Begin();
+            var dynamic_triangles = new DynamicTrianglesBuilder(meshBuilder, lightmapSize);
+            //var pixels_lightmap = new uint[lightmapSize * lightmapSize];
+            //var pixels_visited = new uint[lightmapSize * lightmapSize];
+            //var pixels_lightmap_gc = GCHandle.Alloc(pixels_lightmap, GCHandleType.Pinned);
+            //var pixels_visited_gc = GCHandle.Alloc(pixels_visited, GCHandleType.Pinned);
+            //var pixels_lightmap_ptr = (uint*)pixels_lightmap_gc.AddrOfPinnedObject();
+            //var pixels_visited_ptr = (uint*)pixels_visited_gc.AddrOfPinnedObject();
+
+            // prepare to raycast the entire mesh using multi-threading.
+            //raycastProcessor.pixelsLightmap = pixels_lightmap_ptr;
+            //raycastProcessor.lightmapSize = lightmapSize;
+
+            // iterate over all triangles in the mesh.
+            /*
+            for (int i = 0; i < meshBuilder.triangleCount; i++)
+            {
+#if UNITY_EDITOR
+                if (Time.realtimeSinceStartup - progressBarLastUpdate > 0.25f)
+                {
+                    progressBarLastUpdate = Time.realtimeSinceStartup;
+                    if (UnityEditor.EditorUtility.DisplayCancelableProgressBar(progressTitle, progressDescription, Mathf.Lerp(progressMin, progressMax, i / (float)meshBuilder.triangleCount)))
+                    {
+                        progressBarCancel = true;
+                        break;
+                    }
+                }
+#endif
+                var (v1, v2, v3) = meshBuilder.GetTriangleVertices(i);
+                var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
+
+                RaycastTriangle(i, meshBuilder, dynamic_triangles, pixels_visited_ptr, v1, v2, v3, t1, t2, t3);
+            }
+
+            // finish any remaining raycasting work.
+            raycastProcessor.Complete();
+            bouncingTime.Stop();*/
+
             // bounce lighting pass.
 #if UNITY_EDITOR
             progressDescription = "Bounce Lighting " + meshFilter.name;
@@ -300,6 +545,8 @@ namespace AlpacaIT.DynamicLighting
 
             bouncingTime.Stop();
 
+            meshBuilder.Dispose();
+            /*
             // optimize the runtime performance.
             // iterate over all triangles in the mesh.
             optimizationTime.Begin();
@@ -470,6 +717,7 @@ namespace AlpacaIT.DynamicLighting
             vramDynamicTrianglesTotal += (ulong)dynamic_triangles32.Length * 4;
             if (!Utilities.WriteLightmapData(lightmap.identifier, "DynamicLighting2", dynamic_triangles32))
                 Debug.LogError($"Unable to write the dynamic lighting {lightmap.identifier} data file in the active scene resources directory!");
+            */
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -661,6 +909,87 @@ namespace AlpacaIT.DynamicLighting
                 }
             }
         }
+
+        #region Experimental
+
+        private unsafe void OptimizeTriangle2(int triangle_index, ProcessMeshDataStep meshBuilder, uint* pixels_lightmap, DynamicTrianglesBuilder dynamic_triangles, Vector2 t1, Vector2 t2, Vector2 t3)
+        {
+            // during the raycasting process, lights were associated per-triangle. This was
+            // determined by the normal of the triangle (must face the light) and that the radius of
+            // the light intersects the triangle, however, fully occluded walls may still have the
+            // light associated with this logic alone. we use the raycasting results to determine
+            // which triangles are truly affected by which lights and remove the lights that are not
+            // affecting it. depending on the scene, this removes hundreds of thousands of lights
+            // doubling the framerate.
+
+            // calculate the bounding box of the polygon in UV space.
+            var triangleBoundingBox = meshBuilder.triangleUv1BoundingBoxes[triangle_index];
+
+            // triangles may be so thin and small that they do not have their own UV texels, so we
+            // expand the bounding box by one pixel on the shadow occlusion map to include the
+            // neighbouring texels, as failure to do so will leave them without all of their light
+            // sources (i.e. fully black).
+            var minX = triangleBoundingBox.xMin - 2;
+            var minY = triangleBoundingBox.yMin - 2;
+            var maxX = triangleBoundingBox.xMax + 2;
+            var maxY = triangleBoundingBox.yMax + 2;
+
+            // clamp the pixel coordinates so that we can safely read from our arrays.
+            minX = Mathf.Clamp(minX, 0, (int)lightmapSizeMin1);
+            minY = Mathf.Clamp(minY, 0, (int)lightmapSizeMin1);
+            maxX = Mathf.Clamp(maxX, 0, (int)lightmapSizeMin1);
+            maxY = Mathf.Clamp(maxY, 0, (int)lightmapSizeMin1);
+
+            // prepare to iterate over lights associated with the current triangle.
+            var triangleRaycastedLightIndices = dynamic_triangles.GetRaycastedLightIndices(triangle_index);
+            var triangleRaycastedLightIndicesCount = triangleRaycastedLightIndices.Count;
+
+            // only iterate over lights associated with the current triangle.
+            for (int i = triangleRaycastedLightIndicesCount; i-- > 0;)
+            {
+                // the bounce texture is only set on a triangle when actually receiving bounced lighting.
+                //var bounceTexture = dynamic_triangles.GetBounceTexture(triangle_index, i);
+                //if (bounceTexture != null)
+                //    continue;
+
+                // check the shadow bits for unused light sources.
+                var pointLight = pointLights[triangleRaycastedLightIndices[i]];
+                var lightChannelBit = (uint)1 << ((int)pointLight.lightChannel);
+                var shadowFound = false;
+
+                for (int y = minY; y < maxY; y++)
+                {
+                    int yPtr = y * lightmapSize;
+
+                    for (int x = minX; x < maxX; x++)
+                    {
+                        int xyPtr = yPtr + x;
+                        var current = (pixels_lightmap[xyPtr] & lightChannelBit) > 0;
+
+                        //if (MathEx.PointInTriangle(t1, t2, t3, new Vector2(x, y) / lightmapSize))
+                        if (MathEx.TriangleContainsPoint2D(t1.x, t1.y, t2.x, t2.y, t3.x, t3.y, x / (float)lightmapSizeMin1, y / (float)lightmapSizeMin1))
+                        {
+                            if (!current)
+                            {
+                                shadowFound = true;
+                            }
+                        }
+                    }
+                }
+
+                // the triangle is fully illuminated.
+                if (!shadowFound)
+                {
+                    optimizationLightsRemoved++;
+                    // remove the shadow occlusion bits from the triangle so that the shaders can
+                    // skip this work (reading bits, bilinear filtering) and to use less VRAM.
+                    dynamic_triangles.SetShadowOcclusionBits(triangle_index, i, null);
+                    //dynamic_triangles.RemoveLightFromTriangle(triangle_index, i);
+                }
+            }
+        }
+
+        #endregion Experimental
 
         private unsafe void BuildShadows(int triangle_index, ProcessMeshDataStep meshBuilder, uint* pixels_lightmap, DynamicTrianglesBuilder dynamic_triangles, Vector2 t1, Vector2 t2, Vector2 t3)
         {
@@ -1049,6 +1378,16 @@ namespace AlpacaIT.DynamicLighting
                         //pixels_visited[y * lightmapSize + x] = 1;
                     }
                 }
+            }
+
+            foreach (var item in pixels_bounce)
+            {
+                item.Dilate();
+                item.Dilate();
+                item.Dilate();
+                //item.Dilate();
+                //item.Dilate();
+                //item.Dilate();
             }
         }
 
