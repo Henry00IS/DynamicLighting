@@ -22,6 +22,7 @@ namespace AlpacaIT.DynamicLighting
 
         private int traces = 0;
         private int optimizationLightsRemoved = 0;
+        private BenchmarkTimer totalTime;
         private BenchmarkTimer tracingTime;
         private BenchmarkTimer seamTime;
         private BenchmarkTimer optimizationTime;
@@ -60,6 +61,7 @@ namespace AlpacaIT.DynamicLighting
 
             traces = 0;
             optimizationLightsRemoved = 0;
+            totalTime = new BenchmarkTimer();
             tracingTime = new BenchmarkTimer();
             seamTime = new BenchmarkTimer();
             optimizationTime = new BenchmarkTimer();
@@ -132,6 +134,9 @@ namespace AlpacaIT.DynamicLighting
                 // delete all of the old lightmap data in the scene and on disk.
                 dynamicLightManager.EditorDeleteLightmaps();
 #endif
+                // from here we begin measuring the total time spent.
+                totalTime.Begin();
+
                 // try to remember the version used.
                 dynamicLightManager.version = 2;
 
@@ -169,6 +174,9 @@ namespace AlpacaIT.DynamicLighting
                     }
                 }
 
+                // stop measuring the total time here as the asset database refresh is slow.
+                totalTime.Stop();
+
 #if UNITY_EDITOR
                 // have unity editor reload the modified assets.
                 UnityEditor.AssetDatabase.Refresh();
@@ -181,7 +189,7 @@ namespace AlpacaIT.DynamicLighting
                 log.AppendLine("--------------------------------");
                 log.Append("VRAM Dynamic Triangles: ").Append(MathEx.BytesToUnitString(vramDynamicTrianglesTotal)).Append(" (Legacy: ").Append(MathEx.BytesToUnitString(vramLegacyTotal)).AppendLine(")");
                 log.Append("VRAM Bounding Volume Hierarchy: ").AppendLine(MathEx.BytesToUnitString(vramBvhTotal));
-                log.Insert(0, $"The lighting requires {MathEx.BytesToUnitString(vramDynamicTrianglesTotal + vramBvhTotal)} VRAM on the graphics card to render the current scene.{System.Environment.NewLine}");
+                log.Insert(0, $"The lighting requires {MathEx.BytesToUnitString(vramDynamicTrianglesTotal + vramBvhTotal)} VRAM on the graphics card to render the current scene ({totalTime}).{System.Environment.NewLine}");
 
                 Debug.Log(log.ToString());
                 dynamicLightManager.Reload();
@@ -449,8 +457,7 @@ namespace AlpacaIT.DynamicLighting
         private unsafe void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, uint* pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // calculate the triangle normal (this may fail when degenerate or very small).
-            var trianglePlane = new Plane(v1, v2, v3);
-            var triangleNormal = trianglePlane.normal;
+            var triangleNormal = Vector3.Normalize(Vector3.Cross(v2 - v1, v3 - v1));
             var triangleCenter = (v1 + v2 + v3) / 3.0f;
             var triangleNormalValid = !triangleNormal.Equals(Vector3.zero);
             var triangleBounds = MathEx.GetTriangleBounds(v1, v2, v3);
@@ -491,17 +498,16 @@ namespace AlpacaIT.DynamicLighting
 
             // calculate the bounding box of the polygon in UV space.
             // we only have to raycast these pixels and can skip the rest.
-            var triangleBoundingBox = MathEx.ComputeTriangleBoundingBox(t1, t2, t3);
-            var minX = Mathf.FloorToInt(triangleBoundingBox.xMin * lightmapSize);
-            var minY = Mathf.FloorToInt(triangleBoundingBox.yMin * lightmapSize);
-            var maxX = Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSize);
-            var maxY = Mathf.CeilToInt(triangleBoundingBox.yMax * lightmapSize);
+            var triangleBoundingBox = new PixelTriangleRect(lightmapSize, MathEx.ComputeTriangleBoundingBox(t1, t2, t3));
+            var minX = triangleBoundingBox.xMin;
+            var minY = triangleBoundingBox.yMin;
+            var maxX = triangleBoundingBox.xMax;
+            var maxY = triangleBoundingBox.yMax;
 
-            // clamp the pixel coordinates so that we can safely write to our arrays.
-            minX = Mathf.Clamp(minX, 0, lightmapSize - 1);
-            minY = Mathf.Clamp(minY, 0, lightmapSize - 1);
-            maxX = Mathf.Clamp(maxX, 0, lightmapSize - 1);
-            maxY = Mathf.Clamp(maxY, 0, lightmapSize - 1);
+            // calculate the world position for every UV position on a triangle.
+            var triangleUvTo3dStep = new TriangleUvTo3dStep(v1, v2, v3, t1, t2, t3, triangleSurfaceArea, triangleBoundingBox, lightmapSize);
+            triangleUvTo3dStep.Execute();
+            var uvWorldPositions = triangleUvTo3dStep.worldPositions;
 
             // prepare to only iterate over lights potentially affecting the current triangle.
             var triangleLightIndices = dynamic_triangles.GetRaycastedLightIndices(triangle_index);
@@ -510,17 +516,13 @@ namespace AlpacaIT.DynamicLighting
             // calculate some values in advance.
             var triangleNormalOffset = triangleNormal * 0.001f;
 
-            float half = 1.0f / (lightmapSize * 2f);
-
+            int ptr = 0;
             for (int y = minY; y <= maxY; y++)
             {
-                float yy = y / (float)lightmapSize;
-
                 for (int x = minX; x <= maxX; x++)
                 {
-                    float xx = x / (float)lightmapSize;
-
-                    var world = MathEx.UvTo3dFast(triangleSurfaceArea, new Vector2(xx + half, yy + half), v1, v2, v3, t1, t2, t3);
+                    // fetch the world position for the current uv coordinate.
+                    var world = uvWorldPositions[ptr++];
                     if (world.Equals(Vector3.zero)) continue;
 
                     // iterate over the lights potentially affecting this triangle.
@@ -553,6 +555,8 @@ namespace AlpacaIT.DynamicLighting
                     pixels_visited[y * lightmapSize + x] = 1;
                 }
             }
+
+            triangleUvTo3dStep.Dispose();
         }
 
         private unsafe void OptimizeTriangle(int triangle_index, uint* pixels_lightmap, DynamicTrianglesBuilder dynamic_triangles, Vector2 t1, Vector2 t2, Vector2 t3)
