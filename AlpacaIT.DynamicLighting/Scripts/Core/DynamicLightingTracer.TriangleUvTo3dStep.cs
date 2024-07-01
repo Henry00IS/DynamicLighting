@@ -154,7 +154,7 @@ namespace AlpacaIT.DynamicLighting
                 };
 
                 // wait here while processing the job on multiple threads (including the main thread).
-                processUvTo3dJob.Schedule(texelCount, pixelTriangleRect.textureSize).Complete();
+                processUvTo3dJob.Schedule(texelCount, 64).Complete();
             }
 
             public void Dispose()
