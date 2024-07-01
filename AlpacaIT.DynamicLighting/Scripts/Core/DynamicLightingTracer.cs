@@ -1050,6 +1050,11 @@ namespace AlpacaIT.DynamicLighting
                         // iterate over the important illumination samples (closest come first):
                         for (int j = 0; j < illuminationSamplesCount; j++)
                         {
+                            // russian roulette - terminating photons randomly for noise that
+                            // smooths out color banding.
+                            if (UnityEngine.Random.value > 0.5f)
+                                continue;
+
                             // calculate sample related variables.
                             var sample = illuminationSamples[j];
                             var sampleColor = sample.color;
