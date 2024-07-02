@@ -457,7 +457,7 @@ namespace AlpacaIT.DynamicLighting
         private unsafe void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, uint* pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // calculate the triangle normal (this may fail when degenerate or very small).
-            var triangleNormal = Vector3.Normalize(Vector3.Cross(v2 - v1, v3 - v1));
+            var triangleNormal = (Vector3)math.normalizesafe(math.cross(v2 - v1, v3 - v1));
             var triangleCenter = (v1 + v2 + v3) / 3.0f;
             var triangleNormalValid = !triangleNormal.Equals(Vector3.zero);
             var triangleBounds = MathEx.GetTriangleBounds(v1, v2, v3);
