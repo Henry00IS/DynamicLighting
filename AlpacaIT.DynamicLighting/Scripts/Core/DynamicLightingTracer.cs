@@ -55,6 +55,9 @@ namespace AlpacaIT.DynamicLighting
             // prepare to process raycasts on the job system.
             raycastProcessor = new RaycastProcessor();
 
+            // -> partial class DynamicLightManager.PhotonCamera initialize.
+            PhotonCameraInitialize();
+
             log = new StringBuilder();
             log.AppendLine("CLICK FOR SCENE STATISTICS");
             log.AppendLine("--------------------------------");
@@ -210,6 +213,9 @@ namespace AlpacaIT.DynamicLighting
                 UnityEditor.EditorUtility.ClearProgressBar();
 #endif
                 raycastProcessor.Dispose();
+
+                // -> partial class DynamicLightManager.PhotonCamera cleanup.
+                PhotonCameraCleanup();
             }
         }
 
