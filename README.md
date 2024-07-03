@@ -29,12 +29,6 @@ Add the following line to your Unity Package Manager:
 
 `https://github.com/Henry00IS/DynamicLighting.git`
 
-## Reflection Probes
-
-When you bake individual reflection probes, without baking the rest of the scene, Unity may also create a small lightmap that messes up the UV1 coordinates when you enter play mode. You can fix this by disabling the baked global illumination in the lighting settings:
-
-![Unchecking baked global illumination in the lighting settings window](https://github.com/Henry00IS/DynamicLighting/wiki/images/home/baked-global-illumination.png)
-
 ## Support:
 
 Feel free to join my Discord server and let's talk about it.

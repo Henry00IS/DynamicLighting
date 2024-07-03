@@ -558,6 +558,7 @@ struct DynamicLightBvhNode
 };
 
 StructuredBuffer<DynamicLightBvhNode> dynamic_lights_bvh;
+float4 dynamic_lighting_unity_LightmapST;
 
 // next we prepare macro statements that shaders use to implement their fragment functions.
 

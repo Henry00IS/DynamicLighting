@@ -1,4 +1,4 @@
-﻿using AlpacaIT.DynamicLighting.Internal;
+using AlpacaIT.DynamicLighting.Internal;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -228,6 +228,41 @@ namespace AlpacaIT.DynamicLighting
             Initialize(true);
         }
 
+        private void Start()
+        {
+            // the editor will only have batched meshes upon calling the start() callback.
+            // repair the scene for dynamic lighting on meshes with static batching.
+            var raycastedMeshRenderersCount = raycastedMeshRenderers.Count;
+            for (int i = 0; i < raycastedMeshRenderersCount; i++)
+            {
+                // for every game object that requires a lightmap:
+                var lightmap = raycastedMeshRenderers[i];
+
+                // make sure the scene reference is still valid.
+                var meshRenderer = lightmap.renderer;
+                if (!meshRenderer) continue;
+
+                // the unity_lightmapst vector goes missing with static batching enabled as they
+                // decided to bake the uv1 coordinates, this code is used to undo that operation.
+                if (meshRenderer.isPartOfStaticBatch)
+                {
+                    // fetch the active material on the mesh renderer.
+                    var materialPropertyBlock = new MaterialPropertyBlock();
+
+                    // play nice with other scripts.
+                    if (meshRenderer.HasPropertyBlock())
+                        meshRenderer.GetPropertyBlock(materialPropertyBlock);
+
+                    var lightmapScaleOffset = meshRenderer.lightmapScaleOffset;
+                    if (lightmapScaleOffset.x == 0.0f) lightmapScaleOffset.x = 0.00001f;
+                    if (lightmapScaleOffset.y == 0.0f) lightmapScaleOffset.y = 0.00001f;
+                    materialPropertyBlock.SetVector("dynamic_lighting_unity_LightmapST", new Vector4(1.0f / lightmapScaleOffset.x, 1.0f / lightmapScaleOffset.y, lightmapScaleOffset.z, lightmapScaleOffset.w));
+
+                    meshRenderer.SetPropertyBlock(materialPropertyBlock);
+                }
+            }
+        }
+
         /// <summary>Gets whether the specified light source has been raycasted in the scene.</summary>
         /// <param name="light">The dynamic light to check.</param>
         /// <returns>True when the dynamic light has been raycasted else false.</returns>
@@ -342,6 +377,7 @@ namespace AlpacaIT.DynamicLighting
                     lightmap.buffer.SetData(triangles);
                     materialPropertyBlock.SetBuffer("dynamic_triangles", lightmap.buffer);
                     materialPropertyBlock.SetInt("lightmap_resolution", lightmap.resolution); // legacy- required in shader to detect raytraced meshes.
+                    materialPropertyBlock.SetVector("dynamic_lighting_unity_LightmapST", new Vector4(1f, 1f, 0f, 0f)); // identity.
                     meshRenderer.SetPropertyBlock(materialPropertyBlock);
                 }
                 else Debug.LogError("Unable to read the dynamic lighting " + lightmap.identifier + " data file! Probably because you upgraded from an older version. Please raytrace your scene again.");
