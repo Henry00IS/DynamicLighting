@@ -10,12 +10,12 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>All of the photon camera orientations to take cubemap frames.</summary>
         private static readonly Quaternion[] photonCameraOrientations = new Quaternion[]
         {
-            Quaternion.LookRotation(Vector3.left, Vector3.up),
-            Quaternion.LookRotation(Vector3.right, Vector3.up),
-            Quaternion.LookRotation(Vector3.down, Vector3.back),
+            Quaternion.LookRotation(Vector3.right, Vector3.down),
+            Quaternion.LookRotation(Vector3.left, Vector3.down),
             Quaternion.LookRotation(Vector3.up, Vector3.forward),
-            Quaternion.LookRotation(Vector3.back, Vector3.up),
-            Quaternion.LookRotation(Vector3.forward, Vector3.up),
+            Quaternion.LookRotation(Vector3.down, Vector3.back),
+            Quaternion.LookRotation(Vector3.forward, Vector3.down),
+            Quaternion.LookRotation(Vector3.back, Vector3.down)
         };
 
         /// <summary>The <see cref="GameObject"/> of the photon camera.</summary>
@@ -74,8 +74,8 @@ namespace AlpacaIT.DynamicLighting
             // this acts as the inner radius around the camera, which when objects clip inside, the
             // photons will visually glitch, so we keep it very small.
             photonCamera.nearClipPlane = 0.01f;
-            // we do not wish to waste time rendering the skybox.
-            photonCamera.clearFlags = CameraClearFlags.Depth;
+            // we must render the skybox to prevent glitched distance data.
+            photonCamera.clearFlags = CameraClearFlags.Skybox;
             // only useful in the editor previews, but programmers can filter by this category.
             photonCamera.cameraType = CameraType.Reflection;
             // we render depth using a special shader.
@@ -83,7 +83,7 @@ namespace AlpacaIT.DynamicLighting
 
             // create photon cubemap array.
             photonCameraCubemaps = new RenderTexture(photonCameraRenderTextureDescriptor);
-            photonCameraCubemaps.dimension = TextureDimension.CubeArray;
+            photonCameraCubemaps.dimension = TextureDimension.Cube;
             photonCameraCubemaps.useMipMap = false;
             photonCameraCubemaps.autoGenerateMips = false;
             photonCameraCubemaps.volumeDepth = 6;
@@ -106,7 +106,7 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Renders the photon camera for a light source.</summary>
         /// <param name="lightPosition">The world position of the light.</param>
         /// <param name="lightRadius">The radius of the light.</param>
-        private void PhotonCameraRender(Vector3 lightPosition, float lightRadius)
+        private PhotonCube PhotonCameraRender(Vector3 lightPosition, float lightRadius)
         {
             // get a temporary render texture.
             photonCameraRenderTexture = RenderTexture.GetTemporary(photonCameraRenderTextureDescriptor);
@@ -141,6 +141,9 @@ namespace AlpacaIT.DynamicLighting
 
             // release the temporary render textures.
             RenderTexture.ReleaseTemporary(photonCameraRenderTexture);
+
+            // create the photon cube.
+            return new PhotonCube(photonCameraCubemaps);
         }
     }
 }

@@ -85,9 +85,9 @@ Shader "Hidden/Dynamic Lighting/DirectIlluminationSampler"
                 return result;
             }
 
-            float3 frag (v2f i) : SV_Target
+            float4 frag (v2f i) : SV_Target
             {
-                float3 result;
+                float4 result;
 
                 // store the distance in the red channel.
                 result.r = distance(_WorldSpaceCameraPos, i.world);
@@ -95,6 +95,9 @@ Shader "Hidden/Dynamic Lighting/DirectIlluminationSampler"
                 result.g = pack_normalized_float4_into_float(float4(i.normal, 0));
                 // store the main texture multiplied with material color and vertex color as 3 bytes in the blue channel (1 byte unused).
                 result.b = pack_normalized_float4_into_float(float4(tex2D(_MainTex, i.uv0).rgb * _Color.rgb * i.color, 0));
+
+                // unused:
+                result.a = 1.0;
 
                 return result;
             }
