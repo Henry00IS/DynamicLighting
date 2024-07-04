@@ -63,6 +63,17 @@ Shader "Hidden/Dynamic Lighting/DirectIlluminationSampler"
                 return -1.0 + (byte / 255.0) * 2.0;
             }
 
+            // packs a float into a byte so that 0.0 is 0 and +1.0 is 255.
+            uint saturated_float_to_byte(float value)
+            {
+                return value * 255;
+            }
+
+            float byte_to_saturated_float(float value)
+            {
+                return value / 255.0;
+            }
+
             float pack_normalized_float4_into_float(float4 value)
             {
                 value = saturate(value);
@@ -85,16 +96,52 @@ Shader "Hidden/Dynamic Lighting/DirectIlluminationSampler"
                 return result;
             }
 
+            float pack_saturated_float4_into_float(float4 value)
+            {
+                value = saturate(value);
+                uint x8 = saturated_float_to_byte(value.x);
+                uint y8 = saturated_float_to_byte(value.y);
+                uint z8 = saturated_float_to_byte(value.z);
+                uint w8 = saturated_float_to_byte(value.w);
+                uint combined = (x8 << 24) | (y8 << 16) | (z8 << 8) | w8;
+                return asfloat(combined); // force the bit pattern into a float.
+            }
+
+            float4 unpack_saturated_float4_from_float(float value)
+            {
+                uint bytes = asuint(value);
+                float4 result;
+                result.x = byte_to_saturated_float((bytes >> 24) & 0xFF);
+                result.y = byte_to_saturated_float((bytes >> 16) & 0xFF);
+                result.z = byte_to_saturated_float((bytes >> 8) & 0xFF);
+                result.w = byte_to_saturated_float(bytes & 0xFF);
+                return result;
+            }
+
             float4 frag (v2f i) : SV_Target
             {
                 float4 result;
 
-                // store the distance in the red channel.
-                result.r = distance(_WorldSpaceCameraPos, i.world);
+                // calculate the unnormalized direction between the light source and the fragment.
+                float3 light_direction = _WorldSpaceCameraPos - i.world;
+
+                // properly normalize the direction between the light source and the fragment.
+                light_direction = normalize(light_direction);
+
+                // as the distance from the light increases, so does the chance that the world positions
+                // are behind the geometry when sampled from the cubemap due to the low resolution.
+                // we try to wiggle them back out by moving them closer towards the light source as well
+                // as offsetting them by the geometry normal.
+                float light_distance = distance(_WorldSpaceCameraPos, i.world);
+                float bias = max(light_distance * 0.001, 0.001);
+                light_distance = distance(_WorldSpaceCameraPos, i.world + light_direction * bias + i.normal * bias);
+
+                // store the distance in the red channel and a small normal offset for raycasting on the cpu.
+                result.r = light_distance;
                 // store the normal as 3 bytes in the green channel (1 byte unused).
                 result.g = pack_normalized_float4_into_float(float4(i.normal, 0));
                 // store the main texture multiplied with material color and vertex color as 3 bytes in the blue channel (1 byte unused).
-                result.b = pack_normalized_float4_into_float(float4(tex2D(_MainTex, i.uv0).rgb * _Color.rgb * i.color, 0));
+                result.b = pack_saturated_float4_into_float(float4(tex2D(_MainTex, i.uv0).rgb * _Color.rgb * i.color, 0));
 
                 // unused:
                 result.a = 1.0;

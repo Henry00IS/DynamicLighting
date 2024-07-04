@@ -1,4 +1,5 @@
-﻿using Unity.Mathematics;
+﻿using System.Runtime.CompilerServices;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -16,29 +17,16 @@ namespace AlpacaIT.DynamicLighting
             public readonly Color[] colors;
 
             /// <summary>The width and height of each face of the photon cube in pixels.</summary>
-            private readonly int size;
-            private readonly int sizeMin1;
-
-            // packs a float into a byte so that -1.0 is 0 and +1.0 is 255.
-            private uint normalized_float_to_byte(float value)
-            {
-                return (uint)((1.0f + value) * 0.5f * 255f);
-            }
+            public readonly int size;
 
             private float byte_to_normalized_float(uint value)
             {
                 return -1.0f + (value / 255.0f) * 2.0f;
             }
 
-            private float pack_normalized_float4_into_float(float4 value)
+            private float byte_to_saturated_float(float value)
             {
-                value = math.saturate(value);
-                uint x8 = normalized_float_to_byte(value.x);
-                uint y8 = normalized_float_to_byte(value.y);
-                uint z8 = normalized_float_to_byte(value.z);
-                uint w8 = normalized_float_to_byte(value.w);
-                uint combined = (x8 << 24) | (y8 << 16) | (z8 << 8) | w8;
-                return math.asfloat(combined); // force the bit pattern into a float.
+                return value / 255.0f;
             }
 
             private float4 unpack_normalized_float4_from_float(float value)
@@ -52,44 +40,47 @@ namespace AlpacaIT.DynamicLighting
                 return result;
             }
 
+            private float4 unpack_saturated_float4_from_float(float value)
+            {
+                uint bytes = math.asuint(value);
+                float4 result;
+                result.x = byte_to_saturated_float((bytes >> 24) & 0xFF);
+                result.y = byte_to_saturated_float((bytes >> 16) & 0xFF);
+                result.z = byte_to_saturated_float((bytes >> 8) & 0xFF);
+                result.w = byte_to_saturated_float(bytes & 0xFF);
+                return result;
+            }
+
             public PhotonCubeFace(Color[] colors, int size)
             {
                 this.colors = colors;
                 this.size = size;
-                sizeMin1 = size - 1;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private int Index(float2 position)
+            {
+                position.x = 1.0f - position.x;
+                var x = (int)math.floor(position.x * size);
+                var y = (int)math.floor(position.y * size);
+                x = math.max(0, math.min(x, size - 1));
+                y = math.max(0, math.min(y, size - 1));
+                return y * size + x;
             }
 
             public float SampleDistance(float2 position)
             {
-                position.x = 1.0f - position.x;
-                var x = (int)math.floor(position.x * size);
-                var y = (int)math.floor(position.y * size);
-                x = math.max(0, math.min(x, size - 1));
-                y = math.max(0, math.min(y, size - 1));
-                var index = y * size + x;
-                return colors[index].r;
+                return colors[Index(position)].r;
             }
 
             public float3 SampleNormal(float2 position)
             {
-                position.x = 1.0f - position.x;
-                var x = (int)math.floor(position.x * size);
-                var y = (int)math.floor(position.y * size);
-                x = math.max(0, math.min(x, size - 1));
-                y = math.max(0, math.min(y, size - 1));
-                var index = y * size + x;
-                return unpack_normalized_float4_from_float(colors[index].g).xyz;
+                return unpack_normalized_float4_from_float(colors[Index(position)].g).xyz;
             }
 
             public float3 SampleDiffuse(float2 position)
             {
-                position.x = 1.0f - position.x;
-                var x = (int)math.floor(position.x * size);
-                var y = (int)math.floor(position.y * size);
-                x = math.max(0, math.min(x, size - 1));
-                y = math.max(0, math.min(y, size - 1));
-                var index = y * size + x;
-                return unpack_normalized_float4_from_float(colors[index].b).xyz;
+                return unpack_saturated_float4_from_float(colors[Index(position)].b).xyz;
             }
         }
 
@@ -148,7 +139,7 @@ namespace AlpacaIT.DynamicLighting
         /// <param name="direction">The direction to sample the cubemap in.</param>
         /// <param name="face">The face index to be sampled from.</param>
         /// <returns>The UV coordinates to sample the cubemap at.</returns>
-        private float2 SampleCube(float3 direction, out int face)
+        public static float2 GetFaceUvByDirection(float3 direction, out int face)
         {
             float3 vAbs = math.abs(direction);
             float ma;
@@ -174,18 +165,50 @@ namespace AlpacaIT.DynamicLighting
             return uv * ma + 0.5f;
         }
 
+        /// <summary>
+        /// Computes the direction vector from a given UV coordinate and face index of a cubemap.
+        /// </summary>
+        /// <param name="uv">The UV coordinates to sample the cubemap at.</param>
+        /// <param name="face">The face index to be sampled from.</param>
+        /// <returns>The direction vector corresponding to the UV and face index.</returns>
+        public static float3 GetDirectionByFaceUv(float2 uv, int face)
+        {
+            // adjust uv coordinates from [0,1] to [-1,1].
+            uv = 2.0f * uv - 1.0f;
+
+            float3 direction = default;
+            switch (face)
+            {
+                case 0: direction = new float3(1.0f, -uv.y, -uv.x); break;  // +X
+                case 1: direction = new float3(-1.0f, -uv.y, uv.x); break;  // -X
+                case 2: direction = new float3(uv.x, 1.0f, uv.y); break;    // +Y
+                case 3: direction = new float3(uv.x, -1.0f, -uv.y); break;  // -Y
+                case 4: direction = new float3(uv.x, -uv.y, 1.0f); break;   // +Z
+                case 5: direction = new float3(-uv.x, -uv.y, -1.0f); break; // -Z
+            }
+
+            // normalize the direction vector to ensure it's a unit vector.
+            return math.normalize(direction);
+        }
+
         public float SampleDistance(float3 direction)
         {
-            var uv = SampleCube(direction, out var face);
+            var uv = GetFaceUvByDirection(direction, out var face);
             var distance = faces[face].SampleDistance(uv);
             return distance < 0.5f ? 0.0f : distance; // account for skybox.
         }
 
         public Color SampleDiffuse(float3 direction)
         {
-            var uv = SampleCube(direction, out var face);
+            var uv = GetFaceUvByDirection(direction, out var face);
             var color = faces[face].SampleDiffuse(uv);
             return new Color(color.x, color.y, color.z);
+        }
+
+        public float3 SampleNormal(float3 direction)
+        {
+            var uv = GetFaceUvByDirection(direction, out var face);
+            return faces[face].SampleNormal(uv);
         }
     }
 }

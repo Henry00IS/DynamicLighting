@@ -159,8 +159,15 @@ namespace AlpacaIT.DynamicLighting
                     var light = pointLights[i];
                     dynamicLightManager.raycastedDynamicLights.Add(new RaycastedDynamicLight(light));
                     pointLightsCache[i] = new CachedLightData(light);
+
+                    // render and create photon cubes for all bounce lights.
+                    if (light.lightIllumination == DynamicLightIlluminationMode.SingleBounce)
+                    {
+                        pointLightsCache[i].photonCube = PhotonCameraRender(pointLightsCache[i].position, light.lightRadius);
+                    }
                 }
 
+                // iterate over all compatible mesh filters and raytrace their lighting.
                 var meshFilters = Object.FindObjectsOfType<MeshFilter>();
                 for (int i = 0; i < meshFilters.Length; i++)
                 {

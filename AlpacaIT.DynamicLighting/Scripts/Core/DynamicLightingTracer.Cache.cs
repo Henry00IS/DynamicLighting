@@ -26,11 +26,13 @@ namespace AlpacaIT.DynamicLighting
         {
             public Vector3 position;
             public Bounds bounds;
+            public PhotonCube photonCube;
 
             public CachedLightData(DynamicLight dynamicLight)
             {
                 position = dynamicLight.transform.position;
                 bounds = MathEx.GetSphereBounds(position, dynamicLight.lightRadius);
+                photonCube = null;
             }
         }
     }
