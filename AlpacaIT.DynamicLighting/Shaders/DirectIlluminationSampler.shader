@@ -55,7 +55,7 @@ Shader "Hidden/Dynamic Lighting/DirectIlluminationSampler"
             // packs a float into a byte so that -1.0 is 0 and +1.0 is 255.
             uint normalized_float_to_byte(float value)
             {
-                return (1.0 + value) * 0.5 * 255;
+                return (1.0 + value) * 0.5 * 255.0;
             }
 
             float byte_to_normalized_float(uint byte)
@@ -76,7 +76,7 @@ Shader "Hidden/Dynamic Lighting/DirectIlluminationSampler"
 
             float pack_normalized_float4_into_float(float4 value)
             {
-                value = saturate(value);
+                //value = normalize(value);
                 uint x8 = normalized_float_to_byte(value.x);
                 uint y8 = normalized_float_to_byte(value.y);
                 uint z8 = normalized_float_to_byte(value.z);

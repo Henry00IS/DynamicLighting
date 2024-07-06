@@ -159,7 +159,8 @@ namespace AlpacaIT.DynamicLighting
 
             public void Dispose()
             {
-                worldPositions.Dispose();
+                if (worldPositions.IsCreated)
+                    worldPositions.Dispose();
             }
         }
     }

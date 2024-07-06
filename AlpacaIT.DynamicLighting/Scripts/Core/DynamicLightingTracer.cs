@@ -1,4 +1,5 @@
 using AlpacaIT.DynamicLighting.Internal;
+using Codice.Client.BaseCommands;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -32,7 +33,8 @@ namespace AlpacaIT.DynamicLighting
         private ulong vramBvhTotal = 0;
         private DynamicLight[] pointLights;
         private CachedLightData[] pointLightsCache;
-        private RaycastProcessor raycastProcessor;
+        private ShadowRaycastProcessor raycastProcessor;
+        private CallbackRaycastProcessor callbackRaycastProcessor;
         private int lightmapSize = 2048;
         private float lightmapSizeMin1;
         private int uniqueIdentifier = 0;
@@ -53,7 +55,8 @@ namespace AlpacaIT.DynamicLighting
             dynamicLightManager = DynamicLightManager.Instance;
 
             // prepare to process raycasts on the job system.
-            raycastProcessor = new RaycastProcessor();
+            raycastProcessor = new ShadowRaycastProcessor();
+            callbackRaycastProcessor = new CallbackRaycastProcessor();
 
             // -> partial class DynamicLightManager.PhotonCamera initialize.
             PhotonCameraInitialize();
@@ -207,8 +210,9 @@ namespace AlpacaIT.DynamicLighting
                 UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
 #endif
             }
-            catch
+            catch (System.Exception ex)
             {
+                Debug.LogException(ex);
                 throw;
             }
             finally
@@ -220,6 +224,7 @@ namespace AlpacaIT.DynamicLighting
                 UnityEditor.EditorUtility.ClearProgressBar();
 #endif
                 raycastProcessor.Dispose();
+                callbackRaycastProcessor.Dispose();
 
                 // -> partial class DynamicLightManager.PhotonCamera cleanup.
                 PhotonCameraCleanup();
@@ -289,16 +294,59 @@ namespace AlpacaIT.DynamicLighting
             raycastProcessor.Complete();
             tracingTime.Stop();
 
+            // iterate over all lights in the scene.
+            for (int j = 0; j < pointLights.Length; j++)
+            {
+                var pointLight = pointLights[j];
+                var pointLightCache = pointLightsCache[j];
+
+                // the light must have bounce lighting enabled.
+                if (pointLight.lightIllumination != DynamicLightIlluminationMode.SingleBounce)
+                    continue;
+
+                // create a bounce lighting texture.
+                var pixels_bounce = new Color[lightmapSize * lightmapSize];
+                var pixels_bounce_gc = GCHandle.Alloc(pixels_bounce, GCHandleType.Pinned);
+                var pixels_bounce_ptr = (Color*)pixels_bounce_gc.AddrOfPinnedObject();
+
+                // iterate over all triangles in the mesh.
+                for (int i = 0; i < meshBuilder.triangleCount; i++)
+                {
+                    var (v1, v2, v3) = meshBuilder.GetTriangleVertices(i);
+                    var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
+
+                    BounceTriangle(j, i, dynamic_triangles, pixels_bounce_ptr, v1, v2, v3, t1, t2, t3);
+                }
+
+                // finish any remaining raycasting work.
+                callbackRaycastProcessor.Complete();
+
+                DilateBounceTexture(pixels_bounce_ptr, pixels_bounce);
+                BoxBlurBounceTexture(pixels_bounce_ptr, pixels_bounce);
+                //DilateBounceTexture(pixels_bounce_ptr, pixels_bounce);
+
+                // iterate over all triangles in the mesh.
+                for (int i = 0; i < meshBuilder.triangleCount; i++)
+                {
+                    var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
+
+                    BuildBounceTextures(j, i, pixels_bounce_ptr, dynamic_triangles, t1, t2, t3);
+                }
+
+                // free the bounce lighting texture.
+                pixels_bounce_gc.Free();
+            }
+
             // optimize the runtime performance.
             // iterate over all triangles in the mesh.
-            optimizationTime.Begin();
-            for (int i = 0; i < meshBuilder.triangleCount; i++)
-            {
-                var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
-
-                OptimizeTriangle(i, pixels_lightmap_ptr, dynamic_triangles, t1, t2, t3);
-            }
-            optimizationTime.Stop();
+            //optimizationTime.Begin();
+            //for (int i = 0; i < meshBuilder.triangleCount; i++)
+            //{
+            //    var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
+            //
+            //    OptimizeTriangle(i, pixels_lightmap_ptr, dynamic_triangles, t1, t2, t3);
+            //}
+            //optimizationTime.Stop();
 
             seamTime.Begin();
             {
@@ -435,6 +483,7 @@ namespace AlpacaIT.DynamicLighting
             }
             seamTime.Stop();
 
+            // iterate over all triangles in the mesh.
             for (int i = 0; i < meshBuilder.triangleCount; i++)
             {
                 var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
@@ -485,7 +534,9 @@ namespace AlpacaIT.DynamicLighting
                 var lightPosition = pointLightsCache[i].position;
 
                 // if we have the triangle normal then exclude triangles facing away from the light.
-                if (triangleNormalValid)
+                // indirect light can bounce onto a triangle with any normal, so the following
+                // optimization only works when light bouncing is disabled for this light source.
+                if (triangleNormalValid && light.lightIllumination == DynamicLightIlluminationMode.DirectIllumination)
                     if (math.dot(triangleNormal, (lightPosition - triangleCenter).normalized) <= -0.1f)
                         continue;
 
@@ -566,6 +617,208 @@ namespace AlpacaIT.DynamicLighting
 
                     // write this pixel into the visited map.
                     pixels_visited[y * lightmapSize + x] = 1;
+                }
+            }
+
+            triangleUvTo3dStep.Dispose();
+        }
+
+        public Vector3 AddRandomSpread(Vector3 direction, float spreadRadius)
+        {
+            // Step 1: Choose a random direction in 3D space
+            Vector3 randomDirection = new Vector3(
+                UnityEngine.Random.Range(-1f, 1f),
+                UnityEngine.Random.Range(-1f, 1f),
+                UnityEngine.Random.Range(-1f, 1f)
+            );
+
+            // Step 2: Normalize the direction vector
+            randomDirection.Normalize();
+
+            // Step 3: Choose a random length for the spread between 0 and spreadRadius
+            float randomLength = UnityEngine.Random.Range(0f, spreadRadius);
+
+            // Step 4: Scale the normalized direction vector by the chosen length
+            Vector3 spreadVector = randomDirection * randomLength;
+
+            // Step 5: Add the spread vector to the original directional vector
+            Vector3 newDirection = direction + spreadVector;
+
+            return newDirection.normalized;
+        }
+
+        private const int bounceSamples = 32;
+
+        private unsafe class BounceTriangleRaycastMissHandler : IRaycastMissHandler
+        {
+            /// <summary>The full lightmap size of the current mesh.</summary>
+            private int lightmapSize;
+
+            /// <summary>Pointer to the bounce texture pixel data.</summary>
+            private Color* pixels_bounce_ptr;
+
+            /// <summary>The accumulated bounce lighting for taking an average.</summary>
+            private float3 accumulator;
+
+            /// <summary>The amount of samples that have been processed.</summary>
+            private int samples;
+
+            public float3[] fresnels = new float3[bounceSamples];
+
+            public BounceTriangleRaycastMissHandler(Color* pixels_bounce_ptr, int lightmapSize)
+            {
+                this.pixels_bounce_ptr = pixels_bounce_ptr;
+                this.lightmapSize = lightmapSize;
+            }
+
+            public void OnRaycastMiss(int x, int y)
+            {
+                accumulator += fresnels[samples];
+
+                samples++;
+                if (samples == bounceSamples)
+                {
+                    var average = accumulator / samples;
+                    pixels_bounce_ptr[y * lightmapSize + x] = new Color(average.x, average.y, average.z);
+                }
+            }
+
+            public void OnRaycastHit(int x, int y)
+            {
+                OnRaycastFail(x, y);
+            }
+
+            public void OnRaycastFail(int x, int y)
+            {
+                samples++;
+                if (samples == bounceSamples)
+                {
+                    var average = accumulator / samples;
+                    pixels_bounce_ptr[y * lightmapSize + x] = new Color(average.x, average.y, average.z);
+                }
+            }
+        }
+
+        private unsafe void BounceTriangle(int light_index, int triangle_index, DynamicTrianglesBuilder dynamic_triangles, Color* pixels_bounce_ptr, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        {
+            // lights have already been associated with triangles that can potentially be affected
+            // by them during the direct illumination step. bounce light sources also include
+            // triangles facing away from the light source which is very important as bounce
+            // lighting can go anywhere within the light radius.
+
+            // prepare to only process the current light source if it exists on the current triangle.
+            if (!dynamic_triangles.TriangleHasRaycastedLight(triangle_index, light_index))
+                return;
+
+            // calculate the triangle normal (this may fail when degenerate or very small).
+            var triangleNormal = (Vector3)math.normalizesafe(math.cross(v2 - v1, v3 - v1));
+            var triangleNormalValid = !triangleNormal.Equals(Vector3.zero);
+
+            // skip degenerate triangles.
+            if (!triangleNormalValid) return;
+
+            // do some initial uv to 3d work here and also determine whether we can early out.
+            if (!MathEx.UvTo3dFastPrerequisite(t1, t2, t3, out float triangleSurfaceArea))
+                return;
+
+            // calculate the bounding box of the polygon in UV space.
+            // we only have to raycast these pixels and can skip the rest.
+            var triangleBoundingBox = new PixelTriangleRect(lightmapSize, MathEx.ComputeTriangleBoundingBox(t1, t2, t3));
+            var minX = triangleBoundingBox.xMin;
+            var minY = triangleBoundingBox.yMin;
+            var maxX = triangleBoundingBox.xMax;
+            var maxY = triangleBoundingBox.yMax;
+
+            // calculate the world position for every UV position on a triangle.
+            var triangleUvTo3dStep = new TriangleUvTo3dStep(v1, v2, v3, t1, t2, t3, triangleSurfaceArea, triangleBoundingBox, lightmapSize);
+            triangleUvTo3dStep.Execute();
+            var uvWorldPositions = triangleUvTo3dStep.worldPositions;
+
+            // calculate some values in advance.
+            var triangleNormalOffset = triangleNormal * 0.001f;
+
+            var pointLight = pointLights[light_index];
+            var pointLightCache = pointLightsCache[light_index];
+            var photonCube = pointLightCache.photonCube;
+            var lightPosition = pointLightCache.position;
+            var lightRadius = pointLight.lightRadius;
+
+            // we should consider branching here, direct illumination as-is and with bounce lighting
+            // we process one light after the other, writing finished textures to disk (one texture
+            // per light per mesh) and we will add them to triangles later once all triangles have
+            // been rendered onto it, this will work the same way as shadow bits and prevent the seams.
+
+            // schlick's approximation.
+            float materialSpecular = 1.0f;
+
+            int ptr = 0;
+            for (int y = minY; y <= maxY; y++)
+            {
+                for (int x = minX; x <= maxX; x++)
+                {
+                    // fetch the world position for the current uv coordinate.
+                    var world = uvWorldPositions[ptr++];
+                    if (world.Equals(Vector3.zero)) continue;
+
+                    var lightDistanceToWorld = Vector3.Distance(lightPosition, world);
+
+                    // early out by distance.
+                    if (lightDistanceToWorld > lightRadius)
+                        continue;
+
+                    var worldWithNormalOffset = world + triangleNormalOffset;
+
+                    // calculate the unnormalized direction between the light source and the fragment.
+                    float3 light_direction = math.normalize(lightPosition - world);
+
+                    var raycastHandler = new BounceTriangleRaycastMissHandler(pixels_bounce_ptr, lightmapSize);
+
+                    // take 32 bounce samples around this world position.
+                    for (int i = 0; i < bounceSamples; i++)
+                    {
+                        float3 cube_direction = -light_direction;
+
+                        // sample around 0.3 a lot but eventually take in the wider scene.
+                        //var spreadRadius = 0.3f + math.pow(i / (float)(bounceSamples - 1), 2.0f) * 0.7f;
+                        //var spreadRadius = 0.3f + math.pow(i / (float)(bounceSamples - 1), 5.0f) * 0.7f;
+                        //var spreadRadius = 0.3f + math.pow(i / 31.0f, 5.0f) * 0.7f;
+                        var spreadRadius = 0.3f;
+
+                        // sample around the active working direction.
+                        //var cube_uv = PhotonCube.GetFaceUvByDirection(cube_direction, out var cube_face);
+                        //cube_direction = PhotonCube.GetDirectionByFaceUv(cube_uv + (float2)UnityEngine.Random.insideUnitCircle * 0.2f, cube_face);
+                        cube_direction = AddRandomSpread(cube_direction, spreadRadius);
+
+                        // do photon cube prerequisite computations to access data faster.
+                        photonCube.FastSamplePrerequisite(cube_direction, out var photonCubeFace, out var photonCubeFaceIndex);
+
+                        // check whether the world position received direct illumination.
+                        var photonWorld = photonCube.SampleWorldFast(cube_direction, lightPosition, photonCubeFace, photonCubeFaceIndex);
+                        var photonNormal = photonCube.SampleNormalFast(photonCubeFace, photonCubeFaceIndex);
+                        if (photonCube.SampleShadow(lightPosition, photonWorld, photonNormal))
+                        {
+                            var photonDiffuse = photonCube.SampleDiffuseFast(photonCubeFace, photonCubeFaceIndex);
+
+                            // schlick's approximation.
+                            float3 r0 = photonDiffuse * materialSpecular;
+                            float hv = math.clamp(math.dot(photonNormal, light_direction), 0.0f, 1.0f);
+                            float3 fresnel = r0 + (1.0f - r0) * math.pow(1.0f - hv, 5.0f);
+                            raycastHandler.fresnels[i] = fresnel;
+
+                            var photonWorldMinusWorldWithNormalOffset = photonWorld - (float3)worldWithNormalOffset;
+                            var photonToWorldDirection = math.normalize(photonWorldMinusWorldWithNormalOffset);
+                            var photonToWorldDistance = math.length(photonWorldMinusWorldWithNormalOffset);
+                            callbackRaycastProcessor.Add(
+                                new RaycastCommand(worldWithNormalOffset, photonToWorldDirection, photonToWorldDistance, raycastLayermask),
+                                new RaycastOriginMeta(x, y),
+                                raycastHandler
+                            );
+                        }
+                        else
+                        {
+                            raycastHandler.OnRaycastFail(x, y);
+                        }
+                    }
                 }
             }
 
@@ -738,6 +991,121 @@ namespace AlpacaIT.DynamicLighting
             if (x >= 0 && y >= 0 && x < shadowBits.Width && y < shadowBits.Height)
                 return shadowBits[x, y];
             return false;
+        }
+
+        private unsafe void BuildBounceTextures(int light_index, int triangle_index, Color* pixels_bounce, DynamicTrianglesBuilder dynamic_triangles, Vector2 t1, Vector2 t2, Vector2 t3)
+        {
+            // now the lightmap pixels have also been padded and all the unused light sources have
+            // been removed from the triangle, so we only have to store the 1bpp light occlusion
+            // bits per light source (instead of always using 32 bits per fragment).
+
+            // prepare to only process the current light source if it exists on the current triangle.
+            var triangleLightIndex = dynamic_triangles.TriangleGetRaycastedLightIndex(triangle_index, light_index);
+            if (triangleLightIndex == -1)
+                return;
+
+            // calculate the bounding box of the polygon in UV space.
+            var triangleBoundingBox = MathEx.ComputeTriangleBoundingBox(t1, t2, t3);
+
+            // triangles may be so thin and small that they do not have their own UV texels, so we
+            // expand the bounding box by one pixel on the shadow occlusion map to include the
+            // neighbouring texels, as failure to do so will leave them without all of their light
+            // sources (i.e. fully black).
+            var minX = Mathf.FloorToInt(triangleBoundingBox.xMin * lightmapSize) - 2;
+            var minY = Mathf.FloorToInt(triangleBoundingBox.yMin * lightmapSize) - 2;
+            var maxX = Mathf.CeilToInt(triangleBoundingBox.xMax * lightmapSize) + 2;
+            var maxY = Mathf.CeilToInt(triangleBoundingBox.yMax * lightmapSize) + 2;
+
+            // clamp the pixel coordinates so that we can safely read from our arrays.
+            minX = Mathf.Clamp(minX, 0, lightmapSize - 1);
+            minY = Mathf.Clamp(minY, 0, lightmapSize - 1);
+            maxX = Mathf.Clamp(maxX, 0, lightmapSize - 1);
+            maxY = Mathf.Clamp(maxY, 0, lightmapSize - 1);
+
+            // intentionally add 2px padding, as the shader with bilinear filtering will
+            // otherwise read outside the bounds on the UV borders, causing visual artifacts to
+            // appear as lines of shadow.
+            var bounceTexture = new Color[(5 + maxX - minX) * (5 + maxY - minY)];
+
+            // todo: surely there's a clever memory copy function for this?
+            var yy = 2;
+            for (int y = minY; y <= maxY; y++)
+            {
+                int yPtr = y * lightmapSize;
+
+                var xx = 2;
+                for (int x = minX; x <= maxX; x++)
+                {
+                    int xyPtr = yPtr + x;
+
+                    bounceTexture[yy * (5 + maxX - minX) + xx] = pixels_bounce[xyPtr];
+
+                    xx++;
+                }
+
+                yy++;
+            }
+
+            dynamic_triangles.SetBounceTexture(triangle_index, triangleLightIndex, bounceTexture);
+        }
+
+        private unsafe void DilateBounceTexture(Color* bounceTexture, Color[] original)
+        {
+            var copy = (Color[])original.Clone();
+            for (int y = 0; y < lightmapSize; y++)
+            {
+                for (int x = 0; x < lightmapSize; x++)
+                {
+                    // todo: optimize this (very wasteful iterations).
+                    //if (x >= 2 && y >= 2 && x < lightmapSize - 2 && y < lightmapSize - 2)
+                    //continue;
+
+                    var c = TryGetBounceTexturePixel(copy, x, y);
+                    c = c.a > 0.0 ? c : TryGetBounceTexturePixel(copy, x - 1, y - 1);
+                    c = c.a > 0.0 ? c : TryGetBounceTexturePixel(copy, x, y - 1);
+                    c = c.a > 0.0 ? c : TryGetBounceTexturePixel(copy, x + 1, y - 1);
+                    c = c.a > 0.0 ? c : TryGetBounceTexturePixel(copy, x - 1, y);
+                    c = c.a > 0.0 ? c : TryGetBounceTexturePixel(copy, x + 1, y);
+                    c = c.a > 0.0 ? c : TryGetBounceTexturePixel(copy, x - 1, y + 1);
+                    c = c.a > 0.0 ? c : TryGetBounceTexturePixel(copy, x, y + 1);
+                    c = c.a > 0.0 ? c : TryGetBounceTexturePixel(copy, x + 1, y + 1);
+                    bounceTexture[y * lightmapSize + x] = c;
+                }
+            }
+        }
+
+        // todo: optimize this.
+        private unsafe Color TryGetBounceTexturePixel(Color[] bounceTexture, int x, int y)
+        {
+            if (x >= 0 && y >= 0 && x < lightmapSize && y < lightmapSize)
+                return bounceTexture[y * lightmapSize + x];
+            return new Color(0.0f, 0.0f, 0.0f, 0.0f);
+        }
+
+        private unsafe void BoxBlurBounceTexture(Color* bounceTexture, Color[] original)
+        {
+            var copy = (Color[])original.Clone();
+            for (int y = 0; y < lightmapSize; y++)
+            {
+                for (int x = 0; x < lightmapSize; x++)
+                {
+                    Color map;
+
+                    map = TryGetBounceTexturePixel(copy, x - 1, y - 1);
+                    map += TryGetBounceTexturePixel(copy, x, y - 1);
+                    map += TryGetBounceTexturePixel(copy, x + 1, y - 1);
+
+                    map += TryGetBounceTexturePixel(copy, x - 1, y);
+                    map += TryGetBounceTexturePixel(copy, x, y);
+                    map += TryGetBounceTexturePixel(copy, x + 1, y);
+
+                    map += TryGetBounceTexturePixel(copy, x - 1, y + 1);
+                    map += TryGetBounceTexturePixel(copy, x, y + 1);
+                    map += TryGetBounceTexturePixel(copy, x + 1, y + 1);
+
+                    bounceTexture[y * lightmapSize + x] = map / 9.0f;
+                }
+            }
         }
     }
 }

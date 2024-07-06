@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
@@ -20,6 +21,25 @@ namespace AlpacaIT.DynamicLighting
                 this.world = world;
                 this.lightChannel = lightChannel;
             }
+        }
+
+        private struct RaycastOriginMeta
+        {
+            public int x;
+            public int y;
+
+            public RaycastOriginMeta(int x, int y)
+            {
+                this.x = x;
+                this.y = y;
+            }
+        }
+
+        private interface IRaycastMissHandler
+        {
+            void OnRaycastMiss(int x, int y);
+
+            void OnRaycastHit(int x, int y);
         }
 
         private struct CachedLightData

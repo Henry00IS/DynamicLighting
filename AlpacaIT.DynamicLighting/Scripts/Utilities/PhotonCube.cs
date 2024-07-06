@@ -73,14 +73,42 @@ namespace AlpacaIT.DynamicLighting
                 return colors[Index(position)].r;
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public float SampleDistanceFast(int index)
+            {
+                return colors[index].r;
+            }
+
             public float3 SampleNormal(float2 position)
             {
                 return unpack_normalized_float4_from_float(colors[Index(position)].g).xyz;
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public float3 SampleNormalFast(int index)
+            {
+                return unpack_normalized_float4_from_float(colors[index].g).xyz;
+            }
+
             public float3 SampleDiffuse(float2 position)
             {
                 return unpack_saturated_float4_from_float(colors[Index(position)].b).xyz;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public float3 SampleDiffuseFast(int index)
+            {
+                return unpack_saturated_float4_from_float(colors[index].b).xyz;
+            }
+
+            public static int Index(float2 position, int size)
+            {
+                position.x = 1.0f - position.x;
+                var x = (int)math.floor(position.x * size);
+                var y = (int)math.floor(position.y * size);
+                x = math.max(0, math.min(x, size - 1));
+                y = math.max(0, math.min(y, size - 1));
+                return y * size + x;
             }
         }
 
@@ -191,6 +219,19 @@ namespace AlpacaIT.DynamicLighting
             return math.normalize(direction);
         }
 
+        /// <summary>Does required prerequisite computation to access the fast-methods.</summary>
+        /// <param name="direction">The direction to sample the cubemap in.</param>
+        /// <param name="photonCubeFace">The face index of the cubemap.</param>
+        /// <param name="photonCubeFaceIndex">The index into the cubemap face data arrays.</param>
+        public void FastSamplePrerequisite(float3 direction, out int photonCubeFace, out int photonCubeFaceIndex)
+        {
+            var uv = GetFaceUvByDirection(direction, out photonCubeFace);
+            photonCubeFaceIndex = PhotonCubeFace.Index(uv, size);
+        }
+
+        /// <summary>Gets the distance to the closest fragment in the given direction.</summary>
+        /// <param name="direction">The direction to sample the cubemap in.</param>
+        /// <returns>The distance to the fragment.</returns>
         public float SampleDistance(float3 direction)
         {
             var uv = GetFaceUvByDirection(direction, out var face);
@@ -198,17 +239,89 @@ namespace AlpacaIT.DynamicLighting
             return distance < 0.5f ? 0.0f : distance; // account for skybox.
         }
 
-        public Color SampleDiffuse(float3 direction)
+        public float3 SampleDistanceFast(int photonCubeFace, int photonCubeFaceIndex)
         {
-            var uv = GetFaceUvByDirection(direction, out var face);
-            var color = faces[face].SampleDiffuse(uv);
-            return new Color(color.x, color.y, color.z);
+            var distance = faces[photonCubeFace].SampleDistanceFast(photonCubeFaceIndex);
+            return distance < 0.5f ? 0.0f : distance; // account for skybox.
         }
 
+        /// <summary>Gets the diffuse color of the closest fragment in the given direction.</summary>
+        /// <param name="direction">The direction to sample the cubemap in.</param>
+        /// <returns>The color of the fragment.</returns>
+        public float3 SampleDiffuse(float3 direction)
+        {
+            var uv = GetFaceUvByDirection(direction, out var face);
+            return faces[face].SampleDiffuse(uv);
+        }
+
+        public float3 SampleDiffuseFast(int photonCubeFace, int photonCubeFaceIndex)
+        {
+            return faces[photonCubeFace].SampleDiffuseFast(photonCubeFaceIndex);
+        }
+
+        /// <summary>Gets an approximate normal of the closest fragment in the given direction.</summary>
+        /// <param name="direction">The direction to sample the cubemap in.</param>
+        /// <returns>The normal of the fragment.</returns>
         public float3 SampleNormal(float3 direction)
         {
             var uv = GetFaceUvByDirection(direction, out var face);
             return faces[face].SampleNormal(uv);
+        }
+
+        public float3 SampleNormalFast(int photonCubeFace, int photonCubeFaceIndex)
+        {
+            return faces[photonCubeFace].SampleNormalFast(photonCubeFaceIndex);
+        }
+
+        /// <summary>
+        /// Gets an approximate world position of the closest fragment in the given direction.
+        /// </summary>
+        /// <param name="direction">The direction to sample the cubemap in.</param>
+        /// <param name="lightPosition">The light position in world-space coordinates.</param>
+        /// <returns>The world position of the fragment.</returns>
+        public float3 SampleWorld(float3 direction, float3 lightPosition)
+        {
+            return lightPosition + direction * SampleDistance(direction);
+        }
+
+        public float3 SampleWorldFast(float3 direction, float3 lightPosition, int photonCubeFace, int photonCubeFaceIndex)
+        {
+            return lightPosition + direction * SampleDistanceFast(photonCubeFace, photonCubeFaceIndex);
+        }
+
+        /// <summary>
+        /// Gets software rendered real-time shadows returning true when the given fragment world
+        /// position is in the light else false.
+        /// </summary>
+        /// <param name="lightPosition">The light position in world-space coordinates.</param>
+        /// <param name="worldPosition">The fragment position in world-space coordinates.</param>
+        /// <param name="worldNormal">The normal of the fragment (e.g. triangle normal).</param>
+        /// <returns>True when the fragment position is in light else false.</returns>
+        public bool SampleShadow(float3 lightPosition, float3 worldPosition, float3 worldNormal)
+        {
+            // calculate the unnormalized direction between the light source and the fragment.
+            float3 light_direction = lightPosition - worldPosition;
+
+            // calculate the square distance between the light source and the fragment.
+            // distance(i.world, light.position); but squared to prevent a square root.
+            float light_distanceSqr = math.dot(light_direction, light_direction);
+
+            // a simple dot product with the normal gives us diffusion.
+            float NdotL = math.max(math.dot(worldNormal, light_direction), 0);
+
+            // magic bias function! it is amazing!
+            float light_distance = math.sqrt(light_distanceSqr);
+            float magic = 0.02f + 0.01f * (light_distanceSqr / light_distance);
+            float autobias = magic * math.tan(math.acos(1.0f - NdotL));
+            autobias = math.clamp(autobias, 0.0f, magic);
+
+            float shadow_mapping_distance = SampleDistance(-light_direction); // negative!
+
+            // when the fragment is occluded we can early out here.
+            if (light_distance - autobias > shadow_mapping_distance)
+                return false;
+
+            return true;
         }
     }
 }

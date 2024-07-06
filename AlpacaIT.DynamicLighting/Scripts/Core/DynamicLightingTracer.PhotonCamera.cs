@@ -87,6 +87,7 @@ namespace AlpacaIT.DynamicLighting
             photonCameraCubemaps.useMipMap = false;
             photonCameraCubemaps.autoGenerateMips = false;
             photonCameraCubemaps.volumeDepth = 6;
+            photonCameraCubemaps.filterMode = FilterMode.Point;
             photonCameraCubemaps.Create();
 
             Shader.SetGlobalTexture("photon_cubemaps", photonCameraCubemaps);
@@ -110,6 +111,7 @@ namespace AlpacaIT.DynamicLighting
         {
             // get a temporary render texture.
             photonCameraRenderTexture = RenderTexture.GetTemporary(photonCameraRenderTextureDescriptor);
+            photonCameraRenderTexture.filterMode = FilterMode.Point;
 
             // have the photon camera render to the render texture.
             photonCamera.targetTexture = photonCameraRenderTexture;
