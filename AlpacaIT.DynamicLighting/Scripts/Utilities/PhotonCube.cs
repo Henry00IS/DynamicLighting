@@ -13,8 +13,14 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>One side of a <see cref="PhotonCube"/> containing pixel data.</summary>
         private class PhotonCubeFace
         {
-            /// <summary>The packed shader data.</summary>
-            public readonly Color[] colors;
+            /// <summary>The distances to each pixel on the cubemap face.</summary>
+            public readonly float[] distances;
+
+            /// <summary>The world-space normals of each pixel on the cubemap face.</summary>
+            public readonly float3[] normals;
+
+            /// <summary>The diffuse colors of each pixel on the cubemap face.</summary>
+            public readonly float3[] diffuse;
 
             /// <summary>The width and height of each face of the photon cube in pixels.</summary>
             public readonly int size;
@@ -59,8 +65,19 @@ namespace AlpacaIT.DynamicLighting
 
             public PhotonCubeFace(Color[] colors, int size)
             {
-                this.colors = colors;
                 this.size = size;
+
+                distances = new float[colors.Length];
+                normals = new float3[colors.Length];
+                diffuse = new float3[colors.Length];
+
+                // unpack the shader data.
+                for (int i = 0; i < colors.Length; i++)
+                {
+                    distances[i] = colors[i].r;
+                    normals[i] = unpack_normalized_float4_from_float(colors[i].g).xyz;
+                    diffuse[i] = unpack_saturated_float4_from_float(colors[i].b).xyz;
+                }
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -76,37 +93,20 @@ namespace AlpacaIT.DynamicLighting
 
             public float SampleDistance(float2 position)
             {
-                return colors[Index(position)].r;
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public float SampleDistanceFast(int index)
-            {
-                return colors[index].r;
+                return distances[Index(position)];
             }
 
             public float3 SampleNormal(float2 position)
             {
-                return unpack_normalized_float4_from_float(colors[Index(position)].g).xyz;
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public float3 SampleNormalFast(int index)
-            {
-                return unpack_normalized_float4_from_float(colors[index].g).xyz;
+                return normals[Index(position)];
             }
 
             public float3 SampleDiffuse(float2 position)
             {
-                return unpack_saturated_float4_from_float(colors[Index(position)].b).xyz;
+                return diffuse[Index(position)];
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public float3 SampleDiffuseFast(int index)
-            {
-                return unpack_saturated_float4_from_float(colors[index].b).xyz;
-            }
-
             public static int Index(float2 position, int size)
             {
                 position.x = 1.0f - position.x;
@@ -176,7 +176,7 @@ namespace AlpacaIT.DynamicLighting
         /// <returns>The UV coordinates to sample the cubemap at.</returns>
         public static float2 GetFaceUvByDirection(float3 direction, out int face)
         {
-            float3 vAbs = math.abs(direction);
+            float3 vAbs = new float3(Mathf.Abs(direction.x), Mathf.Abs(direction.y), Mathf.Abs(direction.z)); // math.abs() slow!
             float ma;
             float2 uv;
             if (vAbs.z >= vAbs.x && vAbs.z >= vAbs.y)
@@ -246,9 +246,10 @@ namespace AlpacaIT.DynamicLighting
             return distance < 0.5f ? 0.0f : distance; // account for skybox.
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float3 SampleDistanceFast(int photonCubeFace, int photonCubeFaceIndex)
         {
-            var distance = faces[photonCubeFace].SampleDistanceFast(photonCubeFaceIndex);
+            var distance = faces[photonCubeFace].distances[photonCubeFaceIndex];
             return distance < 0.5f ? 0.0f : distance; // account for skybox.
         }
 
@@ -261,9 +262,10 @@ namespace AlpacaIT.DynamicLighting
             return faces[face].SampleDiffuse(uv);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float3 SampleDiffuseFast(int photonCubeFace, int photonCubeFaceIndex)
         {
-            return faces[photonCubeFace].SampleDiffuseFast(photonCubeFaceIndex);
+            return faces[photonCubeFace].diffuse[photonCubeFaceIndex];
         }
 
         /// <summary>Gets an approximate normal of the closest fragment in the given direction.</summary>
@@ -275,9 +277,10 @@ namespace AlpacaIT.DynamicLighting
             return faces[face].SampleNormal(uv);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float3 SampleNormalFast(int photonCubeFace, int photonCubeFaceIndex)
         {
-            return faces[photonCubeFace].SampleNormalFast(photonCubeFaceIndex);
+            return faces[photonCubeFace].normals[photonCubeFaceIndex];
         }
 
         /// <summary>
@@ -314,13 +317,13 @@ namespace AlpacaIT.DynamicLighting
             float light_distanceSqr = math.dot(light_direction, light_direction);
 
             // a simple dot product with the normal gives us diffusion.
-            float NdotL = math.max(math.dot(worldNormal, light_direction), 0);
+            float NdotL = Mathf.Max(math.dot(worldNormal, light_direction), 0);
 
             // magic bias function! it is amazing!
             float light_distance = math.sqrt(light_distanceSqr);
             float magic = 0.02f + 0.01f * (light_distanceSqr / light_distance);
             float autobias = magic * math.tan(math.acos(1.0f - NdotL));
-            autobias = math.clamp(autobias, 0.0f, magic);
+            autobias = Mathf.Clamp(autobias, 0.0f, magic);
 
             float shadow_mapping_distance = SampleDistance(-light_direction); // negative!
 

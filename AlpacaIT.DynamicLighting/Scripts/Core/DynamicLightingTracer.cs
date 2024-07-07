@@ -693,11 +693,6 @@ namespace AlpacaIT.DynamicLighting
 
             public void OnRaycastHit(int x, int y)
             {
-                OnRaycastFail(x, y);
-            }
-
-            public void OnRaycastFail(int x, int y)
-            {
                 samples++;
                 if (samples == bounceSamples)
                 {
@@ -824,7 +819,7 @@ namespace AlpacaIT.DynamicLighting
                         }
                         else
                         {
-                            raycastHandler.OnRaycastFail(x, y);
+                            raycastHandler.OnRaycastHit(x, y);
                         }
                     }
                 }
