@@ -28,7 +28,7 @@ namespace AlpacaIT.DynamicLighting
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private float byte_to_normalized_float(uint value)
             {
-                return -1.0f + (value / 255.0f) * 2.0f;
+                return -1.0f + value * (1.0f / 255.0f) * 2.0f;
             }
 
             private unsafe float4 unpack_normalized_float4_from_float(float value)
@@ -176,7 +176,7 @@ namespace AlpacaIT.DynamicLighting
         /// <returns>The UV coordinates to sample the cubemap at.</returns>
         public static float2 GetFaceUvByDirection(float3 direction, out int face)
         {
-            float3 vAbs = new float3(Mathf.Abs(direction.x), Mathf.Abs(direction.y), Mathf.Abs(direction.z)); // math.abs() slow!
+            float3 vAbs = MathEx.FastAbs(direction);
             float ma;
             float2 uv;
             if (vAbs.z >= vAbs.x && vAbs.z >= vAbs.y)

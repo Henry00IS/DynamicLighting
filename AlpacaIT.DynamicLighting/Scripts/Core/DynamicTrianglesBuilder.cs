@@ -184,6 +184,7 @@ namespace AlpacaIT.DynamicLighting
 
         private uint pack_saturated_float4_into_uint(float4 value)
         {
+            // todo: this is probably slow compared to Mathf.Clamp01.
             value = math.saturate(value);
             uint x8 = saturated_float_to_byte(value.x);
             uint y8 = saturated_float_to_byte(value.y);

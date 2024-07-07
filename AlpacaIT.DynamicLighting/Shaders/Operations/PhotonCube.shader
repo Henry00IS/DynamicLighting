@@ -60,7 +60,7 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
 
             float byte_to_normalized_float(uint byte)
             {
-                return -1.0 + (byte / 255.0) * 2.0;
+                return -1.0 + byte * (1.0 / 255.0) * 2.0;
             }
 
             // packs a float into a byte so that 0.0 is 0 and +1.0 is 255.
@@ -71,7 +71,7 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
 
             float byte_to_saturated_float(float value)
             {
-                return value / 255.0;
+                return value * (1.0 / 255.0);
             }
 
             float pack_normalized_float4_into_float(float4 value)
