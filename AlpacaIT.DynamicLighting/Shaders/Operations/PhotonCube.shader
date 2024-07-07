@@ -1,4 +1,4 @@
-Shader "Hidden/Dynamic Lighting/DirectIlluminationSampler"
+Shader "Hidden/Dynamic Lighting/PhotonCube"
 {
     Properties
     {

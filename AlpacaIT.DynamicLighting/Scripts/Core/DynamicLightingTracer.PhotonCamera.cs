@@ -45,7 +45,7 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Initialization of the DynamicLightingTracer.PhotonCamera partial class.</summary>
         private void PhotonCameraInitialize()
         {
-            photonCameraDepthShader = DynamicLightingResources.Instance.directIlluminationSamplerShader;
+            photonCameraDepthShader = DynamicLightingResources.Instance.photonCubeShader;
 
 #if UNITY_2021_3_OR_NEWER && !UNITY_2021_3_0 && !UNITY_2021_3_1 && !UNITY_2021_3_2 && !UNITY_2021_3_3 && !UNITY_2021_3_4 && !UNITY_2021_3_5 && !UNITY_2021_3_6 && !UNITY_2021_3_7 && !UNITY_2021_3_8 && !UNITY_2021_3_9 && !UNITY_2021_3_10 && !UNITY_2021_3_11 && !UNITY_2021_3_12 && !UNITY_2021_3_13 && !UNITY_2021_3_14 && !UNITY_2021_3_15 && !UNITY_2021_3_16 && !UNITY_2021_3_17 && !UNITY_2021_3_18 && !UNITY_2021_3_19 && !UNITY_2021_3_20 && !UNITY_2021_3_21 && !UNITY_2021_3_22 && !UNITY_2021_3_23 && !UNITY_2021_3_24 && !UNITY_2021_3_25 && !UNITY_2021_3_26 && !UNITY_2021_3_27
             photonCameraRenderTextureDescriptor = new RenderTextureDescriptor(photonCameraResolution, photonCameraResolution, RenderTextureFormat.ARGBFloat, 16, 0, RenderTextureReadWrite.Linear);

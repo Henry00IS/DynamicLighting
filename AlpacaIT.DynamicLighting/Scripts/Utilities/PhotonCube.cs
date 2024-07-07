@@ -157,6 +157,7 @@ namespace AlpacaIT.DynamicLighting
                 faces[face] = new PhotonCubeFace(readableTexture.GetPixels(), size);
                 RenderTexture.active = null;
             }
+            Object.DestroyImmediate(readableTexture);
             RenderTexture.ReleaseTemporary(rt);
         }
 

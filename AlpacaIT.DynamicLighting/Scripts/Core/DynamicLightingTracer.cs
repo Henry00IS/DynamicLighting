@@ -1,5 +1,4 @@
 using AlpacaIT.DynamicLighting.Internal;
-using Codice.Client.BaseCommands;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -254,7 +253,7 @@ namespace AlpacaIT.DynamicLighting
                 ulong vramLightmap = (ulong)(lightmapSize * lightmapSize * 4); // uint32
                 vramLegacyTotal += vramLightmap;
 
-                log.AppendLine(meshFilter.name + " surface area: " + meshBuilder.surfaceArea.ToString("0.00") + "m² lightmap size: " + lightmapSize + "x" + lightmapSize + " (Legacy VRAM: " + MathEx.BytesToUnitString(vramLightmap) + ")");
+                //log.AppendLine(meshFilter.name + " surface area: " + meshBuilder.surfaceArea.ToString("0.00") + "m² lightmap size: " + lightmapSize + "x" + lightmapSize + " (Legacy VRAM: " + MathEx.BytesToUnitString(vramLightmap) + ")");
             }
 
             tracingTime.Begin();
@@ -322,7 +321,8 @@ namespace AlpacaIT.DynamicLighting
                 callbackRaycastProcessor.Complete();
 
                 DilateBounceTexture(pixels_bounce_ptr, pixels_bounce);
-                BoxBlurBounceTexture(pixels_bounce_ptr, pixels_bounce);
+                GaussianBlur.ApplyGaussianBlur(pixels_bounce_ptr, pixels_bounce, lightmapSize, 7, 5);//BoxBlurBounceTexture(pixels_bounce_ptr, pixels_bounce);
+                //BoxBlurBounceTexture(pixels_bounce_ptr, pixels_bounce);
                 //DilateBounceTexture(pixels_bounce_ptr, pixels_bounce);
 
                 // iterate over all triangles in the mesh.
@@ -339,14 +339,14 @@ namespace AlpacaIT.DynamicLighting
 
             // optimize the runtime performance.
             // iterate over all triangles in the mesh.
-            //optimizationTime.Begin();
-            //for (int i = 0; i < meshBuilder.triangleCount; i++)
-            //{
-            //    var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
-            //
-            //    OptimizeTriangle(i, pixels_lightmap_ptr, dynamic_triangles, t1, t2, t3);
-            //}
-            //optimizationTime.Stop();
+            optimizationTime.Begin();
+            for (int i = 0; i < meshBuilder.triangleCount; i++)
+            {
+                var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
+
+                OptimizeTriangle(i, pixels_lightmap_ptr, dynamic_triangles, t1, t2, t3);
+            }
+            optimizationTime.Stop();
 
             seamTime.Begin();
             {
@@ -743,11 +743,6 @@ namespace AlpacaIT.DynamicLighting
             var lightPosition = pointLightCache.position;
             var lightRadius = pointLight.lightRadius;
 
-            // we should consider branching here, direct illumination as-is and with bounce lighting
-            // we process one light after the other, writing finished textures to disk (one texture
-            // per light per mesh) and we will add them to triangles later once all triangles have
-            // been rendered onto it, this will work the same way as shadow bits and prevent the seams.
-
             // schlick's approximation.
             float materialSpecular = 1.0f;
 
@@ -799,11 +794,16 @@ namespace AlpacaIT.DynamicLighting
                         {
                             var photonDiffuse = photonCube.SampleDiffuseFast(photonCubeFace, photonCubeFaceIndex);
 
+                            // ---
+                            // source code from https://github.com/Arlorean/UnityComputeShaderTest (see Licenses/UnityComputeShaderTest.txt).
+                            // shoutouts to Adam Davidson and Kevin Fung!
+                            //
                             // schlick's approximation.
                             float3 r0 = photonDiffuse * materialSpecular;
                             float hv = math.clamp(math.dot(photonNormal, light_direction), 0.0f, 1.0f);
                             float3 fresnel = r0 + (1.0f - r0) * math.pow(1.0f - hv, 5.0f);
                             raycastHandler.fresnels[i] = fresnel;
+                            // ---
 
                             var photonWorldMinusWorldWithNormalOffset = photonWorld - (float3)worldWithNormalOffset;
                             var photonToWorldDirection = math.normalize(photonWorldMinusWorldWithNormalOffset);
@@ -860,6 +860,11 @@ namespace AlpacaIT.DynamicLighting
             // only iterate over lights associated with the current triangle.
             for (int i = triangleRaycastedLightIndicesCount; i-- > 0;)
             {
+                // the bounce texture is only set on a triangle when actually receiving bounced lighting.
+                var bounceTextureFound = dynamic_triangles.GetBounceTexture(triangle_index, i) != null;
+                if (bounceTextureFound)
+                    continue;
+
                 var pointLight = pointLights[triangleRaycastedLightIndices[i]];
                 var lightChannelBit = (uint)1 << ((int)pointLight.lightChannel);
                 var lightFound = false;
@@ -883,6 +888,7 @@ namespace AlpacaIT.DynamicLighting
                         break;
                 }
 
+                // the light never illuminated this triangle:
                 if (!lightFound)
                 {
                     optimizationLightsRemoved++;

@@ -47,6 +47,7 @@ namespace AlpacaIT.DynamicLighting
         public Texture2D dynamicPointLightIcon;
         public Material dynamicLightingPostProcessingMaterial;
         public Shader shadowCameraDepthShader;
-        public Shader directIlluminationSamplerShader;
+        public Shader photonCubeShader;
+        public Shader guassianBlurShader;
     }
 }
