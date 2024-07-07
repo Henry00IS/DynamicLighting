@@ -19,35 +19,41 @@ namespace AlpacaIT.DynamicLighting
             /// <summary>The width and height of each face of the photon cube in pixels.</summary>
             public readonly int size;
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private float byte_to_normalized_float(uint value)
             {
                 return -1.0f + (value / 255.0f) * 2.0f;
             }
 
-            private float byte_to_saturated_float(float value)
+            private unsafe float4 unpack_normalized_float4_from_float(float value)
             {
-                return value / 255.0f;
-            }
+                uint bytes = *(uint*)&value;
 
-            private float4 unpack_normalized_float4_from_float(float value)
-            {
-                uint bytes = math.asuint(value);
-                float4 result;
-                result.x = byte_to_normalized_float((bytes >> 24) & 0xFF);
-                result.y = byte_to_normalized_float((bytes >> 16) & 0xFF);
-                result.z = byte_to_normalized_float((bytes >> 8) & 0xFF);
-                result.w = byte_to_normalized_float(bytes & 0xFF);
+                float4 result = new float4(
+                    byte_to_normalized_float((bytes >> 24) & 0xFF),
+                    byte_to_normalized_float((bytes >> 16) & 0xFF),
+                    byte_to_normalized_float((bytes >> 8) & 0xFF),
+                    byte_to_normalized_float(bytes & 0xFF)
+                );
+
                 return result;
             }
 
-            private float4 unpack_saturated_float4_from_float(float value)
+            private unsafe float4 unpack_saturated_float4_from_float(float value)
             {
-                uint bytes = math.asuint(value);
-                float4 result;
-                result.x = byte_to_saturated_float((bytes >> 24) & 0xFF);
-                result.y = byte_to_saturated_float((bytes >> 16) & 0xFF);
-                result.z = byte_to_saturated_float((bytes >> 8) & 0xFF);
-                result.w = byte_to_saturated_float(bytes & 0xFF);
+                uint bytes = *(uint*)&value;
+
+                // extract the bytes and convert them to float [0.0, 255.0].
+                var result = new float4(
+                    (bytes >> 24) & 0xFF,
+                    (bytes >> 16) & 0xFF,
+                    (bytes >> 8) & 0xFF,
+                    bytes & 0xFF
+                );
+
+                // normalize to [0.0, 1.0].
+                result *= 1.0f / 255.0f;
+
                 return result;
             }
 
@@ -139,7 +145,7 @@ namespace AlpacaIT.DynamicLighting
 #if UNITY_2021_3_OR_NEWER && !UNITY_2021_3_0 && !UNITY_2021_3_1 && !UNITY_2021_3_2 && !UNITY_2021_3_3 && !UNITY_2021_3_4 && !UNITY_2021_3_5 && !UNITY_2021_3_6 && !UNITY_2021_3_7 && !UNITY_2021_3_8 && !UNITY_2021_3_9 && !UNITY_2021_3_10 && !UNITY_2021_3_11 && !UNITY_2021_3_12 && !UNITY_2021_3_13 && !UNITY_2021_3_14 && !UNITY_2021_3_15 && !UNITY_2021_3_16 && !UNITY_2021_3_17 && !UNITY_2021_3_18 && !UNITY_2021_3_19 && !UNITY_2021_3_20 && !UNITY_2021_3_21 && !UNITY_2021_3_22 && !UNITY_2021_3_23 && !UNITY_2021_3_24 && !UNITY_2021_3_25 && !UNITY_2021_3_26 && !UNITY_2021_3_27
             var photonCameraRenderTextureDescriptor = new RenderTextureDescriptor(size, size, RenderTextureFormat.ARGBFloat, 16, 0, RenderTextureReadWrite.Linear);
 #else
-            photonCameraRenderTextureDescriptor = new RenderTextureDescriptor(size, size, RenderTextureFormat.ARGBFloat, 16, 0);
+            var photonCameraRenderTextureDescriptor = new RenderTextureDescriptor(size, size, RenderTextureFormat.ARGBFloat, 16, 0);
 #endif
             photonCameraRenderTextureDescriptor.autoGenerateMips = false;
 

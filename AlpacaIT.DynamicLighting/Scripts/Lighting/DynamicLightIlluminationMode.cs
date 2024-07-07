@@ -17,14 +17,16 @@ namespace AlpacaIT.DynamicLighting
         /// After calculating direct illumination, performs a single indirect illumination pass
         /// where directly illuminated texels cast light onto other surfaces. This enhances realism
         /// by simulating light bounce, providing more natural and detailed lighting effects. This
-        /// method uses 16 bits per texel of memory on individual triangles illuminated by the light.
+        /// method uses 32 bits per texel of memory on individual triangles illuminated by the light.
         /// <para>
-        /// The quality of the bounce data degrades and blurs over distance, so avoid setting the
-        /// light radius too large for optimal results. Additionally, be aware that this approach
-        /// will significantly increase raytracing times.
+        /// Indirect illumination can not spread beyond the light radius, it is recommended to use
+        /// this option on important lights with a large radius. The quality of the bounce data
+        /// degrades and blurs over distance, so avoid setting the light radius too large for
+        /// optimal results. Additionally, be aware that this approach will significantly increase
+        /// raytracing times.
         /// </para>
         /// </summary>
-        [Tooltip("After calculating direct illumination, performs a single indirect illumination pass where directly illuminated texels cast light onto other surfaces. This enhances realism by simulating light bounce, providing more natural and detailed lighting effects. This method uses 16 bits per texel of memory on individual triangles illuminated by the light.\n\nThe quality of the bounce data degrades and blurs over distance, so avoid setting the light radius too large for optimal results. Additionally, be aware that this approach will significantly increase raytracing times.")]
+        [Tooltip("After calculating direct illumination, performs a single indirect illumination pass where directly illuminated texels cast light onto other surfaces. This enhances realism by simulating light bounce, providing more natural and detailed lighting effects. This method uses 32 bits per texel of memory on individual triangles illuminated by the light.\n\nIndirect illumination can not spread beyond the light radius, it is recommended to use this option on important lights with a large radius. The quality of the bounce data degrades and blurs over distance, so avoid setting the light radius too large for optimal results. Additionally, be aware that this approach will significantly increase raytracing times.")]
         SingleBounce = 1,
     }
 }

@@ -61,11 +61,21 @@ if (lightmap_resolution > 0 && light.is_dynamic())
     
     // retrieve the bounce lighting sample.
     if (is_bounce_available)
+    {
+        // bounce is almost never 0.0 and checking for it to early out is more expensive.
+        // confirmed with NVIDIA Quadro K1000M.
         bounce = dynamic_triangle.bounce_sample_bilinear(i.uv1);
+    }
+    else
+    {
+        // whenever the fragment is fully in shadow we can skip work.
+        // confirmed with NVIDIA Quadro K1000M improving the framerate.
+        if (map == 0.0) return;
+    }
 }
 
 // whenever the fragment is fully in shadow we can skip work.
-// NOT confirmed with NVIDIA Quadro K1000M ??? improving the framerate. TODO
+// confirmed with NVIDIA Quadro K1000M improving the framerate.
 if (map != 0.0)
 {
     // spot lights determine whether we are in the light cone or outside.

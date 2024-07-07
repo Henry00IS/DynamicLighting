@@ -22,6 +22,7 @@ namespace AlpacaIT.DynamicLighting
 
         private int traces = 0;
         private int optimizationLightsRemoved = 0;
+        private bool bounceLightingInScene = false;
         private BenchmarkTimer totalTime;
         private BenchmarkTimer tracingTime;
         private BenchmarkTimer seamTime;
@@ -66,6 +67,7 @@ namespace AlpacaIT.DynamicLighting
 
             traces = 0;
             optimizationLightsRemoved = 0;
+            bounceLightingInScene = false;
             totalTime = new BenchmarkTimer();
             tracingTime = new BenchmarkTimer();
             seamTime = new BenchmarkTimer();
@@ -166,6 +168,10 @@ namespace AlpacaIT.DynamicLighting
                     if (light.lightIllumination == DynamicLightIlluminationMode.SingleBounce)
                     {
                         pointLightsCache[i].photonCube = PhotonCameraRender(pointLightsCache[i].position, light.lightRadius);
+
+                        // remember whether bounce lighting is used in the scene, this allows us to
+                        // skip steps and checks later on.
+                        bounceLightingInScene = true;
                     }
                 }
 
@@ -293,48 +299,50 @@ namespace AlpacaIT.DynamicLighting
             raycastProcessor.Complete();
             tracingTime.Stop();
 
-            // iterate over all lights in the scene.
-            for (int j = 0; j < pointLights.Length; j++)
+            // only executed when bounce lighting is detected in the scene.
+            if (bounceLightingInScene)
             {
-                var pointLight = pointLights[j];
-                var pointLightCache = pointLightsCache[j];
-
-                // the light must have bounce lighting enabled.
-                if (pointLight.lightIllumination != DynamicLightIlluminationMode.SingleBounce)
-                    continue;
-
-                // create a bounce lighting texture.
-                var pixels_bounce = new Color[lightmapSize * lightmapSize];
-                var pixels_bounce_gc = GCHandle.Alloc(pixels_bounce, GCHandleType.Pinned);
-                var pixels_bounce_ptr = (Color*)pixels_bounce_gc.AddrOfPinnedObject();
-
-                // iterate over all triangles in the mesh.
-                for (int i = 0; i < meshBuilder.triangleCount; i++)
+                // iterate over all lights in the scene.
+                for (int j = 0; j < pointLights.Length; j++)
                 {
-                    var (v1, v2, v3) = meshBuilder.GetTriangleVertices(i);
-                    var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
+                    var pointLight = pointLights[j];
+                    var pointLightCache = pointLightsCache[j];
 
-                    BounceTriangle(j, i, dynamic_triangles, pixels_bounce_ptr, v1, v2, v3, t1, t2, t3);
+                    // the light must have bounce lighting enabled.
+                    if (pointLight.lightIllumination != DynamicLightIlluminationMode.SingleBounce)
+                        continue;
+
+                    // create a bounce lighting texture.
+                    var pixels_bounce = new Color[lightmapSize * lightmapSize];
+                    var pixels_bounce_gc = GCHandle.Alloc(pixels_bounce, GCHandleType.Pinned);
+                    var pixels_bounce_ptr = (Color*)pixels_bounce_gc.AddrOfPinnedObject();
+
+                    // iterate over all triangles in the mesh.
+                    for (int i = 0; i < meshBuilder.triangleCount; i++)
+                    {
+                        var (v1, v2, v3) = meshBuilder.GetTriangleVertices(i);
+                        var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
+
+                        BounceTriangle(j, i, dynamic_triangles, pixels_bounce_ptr, v1, v2, v3, t1, t2, t3);
+                    }
+
+                    // finish any remaining raycasting work.
+                    callbackRaycastProcessor.Complete();
+
+                    DilateBounceTexture(pixels_bounce_ptr, pixels_bounce);
+                    GaussianBlur.ApplyGaussianBlur(pixels_bounce_ptr, pixels_bounce, lightmapSize, 7, 5);
+
+                    // iterate over all triangles in the mesh.
+                    for (int i = 0; i < meshBuilder.triangleCount; i++)
+                    {
+                        var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
+
+                        BuildBounceTextures(j, i, pixels_bounce_ptr, dynamic_triangles, t1, t2, t3);
+                    }
+
+                    // free the bounce lighting texture.
+                    pixels_bounce_gc.Free();
                 }
-
-                // finish any remaining raycasting work.
-                callbackRaycastProcessor.Complete();
-
-                DilateBounceTexture(pixels_bounce_ptr, pixels_bounce);
-                GaussianBlur.ApplyGaussianBlur(pixels_bounce_ptr, pixels_bounce, lightmapSize, 7, 5);//BoxBlurBounceTexture(pixels_bounce_ptr, pixels_bounce);
-                //BoxBlurBounceTexture(pixels_bounce_ptr, pixels_bounce);
-                //DilateBounceTexture(pixels_bounce_ptr, pixels_bounce);
-
-                // iterate over all triangles in the mesh.
-                for (int i = 0; i < meshBuilder.triangleCount; i++)
-                {
-                    var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
-
-                    BuildBounceTextures(j, i, pixels_bounce_ptr, dynamic_triangles, t1, t2, t3);
-                }
-
-                // free the bounce lighting texture.
-                pixels_bounce_gc.Free();
             }
 
             // optimize the runtime performance.
@@ -861,8 +869,7 @@ namespace AlpacaIT.DynamicLighting
             for (int i = triangleRaycastedLightIndicesCount; i-- > 0;)
             {
                 // the bounce texture is only set on a triangle when actually receiving bounced lighting.
-                var bounceTextureFound = dynamic_triangles.GetBounceTexture(triangle_index, i) != null;
-                if (bounceTextureFound)
+                if (bounceLightingInScene && dynamic_triangles.GetBounceTexture(triangle_index, i) != null)
                     continue;
 
                 var pointLight = pointLights[triangleRaycastedLightIndices[i]];

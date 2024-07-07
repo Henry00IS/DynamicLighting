@@ -64,7 +64,6 @@ Shader "Hidden/Dynamic Lighting/ShadowDepth"
             #pragma multi_compile_fog
             
             #include "UnityCG.cginc"
-            #include "DynamicLighting.cginc"
 
             struct appdata
             {

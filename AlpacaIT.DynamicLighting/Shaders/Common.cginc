@@ -72,20 +72,22 @@ float4 color_screen(float4 self, float4 blend)
     return 1.0 - (1.0 - self) * (1.0 - blend);
 }
 
-float byte_to_saturated_float(float value)
-{
-    return value / 255.0;
-}
-
 float4 unpack_saturated_float4_from_uint(uint bytes)
 {
-    float4 result;
-    result.x = byte_to_saturated_float((bytes >> 24) & 0xFF);
-    result.y = byte_to_saturated_float((bytes >> 16) & 0xFF);
-    result.z = byte_to_saturated_float((bytes >> 8) & 0xFF);
-    result.w = byte_to_saturated_float(bytes & 0xFF);
+    // extract the bytes and convert them to float [0.0, 255.0].
+    float4 result = float4(
+        (bytes >> 24) & 0xFF,
+        (bytes >> 16) & 0xFF,
+        (bytes >> 8) & 0xFF,
+        bytes & 0xFF
+    );
+    
+    // normalize to [0.0, 1.0]
+    result *= 1.0 / 255.0;
+    
     return result;
 }
+
 
 // special thanks to https://learnopengl.com/PBR/Lighting
 
