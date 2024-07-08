@@ -269,15 +269,6 @@ namespace AlpacaIT.DynamicLighting
             return self.x != other.x || self.y != other.y || self.z != other.z;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe float3 FastAbs(float3 value)
-        {
-            uint x = (*(uint*)&value.x) & 0x7FFFFFFFu;
-            uint y = (*(uint*)&value.y) & 0x7FFFFFFFu;
-            uint z = (*(uint*)&value.z) & 0x7FFFFFFFu;
-            return new float3(*(float*)&x, *(float*)&y, *(float*)&z);
-        }
-
         /// <summary>
         /// Calculates a framerate independent fixed timestep.
         /// </summary>

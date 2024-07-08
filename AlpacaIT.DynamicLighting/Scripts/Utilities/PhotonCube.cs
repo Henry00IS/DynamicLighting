@@ -84,8 +84,8 @@ namespace AlpacaIT.DynamicLighting
             private int Index(float2 position)
             {
                 position.x = 1.0f - position.x;
-                var x = (int)math.floor(position.x * size);
-                var y = (int)math.floor(position.y * size);
+                var x = (int)(position.x * size);
+                var y = (int)(position.y * size);
                 x = math.max(0, math.min(x, size - 1));
                 y = math.max(0, math.min(y, size - 1));
                 return y * size + x;
@@ -110,8 +110,8 @@ namespace AlpacaIT.DynamicLighting
             public static int Index(float2 position, int size)
             {
                 position.x = 1.0f - position.x;
-                var x = (int)math.floor(position.x * size);
-                var y = (int)math.floor(position.y * size);
+                var x = (int)(position.x * size);
+                var y = (int)(position.y * size);
                 x = math.max(0, math.min(x, size - 1));
                 y = math.max(0, math.min(y, size - 1));
                 return y * size + x;
@@ -174,30 +174,36 @@ namespace AlpacaIT.DynamicLighting
         /// <param name="direction">The direction to sample the cubemap in.</param>
         /// <param name="face">The face index to be sampled from.</param>
         /// <returns>The UV coordinates to sample the cubemap at.</returns>
-        public static float2 GetFaceUvByDirection(float3 direction, out int face)
+        public static unsafe float2 GetFaceUvByDirection(float3 direction, out int face)
         {
-            float3 vAbs = MathEx.FastAbs(direction);
+            float3 vAbs = direction;
+            UMath.Abs(&vAbs);
             float ma;
-            float2 uv;
+            float2 uv; _ = &uv;
             if (vAbs.z >= vAbs.x && vAbs.z >= vAbs.y)
             {
                 face = direction.z < 0.0f ? 5 : 4;
                 ma = 0.5f / vAbs.z;
-                uv = new float2(direction.z < 0.0f ? -direction.x : direction.x, -direction.y);
+                uv.x = direction.z < 0.0f ? -direction.x : direction.x;
+                uv.y = -direction.y;
             }
             else if (vAbs.y >= vAbs.x)
             {
                 face = direction.y < 0.0f ? 3 : 2;
                 ma = 0.5f / vAbs.y;
-                uv = new float2(direction.x, direction.y < 0.0f ? -direction.z : direction.z);
+                uv.x = direction.x;
+                uv.y = direction.y < 0.0f ? -direction.z : direction.z;
             }
             else
             {
                 face = direction.x < 0.0f ? 1 : 0;
                 ma = 0.5f / vAbs.x;
-                uv = new float2(direction.x < 0.0f ? direction.z : -direction.z, -direction.y);
+                uv.x = direction.x < 0.0f ? direction.z : -direction.z;
+                uv.y = -direction.y;
             }
-            return uv * ma + 0.5f;
+            UMath.Scale(&uv, ma);
+            UMath.Add(&uv, 0.5f);
+            return uv;//uv * ma + 0.5f;
         }
 
         /// <summary>
@@ -247,7 +253,7 @@ namespace AlpacaIT.DynamicLighting
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public float3 SampleDistanceFast(int photonCubeFace, int photonCubeFaceIndex)
+        public float SampleDistanceFast(int photonCubeFace, int photonCubeFaceIndex)
         {
             var distance = faces[photonCubeFace].distances[photonCubeFaceIndex];
             return distance < 0.5f ? 0.0f : distance; // account for skybox.
@@ -294,9 +300,13 @@ namespace AlpacaIT.DynamicLighting
             return lightPosition + direction * SampleDistance(direction);
         }
 
-        public float3 SampleWorldFast(float3 direction, float3 lightPosition, int photonCubeFace, int photonCubeFaceIndex)
+        public unsafe float3 SampleWorldFast(float3 direction, float3 lightPosition, int photonCubeFace, int photonCubeFaceIndex)
         {
-            return lightPosition + direction * SampleDistanceFast(photonCubeFace, photonCubeFaceIndex);
+            // return lightPosition + direction * SampleDistanceFast(photonCubeFace, photonCubeFaceIndex);
+            // using 'direction' as scratch buffer.
+            UMath.Scale(&direction, SampleDistanceFast(photonCubeFace, photonCubeFaceIndex));
+            UMath.Add(&direction, &lightPosition);
+            return direction;
         }
 
         /// <summary>
@@ -307,17 +317,19 @@ namespace AlpacaIT.DynamicLighting
         /// <param name="worldPosition">The fragment position in world-space coordinates.</param>
         /// <param name="worldNormal">The normal of the fragment (e.g. triangle normal).</param>
         /// <returns>True when the fragment position is in light else false.</returns>
-        public bool SampleShadow(float3 lightPosition, float3 worldPosition, float3 worldNormal)
+        public unsafe bool SampleShadow(float3 lightPosition, float3 worldPosition, float3 worldNormal)
         {
             // calculate the unnormalized direction between the light source and the fragment.
-            float3 light_direction = lightPosition - worldPosition;
+            //float3 light_direction = lightPosition - worldPosition;
+            float3* light_direction = &lightPosition;
+            UMath.Subtract(&lightPosition, &worldPosition);
 
             // calculate the square distance between the light source and the fragment.
             // distance(i.world, light.position); but squared to prevent a square root.
-            float light_distanceSqr = math.dot(light_direction, light_direction);
+            float light_distanceSqr = UMath.Dot(light_direction, light_direction);
 
             // a simple dot product with the normal gives us diffusion.
-            float NdotL = Mathf.Max(math.dot(worldNormal, light_direction), 0);
+            float NdotL = Mathf.Max(math.dot(worldNormal, *light_direction), 0);
 
             // magic bias function! it is amazing!
             float light_distance = math.sqrt(light_distanceSqr);
@@ -325,7 +337,9 @@ namespace AlpacaIT.DynamicLighting
             float autobias = magic * math.tan(math.acos(1.0f - NdotL));
             autobias = Mathf.Clamp(autobias, 0.0f, magic);
 
-            float shadow_mapping_distance = SampleDistance(-light_direction); // negative!
+            // negative!
+            UMath.Negate(light_direction);
+            float shadow_mapping_distance = SampleDistance(*light_direction);
 
             // when the fragment is occluded we can early out here.
             if (light_distance - autobias > shadow_mapping_distance)

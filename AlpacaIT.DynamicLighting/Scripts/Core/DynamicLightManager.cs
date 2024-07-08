@@ -1,9 +1,13 @@
 using AlpacaIT.DynamicLighting.Internal;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.Serialization;
 using Random = UnityEngine.Random;
+
+// shoutouts to dazombiekiller!
+[module: SkipLocalsInit]
 
 namespace AlpacaIT.DynamicLighting
 {

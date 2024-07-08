@@ -42,6 +42,7 @@ namespace AlpacaIT.DynamicLighting
         private int pixelDensityPerSquareMeter = 128;
         private DynamicLightManager dynamicLightManager;
         private StringBuilder log;
+        private PhysicsScene physicsScene;
 
 #if UNITY_EDITOR
         private float progressBarLastUpdate = 0f;
@@ -80,6 +81,7 @@ namespace AlpacaIT.DynamicLighting
             uniqueIdentifier = 0;
             raycastLayermask = dynamicLightManager.raytraceLayers;
             pixelDensityPerSquareMeter = dynamicLightManager.pixelDensityPerSquareMeter;
+            physicsScene = Physics.defaultPhysicsScene;
 #if UNITY_EDITOR
             progressBarLastUpdate = 0f;
             progressBarCancel = false;
@@ -588,6 +590,9 @@ namespace AlpacaIT.DynamicLighting
             // calculate some values in advance.
             var triangleNormalOffset = triangleNormal * 0.001f;
 
+            RaycastCommand raycastCommand; // do not initialize memory.
+            var raycastCommandPtr = &raycastCommand;
+
             int ptr = 0;
             for (int y = minY; y <= maxY; y++)
             {
@@ -616,9 +621,18 @@ namespace AlpacaIT.DynamicLighting
                             continue;
 
                         // prepare to trace from the world to the light position.
+
+                        // create a raycast command as fast as possible.
+                        raycastCommand.from = world + triangleNormalOffset;
+                        raycastCommand.direction = lightDirection;
+                        raycastCommand.distance = lightDistanceToWorld;
+                        raycastCommand.layerMask = raycastLayermask;
+                        raycastCommand.maxHits = 1;
+                        raycastCommand.physicsScene = physicsScene;
+
                         traces++;
                         raycastProcessor.Add(
-                            new RaycastCommand(world + triangleNormalOffset, lightDirection, lightDistanceToWorld, raycastLayermask),
+                            raycastCommand,
                             new RaycastCommandMeta(x, y, world, pointLight.lightChannel)
                         );
                     }
@@ -631,19 +645,25 @@ namespace AlpacaIT.DynamicLighting
             triangleUvTo3dStep.Dispose();
         }
 
-        public float3 AddRandomSpread(float3 direction, float spreadRadius)
+        public unsafe float3 AddRandomSpread(float3 direction, float spreadRadius)
         {
             // choose a random direction in 3d space.
-            var randomDirection = (float3)UnityEngine.Random.onUnitSphere;
+            Vector3 randomDirectionV3 = UnityEngine.Random.onUnitSphere;
+            var randomDirection = (float3*)&randomDirectionV3; // reinterpret cast.
 
             // choose a random length for the spread between 0 and the spread radius.
             float randomLength = UnityEngine.Random.Range(0f, spreadRadius);
 
             // scale the normalized direction vector by the chosen length.
-            float3 spreadVector = randomDirection * randomLength;
+            // spreadVector = randomDirection * randomLength;
+            UMath.Scale(randomDirection, randomLength);
 
             // add the spread vector to the original directional vector.
-            return math.normalize(direction + spreadVector);
+            // math.normalize(direction + spreadVector);
+            UMath.Add(randomDirection, &direction);
+            UMath.Normalize(randomDirection);
+
+            return *randomDirection;
         }
 
         private const int bounceSamples = 32;
@@ -731,11 +751,14 @@ namespace AlpacaIT.DynamicLighting
             // calculate some values in advance.
             var triangleNormalOffset = triangleNormal * 0.001f;
 
+            RaycastCommand raycastCommand; // do not initialize memory.
+            var raycastCommandPtr = &raycastCommand;
+
             var pointLight = pointLights[light_index];
             var pointLightCache = pointLightsCache[light_index];
             var photonCube = pointLightCache.photonCube;
             var lightPosition = pointLightCache.position;
-            var lightPosition3 = (float3)lightPosition;
+            var lightPosition3 = *(float3*)&lightPosition;
             var lightRadius = pointLight.lightRadius;
 
             // schlick's approximation.
@@ -757,7 +780,7 @@ namespace AlpacaIT.DynamicLighting
                         continue;
 
                     var worldWithNormalOffset = world + triangleNormalOffset;
-                    var worldWithNormalOffset3 = (float3)worldWithNormalOffset;
+                    var worldWithNormalOffset3 = *(float3*)&worldWithNormalOffset;
 
                     // calculate the unnormalized direction between the light source and the fragment.
                     float3 light_direction = math.normalize(lightPosition - world);
@@ -774,8 +797,6 @@ namespace AlpacaIT.DynamicLighting
                         //var spreadRadius = 0.3f + math.pow(i / 31.0f, 5.0f) * 0.7f;
 
                         // sample around the active working direction.
-                        //var cube_uv = PhotonCube.GetFaceUvByDirection(cube_direction, out var cube_face);
-                        //cube_direction = PhotonCube.GetDirectionByFaceUv(cube_uv + (float2)UnityEngine.Random.insideUnitCircle * 0.2f, cube_face);
                         float3 cube_direction = AddRandomSpread(light_direction_negative, spreadRadius: 0.3f);
 
                         // do photon cube prerequisite computations to access data faster.
@@ -800,10 +821,19 @@ namespace AlpacaIT.DynamicLighting
                             // ---
 
                             var photonWorldMinusWorldWithNormalOffset = photonWorld - worldWithNormalOffset3;
-                            var photonToWorldDirection = math.normalize(photonWorldMinusWorldWithNormalOffset); // todo: conversion! slow!
+                            var photonToWorldDirection = math.normalize(photonWorldMinusWorldWithNormalOffset);
                             var photonToWorldDistance = math.length(photonWorldMinusWorldWithNormalOffset);
+
+                            // create a raycast command as fast as possible.
+                            raycastCommand.from = worldWithNormalOffset;
+                            raycastCommand.direction = *(Vector3*)&photonToWorldDirection;
+                            raycastCommand.distance = photonToWorldDistance;
+                            raycastCommand.layerMask = raycastLayermask;
+                            raycastCommand.maxHits = 1;
+                            raycastCommand.physicsScene = physicsScene;
+
                             callbackRaycastProcessor.Add(
-                                new RaycastCommand(worldWithNormalOffset, photonToWorldDirection, photonToWorldDistance, raycastLayermask),
+                                raycastCommand,
                                 new RaycastOriginMeta(x, y),
                                 raycastHandler
                             );
