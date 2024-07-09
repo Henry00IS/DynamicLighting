@@ -326,7 +326,7 @@ namespace AlpacaIT.DynamicLighting
 
             // calculate the square distance between the light source and the fragment.
             // distance(i.world, light.position); but squared to prevent a square root.
-            float light_distanceSqr = UMath.Dot(light_direction, light_direction);
+            float light_distanceSqr = UMath.SqrMagnitude(light_direction);
 
             // a simple dot product with the normal gives us diffusion.
             float NdotL = Mathf.Max(math.dot(worldNormal, *light_direction), 0);

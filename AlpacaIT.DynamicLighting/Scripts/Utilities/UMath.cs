@@ -1,5 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using Unity.Mathematics;
+using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
@@ -34,9 +35,19 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Applies the result of a componentwise multiplication operation on a float3 vector and a float value.</summary>
         /// <param name="lhs">Left hand side float3 to use to compute componentwise multiplication.</param>
         /// <param name="rhs">Right hand side float to use to compute componentwise multiplication.</param>
-        /// <returns>float3 result of the componentwise multiplication.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Scale(float3* lhs, float rhs)
+        {
+            lhs->x *= rhs;
+            lhs->y *= rhs;
+            lhs->z *= rhs;
+        }
+
+        /// <summary>Applies the result of a componentwise multiplication operation on a Vector3 vector and a float value.</summary>
+        /// <param name="lhs">Left hand side Vector3 to use to compute componentwise multiplication.</param>
+        /// <param name="rhs">Right hand side float to use to compute componentwise multiplication.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Scale(Vector3* lhs, float rhs)
         {
             lhs->x *= rhs;
             lhs->y *= rhs;
@@ -53,12 +64,22 @@ namespace AlpacaIT.DynamicLighting
             lhs->y += rhs;
         }
 
-        /// <summary>Returns the result of a componentwise addition operation on two float3 vectors.</summary>
+        /// <summary>Applies the result of a componentwise addition operation on two float3 vectors.</summary>
         /// <param name="lhs">Left hand side float3 to use to compute componentwise addition.</param>
         /// <param name="rhs">Right hand side float3 to use to compute componentwise addition.</param>
-        /// <returns>float3 result of the componentwise addition.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Add(float3* lhs, float3* rhs)
+        {
+            lhs->x += rhs->x;
+            lhs->y += rhs->y;
+            lhs->z += rhs->z;
+        }
+
+        /// <summary>Applies the result of a componentwise addition operation on two Vector3 vectors.</summary>
+        /// <param name="lhs">Left hand side Vector3 to use to compute componentwise addition.</param>
+        /// <param name="rhs">Right hand side Vector3 to use to compute componentwise addition.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Add(Vector3* lhs, Vector3* rhs)
         {
             lhs->x += rhs->x;
             lhs->y += rhs->y;
@@ -86,6 +107,17 @@ namespace AlpacaIT.DynamicLighting
             lhs->z -= rhs->z;
         }
 
+        /// <summary>Applies the result of a componentwise subtraction operation on two Vector3 vectors.</summary>
+        /// <param name="lhs">Left hand side Vector3 to use to compute componentwise subtraction.</param>
+        /// <param name="rhs">Right hand side Vector3 to use to compute componentwise subtraction.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Subtract(Vector3* lhs, Vector3* rhs)
+        {
+            lhs->x -= rhs->x;
+            lhs->y -= rhs->y;
+            lhs->z -= rhs->z;
+        }
+
         /// <summary>Returns the dot product of two float3 vectors.</summary>
         /// <param name="x">The first vector.</param>
         /// <param name="y">The second vector.</param>
@@ -96,12 +128,70 @@ namespace AlpacaIT.DynamicLighting
             return x->x * y->x + x->y * y->y + x->z * y->z;
         }
 
+        /// <summary>Returns the dot product of two Vector3 vectors.</summary>
+        /// <param name="x">The first vector.</param>
+        /// <param name="y">The second vector.</param>
+        /// <returns>The dot product of two vectors.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float Dot(Vector3* x, Vector3* y)
+        {
+            return x->x * y->x + x->y * y->y + x->z * y->z;
+        }
+
+        /// <summary>
+        /// Returns the square magnitude of the given vector.
+        /// <para>Same as dot(x, x).</para>
+        /// </summary>
+        /// <param name="x">The first vector.</param>
+        /// <returns>The square magnitude of the vector.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float SqrMagnitude(float3* x)
+        {
+            return x->x * x->x + x->y * x->y + x->z * x->z;
+        }
+
+        /// <summary>
+        /// Returns the square magnitude of the given vector.
+        /// <para>Same as dot(x, x).</para>
+        /// </summary>
+        /// <param name="x">The first vector.</param>
+        /// <returns>The square magnitude of the vector.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float SqrMagnitude(Vector3* x)
+        {
+            return x->x * x->x + x->y * x->y + x->z * x->z;
+        }
+
         /// <summary>Applies a normalized version of the float3 vector x by scaling it by 1 / length(x).</summary>
         /// <param name="x">Vector to normalize.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Normalize(float3* x)
         {
-            Scale(x, math.rsqrt(Dot(x, x)));
+            Scale(x, math.rsqrt(SqrMagnitude(x)));
+        }
+
+        /// <summary>Applies a normalized version of the Vector3 vector x by scaling it by 1 / length(x).</summary>
+        /// <param name="x">Vector to normalize.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Normalize(Vector3* x)
+        {
+            Scale(x, math.rsqrt(SqrMagnitude(x)));
+        }
+
+        /// <summary>Checks whether the given Vector3 is zero.</summary>
+        /// <returns>True when zero else false.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsZero(Vector3* x)
+        {
+            return x->x == 0.0f && x->y == 0.0f && x->z == 0.0f;
+        }
+
+        /// <summary>Checks whether the given Vector3 is not zero.</summary>
+        /// <returns>True when not zero else false.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsNonZero(Vector3* x)
+        {
+            return x->x != 0.0f || x->y != 0.0f || x->z != 0.0f;
         }
     }
 }

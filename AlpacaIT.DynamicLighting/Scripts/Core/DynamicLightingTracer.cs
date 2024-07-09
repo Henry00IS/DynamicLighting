@@ -543,10 +543,23 @@ namespace AlpacaIT.DynamicLighting
         private unsafe void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, uint* pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // calculate the triangle normal (this may fail when degenerate or very small).
-            var triangleNormal = (Vector3)math.normalizesafe(math.cross(v2 - v1, v3 - v1));
-            var triangleCenter = (v1 + v2 + v3) / 3.0f;
-            var triangleNormalValid = !triangleNormal.Equals(Vector3.zero);
+            var triangleNormal3 = math.normalizesafe(math.cross(v2 - v1, v3 - v1));
+            var triangleNormalPtr = (Vector3*)&triangleNormal3;
+            var triangleNormal = *triangleNormalPtr;
+
+            // [unsafe] (v1 + v2 + v3) / 3.0f;
+            var triangleCenter = v1;
+            var triangleCenterPtr = &triangleCenter;
+            UMath.Add(triangleCenterPtr, &v2);
+            UMath.Add(triangleCenterPtr, &v3);
+            UMath.Scale(triangleCenterPtr, 1.0f / 3.0f);
+
+            var triangleNormalValid = UMath.IsNonZero(triangleNormalPtr);
             var triangleBounds = MathEx.GetTriangleBounds(v1, v2, v3);
+
+            // optimize for the IL by preparing memory and pointers outside of the loop.
+            Vector3 lightDirection;
+            var lightDirectionPtr = &lightDirection;
 
             // first we associate lights to triangles that can potentially be affected by them. the
             // uv space may skip triangles when there's no direct point on the triangle and it may
@@ -561,8 +574,14 @@ namespace AlpacaIT.DynamicLighting
                 // indirect light can bounce onto a triangle with any normal, so the following
                 // optimization only works when light bouncing is disabled for this light source.
                 if (triangleNormalValid && light.lightIllumination == DynamicLightIlluminationMode.DirectIllumination)
-                    if (math.dot(triangleNormal, (lightPosition - triangleCenter).normalized) <= -0.1f)
+                {
+                    // [unsafe] lightDirection = (lightPosition - triangleCenter).normalized
+                    lightDirection = lightPosition;
+                    UMath.Subtract(lightDirectionPtr, triangleCenterPtr);
+                    UMath.Normalize(lightDirectionPtr);
+                    if (UMath.Dot(triangleNormalPtr, lightDirectionPtr) <= -0.1f)
                         continue;
+                }
 
                 // cheap test using bounding boxes whether the light intersects the triangle.
                 var lightBounds = pointLightsCache[i].bounds;
@@ -602,7 +621,15 @@ namespace AlpacaIT.DynamicLighting
             var triangleLightIndicesCount = triangleLightIndices.Count;
 
             // calculate some values in advance.
-            var triangleNormalOffset = triangleNormal * 0.001f;
+            // [unsafe] triangleNormal * 0.001f
+            var triangleNormalOffset = triangleNormal;
+            var triangleNormalOffsetPtr = &triangleNormalOffset;
+            UMath.Scale(triangleNormalOffsetPtr, 0.001f);
+
+            // optimize for the IL by preparing memory and pointers outside of the loop.
+            Vector3 world;
+            var worldPtr = &world;
+            var localTracesCounter = 0;
 
             int ptr = 0;
             for (int y = minY; y <= maxY; y++)
@@ -610,14 +637,19 @@ namespace AlpacaIT.DynamicLighting
                 for (int x = minX; x <= maxX; x++)
                 {
                     // fetch the world position for the current uv coordinate.
-                    var world = uvWorldPositions[ptr++];
-                    if (world.Equals(Vector3.zero)) continue;
+                    world = uvWorldPositions[ptr++];
+                    if (UMath.IsZero(worldPtr)) continue;
+
+                    // [unsafe] world + triangleNormalOffset
+                    var worldPlusTriangleNormalOffset = world;
+                    UMath.Add(&worldPlusTriangleNormalOffset, triangleNormalOffsetPtr);
 
                     // iterate over the lights potentially affecting this triangle.
                     for (int i = 0; i < triangleLightIndicesCount; i++)
                     {
-                        var pointLight = pointLights[triangleLightIndices[i]];
-                        var pointLightCache = pointLightsCache[triangleLightIndices[i]];
+                        var lightIndex = triangleLightIndices[i];
+                        var pointLight = pointLights[lightIndex];
+                        var pointLightCache = pointLightsCache[lightIndex];
                         var lightPosition = pointLightCache.position;
                         var lightRadius = pointLight.lightRadius;
                         var lightDistanceToWorld = Vector3.Distance(lightPosition, world);
@@ -627,18 +659,21 @@ namespace AlpacaIT.DynamicLighting
                             continue;
 
                         // early out by normal.
-                        var lightDirection = (lightPosition - world).normalized;
-                        if (math.dot(triangleNormal, lightDirection) < -0.1f)
+                        // [unsafe] lightDirection = (lightPosition - world).normalized
+                        lightDirection = lightPosition;
+                        UMath.Subtract(lightDirectionPtr, worldPtr);
+                        UMath.Normalize(lightDirectionPtr);
+                        if (UMath.Dot(triangleNormalPtr, lightDirectionPtr) < -0.1f)
                             continue;
 
                         // prepare to trace from the world to the light position.
 
                         // create a raycast command as fast as possible.
-                        raycastCommand.from = world + triangleNormalOffset;
+                        raycastCommand.from = worldPlusTriangleNormalOffset;
                         raycastCommand.direction = lightDirection;
                         raycastCommand.distance = lightDistanceToWorld;
 
-                        traces++;
+                        localTracesCounter++;
                         raycastProcessor.Add(
                             raycastCommand,
                             new RaycastCommandMeta(x, y, world, pointLight.lightChannel)
@@ -649,6 +684,9 @@ namespace AlpacaIT.DynamicLighting
                     pixels_visited[y * lightmapSize + x] = 1;
                 }
             }
+
+            // much faster to add this outside of the loop.
+            traces += localTracesCounter;
 
             triangleUvTo3dStep.Dispose();
         }
