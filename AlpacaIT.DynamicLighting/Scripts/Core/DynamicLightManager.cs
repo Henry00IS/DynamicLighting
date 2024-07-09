@@ -73,6 +73,11 @@ namespace AlpacaIT.DynamicLighting
         [HideInInspector]
         internal int version;
 
+        /// <summary>Whether bounce lighting was used during the tracing of the scene.</summary>
+        [SerializeField]
+        [HideInInspector]
+        internal bool activateBounceLightingInCurrentScene;
+
         /// <summary>
         /// The ambient lighting color is added to the whole scene, thus making it look like there
         /// is always some scattered light, even when there is no direct light source. This prevents

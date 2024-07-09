@@ -72,6 +72,7 @@ float4 color_screen(float4 self, float4 blend)
     return 1.0 - (1.0 - self) * (1.0 - blend);
 }
 
+#if DYNAMIC_LIGHTING_BOUNCE
 float4 unpack_saturated_float4_from_uint(uint bytes)
 {
     // extract the bytes and convert them to float [0.0, 255.0].
@@ -87,7 +88,7 @@ float4 unpack_saturated_float4_from_uint(uint bytes)
     
     return result;
 }
-
+#endif
 
 // special thanks to https://learnopengl.com/PBR/Lighting
 

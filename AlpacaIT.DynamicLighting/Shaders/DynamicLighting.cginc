@@ -320,13 +320,13 @@ float3 dynamic_ambient_color;
 //                       +--------------------+
 //                       |Shadow Data Offset 1| --> dynamic_lights[+1]
 //                       +--------------------+
-//                       |Bounce Data Offset 1| --> dynamic_lights[+2]
+//                       |Bounce Data Offset 1| --> dynamic_lights[+2]              ONLY IF DYNAMIC_LIGHTING_BOUNCE ENABLED
 //                       +--------------------+
 //                       |Light Index 2       | --> dynamic_lights[Light Index 2]
 //                       +--------------------+
 //                       |Shadow Data Offset 2| --> dynamic_lights[+1]
 //                       +--------------------+
-//                       |Bounce Data Offset 2| --> dynamic_lights[+2]
+//                       |Bounce Data Offset 2| --> dynamic_lights[+2]              ONLY IF DYNAMIC_LIGHTING_BOUNCE ENABLED
 //                       +--------------------+
 //                       |...                 |
 //                       +--------------------+
@@ -348,8 +348,10 @@ struct DynamicTriangle
     uint activeLightDynamicLightsIndex;
     // offset into dynamic_triangles[] for the shadow data.
     uint activeLightShadowDataOffset;
+#if DYNAMIC_LIGHTING_BOUNCE
     // offset into dynamic_triangles[] for the bounce data.
     uint activeLightBounceDataOffset;
+#endif
     
     void initialize()
     {
@@ -359,7 +361,9 @@ struct DynamicTriangle
         activeLightIndex = 0;
         activeLightDynamicLightsIndex = 0;
         activeLightShadowDataOffset = 0;
+#if DYNAMIC_LIGHTING_BOUNCE
         activeLightBounceDataOffset = 0;
+#endif
     }
     
     // loads this struct for a triangle from the dynamic triangles data.
@@ -386,7 +390,11 @@ struct DynamicTriangle
         // light indices within the triangle light count return the associated light indices.
         if (activeLightIndex < lightCount)
         {
+#if DYNAMIC_LIGHTING_BOUNCE
             uint offset = lightDataOffset + activeLightIndex * 3; // struct size.
+#else
+            uint offset = lightDataOffset + activeLightIndex * 2; // struct size.
+#endif
             
             // read the dynamic light index to be used.
             activeLightDynamicLightsIndex = dynamic_triangles[offset++];
@@ -394,9 +402,10 @@ struct DynamicTriangle
             // read the shadow data offset.
             activeLightShadowDataOffset = dynamic_triangles[offset++];
             
+#if DYNAMIC_LIGHTING_BOUNCE
             // read the bounce data offset.
             activeLightBounceDataOffset = dynamic_triangles[offset];
-            
+#endif      
             return;
         }
         
@@ -527,15 +536,12 @@ struct DynamicTriangle
         return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y);
     }
     
+#if DYNAMIC_LIGHTING_BOUNCE
     // fetches a bounce pixel at the specified uv coordinates from the bounce texture data.
     // note: requires 'uv -= bounds.xy' to be calculated up front.
     float3 bounce_sample(uint2 uv)
     {
-        // offset the lightmap triangle uv to the top-left corner to read near zero, zero.
-        //uv -= bounds.xy;
-        
         uint index = uv.y * bounds.z + uv.x;
-        
         float4 color = unpack_saturated_float4_from_uint(dynamic_triangles[activeLightBounceDataOffset + index]);
         return color.rgb;
     }
@@ -573,6 +579,7 @@ struct DynamicTriangle
     {
         return activeLightBounceDataOffset > 0;
     }
+#endif
 };
 
 // [dynamic mesh acceleration]

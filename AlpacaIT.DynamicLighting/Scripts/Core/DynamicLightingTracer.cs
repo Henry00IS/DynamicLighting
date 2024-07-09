@@ -42,7 +42,7 @@ namespace AlpacaIT.DynamicLighting
         private int pixelDensityPerSquareMeter = 128;
         private DynamicLightManager dynamicLightManager;
         private StringBuilder log;
-        private PhysicsScene physicsScene;
+        private static RaycastCommand raycastCommand;
 
 #if UNITY_EDITOR
         private float progressBarLastUpdate = 0f;
@@ -81,7 +81,17 @@ namespace AlpacaIT.DynamicLighting
             uniqueIdentifier = 0;
             raycastLayermask = dynamicLightManager.raytraceLayers;
             pixelDensityPerSquareMeter = dynamicLightManager.pixelDensityPerSquareMeter;
-            physicsScene = Physics.defaultPhysicsScene;
+
+            // prepare a raycast command that is recycled for raytracing.
+#if UNITY_2021_2_OR_NEWER && !UNITY_2021_2_17 && !UNITY_2021_2_16 && !UNITY_2021_2_15 && !UNITY_2021_2_14 && !UNITY_2021_2_13 && !UNITY_2021_2_12 && !UNITY_2021_2_11 && !UNITY_2021_2_10 && !UNITY_2021_2_9 && !UNITY_2021_2_8 && !UNITY_2021_2_7 && !UNITY_2021_2_6 && !UNITY_2021_2_5 && !UNITY_2021_2_4 && !UNITY_2021_2_3 && !UNITY_2021_2_2 && !UNITY_2021_2_1 && !UNITY_2021_2_0
+            raycastCommand.physicsScene = Physics.defaultPhysicsScene;
+#endif
+#if UNITY_2022_2_OR_NEWER
+            raycastCommand.queryParameters = new QueryParameters(raycastLayermask, false, QueryTriggerInteraction.Ignore, true);
+#else
+            raycastCommand.layerMask = raycastLayermask;
+            raycastCommand.maxHits = 1;
+#endif
 #if UNITY_EDITOR
             progressBarLastUpdate = 0f;
             progressBarCancel = false;
@@ -148,6 +158,7 @@ namespace AlpacaIT.DynamicLighting
 
                 // try to remember the version used.
                 dynamicLightManager.version = 2;
+                dynamicLightManager.activateBounceLightingInCurrentScene = false;
 
                 // find all light sources and calculate the bounding volume hierarchy.
                 CreateDynamicLightsBvh();
@@ -174,6 +185,9 @@ namespace AlpacaIT.DynamicLighting
                         // remember whether bounce lighting is used in the scene, this allows us to
                         // skip steps and checks later on.
                         bounceLightingInScene = true;
+
+                        // also save this flag into the scene.
+                        dynamicLightManager.activateBounceLightingInCurrentScene = true;
                     }
                 }
 
@@ -512,7 +526,7 @@ namespace AlpacaIT.DynamicLighting
             dynamicLightManager.raycastedMeshRenderers.Add(lightmap);
 
             // write the dynamic triangles to disk.
-            var dynamic_triangles32 = dynamic_triangles.BuildDynamicTrianglesData().ToArray();
+            var dynamic_triangles32 = dynamic_triangles.BuildDynamicTrianglesData(bounceLightingInScene).ToArray();
             vramDynamicTrianglesTotal += (ulong)dynamic_triangles32.Length * 4;
             if (!Utilities.WriteLightmapData(lightmap.identifier, "DynamicLighting2", dynamic_triangles32))
                 Debug.LogError($"Unable to write the dynamic lighting {lightmap.identifier} data file in the active scene resources directory!");
@@ -590,9 +604,6 @@ namespace AlpacaIT.DynamicLighting
             // calculate some values in advance.
             var triangleNormalOffset = triangleNormal * 0.001f;
 
-            RaycastCommand raycastCommand; // do not initialize memory.
-            var raycastCommandPtr = &raycastCommand;
-
             int ptr = 0;
             for (int y = minY; y <= maxY; y++)
             {
@@ -626,9 +637,6 @@ namespace AlpacaIT.DynamicLighting
                         raycastCommand.from = world + triangleNormalOffset;
                         raycastCommand.direction = lightDirection;
                         raycastCommand.distance = lightDistanceToWorld;
-                        raycastCommand.layerMask = raycastLayermask;
-                        raycastCommand.maxHits = 1;
-                        raycastCommand.physicsScene = physicsScene;
 
                         traces++;
                         raycastProcessor.Add(
@@ -751,9 +759,6 @@ namespace AlpacaIT.DynamicLighting
             // calculate some values in advance.
             var triangleNormalOffset = triangleNormal * 0.001f;
 
-            RaycastCommand raycastCommand; // do not initialize memory.
-            var raycastCommandPtr = &raycastCommand;
-
             var pointLight = pointLights[light_index];
             var pointLightCache = pointLightsCache[light_index];
             var photonCube = pointLightCache.photonCube;
@@ -828,9 +833,6 @@ namespace AlpacaIT.DynamicLighting
                             raycastCommand.from = worldWithNormalOffset;
                             raycastCommand.direction = *(Vector3*)&photonToWorldDirection;
                             raycastCommand.distance = photonToWorldDistance;
-                            raycastCommand.layerMask = raycastLayermask;
-                            raycastCommand.maxHits = 1;
-                            raycastCommand.physicsScene = physicsScene;
 
                             callbackRaycastProcessor.Add(
                                 raycastCommand,

@@ -22,6 +22,7 @@ Shader "Dynamic Lighting/Diffuse"
             #pragma multi_compile __ DYNAMIC_LIGHTING_SHADOW_SOFT
             #pragma multi_compile __ DYNAMIC_LIGHTING_LIT
             #pragma multi_compile __ DYNAMIC_LIGHTING_BVH
+            #pragma multi_compile __ DYNAMIC_LIGHTING_BOUNCE
             #pragma multi_compile multi_compile_fwdbase
 
             #include "UnityCG.cginc"
@@ -116,7 +117,11 @@ Shader "Dynamic Lighting/Diffuse"
                 #include "GenerateLightProcessor.cginc"
                 
                 // add this light to the final color of the fragment.
+#if DYNAMIC_LIGHTING_BOUNCE
                 light_final += (light.color * attenuation * NdotL * map) + (light.color * attenuation * bounce);
+#else
+                light_final += (light.color * attenuation * NdotL * map);
+#endif
             }
 
             #else

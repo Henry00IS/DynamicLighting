@@ -56,6 +56,14 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         private GlobalKeyword shadersGlobalKeywordBvh;
 
+        /// <summary>
+        /// Stores the <see cref="GlobalKeyword"/> of "DYNAMIC_LIGHTING_BOUNCE". Bounce lighting
+        /// takes more VRAM in the dynamic triangles data structure and does more operations in the
+        /// shader. This flag is used to only store and execute the additional work when bounce
+        /// lighting is actually used in a scene.
+        /// </summary>
+        private GlobalKeyword shadersGlobalKeywordBounce;
+
         /// <summary>Global <see cref="Shader.PropertyToID"/> for buffer "dynamic_lights".</summary>
         private int shadersGlobalPropertyIdDynamicLights;
 
@@ -96,6 +104,13 @@ namespace AlpacaIT.DynamicLighting
         {
             get => Shader.IsKeywordEnabled(shadersGlobalKeywordBvh);
             set => ShadersSetGlobalKeyword(ref shadersGlobalKeywordBvh, value);
+        }
+
+        /// <summary>Gets or sets whether global shader keyword "DYNAMIC_LIGHTING_BOUNCE" is enabled.</summary>
+        private bool shadersKeywordBounceEnabled
+        {
+            get => Shader.IsKeywordEnabled(shadersGlobalKeywordBounce);
+            set => ShadersSetGlobalKeyword(ref shadersGlobalKeywordBounce, value);
         }
 
         /// <summary>Sets the global shader buffer property "dynamic_lights".</summary>
@@ -144,6 +159,7 @@ namespace AlpacaIT.DynamicLighting
             shadersGlobalKeywordLit = GlobalKeyword.Create("DYNAMIC_LIGHTING_LIT");
             shadersGlobalKeywordShadowSoft = GlobalKeyword.Create("DYNAMIC_LIGHTING_SHADOW_SOFT");
             shadersGlobalKeywordBvh = GlobalKeyword.Create("DYNAMIC_LIGHTING_BVH");
+            shadersGlobalKeywordBounce = GlobalKeyword.Create("DYNAMIC_LIGHTING_BOUNCE");
 
             shadersGlobalPropertyIdDynamicLights = Shader.PropertyToID("dynamic_lights");
             shadersGlobalPropertyIdDynamicLightsCount = Shader.PropertyToID("dynamic_lights_count");
@@ -158,6 +174,9 @@ namespace AlpacaIT.DynamicLighting
 
             // disable the bounding volume hierarchy logic as it may be dangerous.
             shadersKeywordBvhEnabled = false;
+
+            // enable the bounce lighting code when used in the scene during raytracing.
+            shadersKeywordBounceEnabled = activateBounceLightingInCurrentScene;
         }
 
         /// <summary>Enables or disables a <see cref="GlobalKeyword"/>.</summary>

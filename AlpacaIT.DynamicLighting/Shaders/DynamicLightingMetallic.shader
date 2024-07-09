@@ -31,6 +31,7 @@ Shader "Dynamic Lighting/Metallic"
             #pragma multi_compile __ DYNAMIC_LIGHTING_SHADOW_SOFT
             #pragma multi_compile __ DYNAMIC_LIGHTING_LIT
             #pragma multi_compile __ DYNAMIC_LIGHTING_BVH
+            #pragma multi_compile __ DYNAMIC_LIGHTING_BOUNCE
             #pragma multi_compile multi_compile_fwdbase
             #pragma shader_feature METALLIC_TEXTURE_UNASSIGNED
 
@@ -187,8 +188,11 @@ Shader "Dynamic Lighting/Metallic"
                 
                 // calculate per-light radiance
                 float3 H = normalize(V + light_direction);
-                float3 radiance = light.color * light.intensity * attenuation;
-                
+#if DYNAMIC_LIGHTING_BOUNCE
+                float3 radiance = (light.color * light.intensity * attenuation) + (light.color * light.intensity * attenuation * bounce);
+#else
+                float3 radiance = (light.color * light.intensity * attenuation);
+#endif                
                 // normal distribution function: approximates the amount the surface's
                 // microfacets are aligned to the halfway vector, influenced by the roughness of
                 // the surface; this is the primary function approximating the microfacets.
@@ -226,7 +230,12 @@ Shader "Dynamic Lighting/Metallic"
                 float3 specular = numerator / denominator;
                 
                 // add to outgoing radiance Lo
+#if DYNAMIC_LIGHTING_BOUNCE
                 Lo += (kD * albedo / UNITY_PI + specular) * radiance * NdotL * map;
+                Lo += (kD * albedo / UNITY_PI + specular) * radiance * bounce;
+#else
+                Lo += (kD * albedo / UNITY_PI + specular) * radiance * NdotL * map;
+#endif
             }
             
             #else
