@@ -1,27 +1,23 @@
-﻿// * * * * * * * * * * * * * * * * * * * * * *
-//  Author:  Lindsey Keene (nukeandbeans)
-//  Contact: Twitter @nukeandbeans, Discord @nukeandbeans
-//
-//  Description:
-//      About window! Support! Do it <3!
-//  * * * * * * * * * * * * * * * * * * * * * *
-
-using System;
+﻿using System;
 using UnityEditor;
 using UnityEditor.Toolbars;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace AlpacaIT.DynamicLighting.Editor {
-    public class AboutWindow : EditorWindow {
-        private class LinkButton : EditorToolbarButton {
-            public LinkButton( Texture2D icon, string tooltip, Action clicked ) {
+namespace AlpacaIT.DynamicLighting.Editor
+{
+    public class AboutWindow : EditorWindow
+    {
+        private class LinkButton : EditorToolbarButton
+        {
+            public LinkButton( Texture2D icon, string tooltip, Action clicked )
+            {
                 this.icon    =  icon;
                 this.tooltip =  tooltip;
                 this.clicked += clicked;
 
-                style.width  = 24.0f;
-                style.height = 24.0f;
+                style.width  = 32.0f;
+                style.height = 32.0f;
 
                 style.borderLeftWidth  = 0.0f;
                 style.borderRightWidth = 0.0f;
@@ -35,27 +31,29 @@ namespace AlpacaIT.DynamicLighting.Editor {
             }
         }
 
-        public static void Init() {
+        public static void Init()
+        {
             AboutWindow window = GetWindow<AboutWindow>( true, "About" );
-            window.maxSize = new Vector2( 250, 150 );
+            window.maxSize = new Vector2( 350, 200 ) * Screen.dpi / 100.0f;
             window.minSize = window.maxSize;
 
             window.ShowUtility();
         }
 
-        private void OnEnable() {
+        private void OnEnable()
+        {
             bool isProSkin = EditorGUIUtility.isProSkin;
 
-            Box   titleBox     = new();
-            Label titleLabel   = new( "Dynamic Lighting" );
-            Label creatorLabel = new( "Created by: Henry de Jongh" );
-            Label versionLabel = new( $"v{ToolbarUtilities.GetPackageVersion( "de.alpacait.dynamiclighting" )}" );
+            Box   titleBox     = new Box();
+            Label titleLabel   = new Label( "Dynamic Lighting" );
+            Label creatorLabel = new Label( "Created by: Henry de Jongh" );
+            Label versionLabel = new Label( $"v{ToolbarUtilities.GetPackageVersion( "de.alpacait.dynamiclighting" )}" );
 
-            Box   contributorGroup       = new();
-            Label contributorHeaderLabel = new( "Contributors" );
-            Label contributorLabel       = new( "Lindsey Keene (nukeandbeans), Gawidev (Gawi)" );
+            Box   contributorGroup       = new Box();
+            Label contributorHeaderLabel = new Label( "Contributors" );
+            Label contributorLabel       = new Label( "Lindsey Keene (nukeandbeans), Gawidev (Gawi)" );
 
-            VisualElement linksBox = new();
+            VisualElement linksBox = new VisualElement();
 
             const string paypalURL  = "https://paypal.me/henrydejongh";
             const string kofiURL    = "https://ko-fi.com/henry00";
@@ -63,12 +61,12 @@ namespace AlpacaIT.DynamicLighting.Editor {
             const string discordURL = "https://discord.gg/sKEvrBwHtq";
             const string githubURL  = "https://github.com/Henry00IS/DynamicLighting";
 
-            Color creatorLabelColor     = new( isProSkin ? 0.5f : 0.3f, isProSkin ? 0.5f : 0.3f, isProSkin ? 0.5f : 0.3f, 1.0f );
-            Color neutralStyleColor     = new( isProSkin ? 0.35f : 0.5f, isProSkin ? 0.35f : 0.5f, isProSkin ? 0.35f : 0.5f, 1.0f );
-            Color contributorStyleColor = new( isProSkin ? 0.6f : 0.5f, isProSkin ? 0.6f : 0.5f, isProSkin ? 0.6f : 0.5f, 1.0f );
+            Color creatorLabelColor     = new Color( isProSkin ? 0.5f : 0.3f, isProSkin ? 0.5f : 0.3f, isProSkin ? 0.5f : 0.3f, 1.0f );
+            Color neutralStyleColor     = new Color( isProSkin ? 0.35f : 0.5f, isProSkin ? 0.35f : 0.5f, isProSkin ? 0.35f : 0.5f, 1.0f );
+            Color contributorStyleColor = new Color( isProSkin ? 0.6f : 0.5f, isProSkin ? 0.6f : 0.5f, isProSkin ? 0.6f : 0.5f, 1.0f );
 
-            const float smallFont       = 8.0f;
-            const float bigFont         = 9.0f;
+            const float smallFont       = 12.0f;
+            const float bigFont         = 14.0f;
             const float fontLeftPadding = 8.0f;
             const float fontTopPadding  = 1.0f;
 
@@ -79,45 +77,51 @@ namespace AlpacaIT.DynamicLighting.Editor {
 
             DynamicLightingEditorResources editorResources = DynamicLightingEditorResources.Instance;
 
-            LinkButton paypalButton = new(
-                editorResources.paypalIcon, paypalURL, () => {
+            LinkButton paypalButton = new LinkButton(
+                editorResources.paypalIcon, paypalURL, () =>
+                {
                     Application.OpenURL( paypalURL );
                 }
             );
 
-            LinkButton kofiButton = new(
-                editorResources.kofiIcon, kofiURL, () => {
+            LinkButton kofiButton = new LinkButton(
+                editorResources.kofiIcon, kofiURL, () =>
+                {
                     Application.OpenURL( kofiURL );
                 }
             );
 
             Texture2D patreonIcon = isProSkin ? editorResources.patreonIconWhite : editorResources.patreonIcon;
 
-            LinkButton patreonButton = new(
-                patreonIcon, patreonURL, () => {
+            LinkButton patreonButton = new LinkButton(
+                patreonIcon, patreonURL, () =>
+                {
                     Application.OpenURL( patreonURL );
                 }
             );
 
-            LinkButton discordButton = new(
-                DynamicLightingEditorResources.Instance.discordIcon, discordURL, () => {
+            LinkButton discordButton = new LinkButton(
+                DynamicLightingEditorResources.Instance.discordIcon, discordURL, () =>
+                {
                     Application.OpenURL( discordURL );
                 }
             );
 
             Texture2D githubIcon = isProSkin ? editorResources.gitHubIconWhite : editorResources.gitHubIcon;
 
-            LinkButton githubButton = new(
-                githubIcon, githubURL, () => {
+            LinkButton githubButton = new LinkButton(
+                githubIcon, githubURL, () =>
+                {
                     Application.OpenURL( githubURL );
                 }
             );
 
-            titleBox.style.height            = 50.0f;
             titleBox.style.borderBottomColor = neutralStyleColor;
             titleBox.style.borderBottomWidth = 1.0f;
+            titleBox.style.paddingBottom     = 4.0f;
 
-            titleLabel.style.paddingLeft             = smallFont;
+            titleLabel.style.fontSize                = bigFont + 4.0f;
+            titleLabel.style.paddingLeft             = 0.0f;
             titleLabel.style.paddingTop              = 6.0f;
             titleLabel.style.width                   = rootElementWidth;
             titleLabel.style.unityTextAlign          = textAnchor;
@@ -156,7 +160,6 @@ namespace AlpacaIT.DynamicLighting.Editor {
             contributorLabel.style.unityTextAlign          = textAnchor;
             contributorLabel.style.unityFontStyleAndWeight = boldFontStyle;
             contributorLabel.style.color                   = creatorLabelColor;
-
 
             titleBox.Add( titleLabel );
             titleBox.Add( creatorLabel );

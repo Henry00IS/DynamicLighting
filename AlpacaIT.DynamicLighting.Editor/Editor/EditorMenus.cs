@@ -42,36 +42,6 @@ namespace AlpacaIT.DynamicLighting.Editor
             AboutWindow.Init();
         }
 
-        /*[UnityEditor.MenuItem("Dynamic Lighting/Thank You/Donation: PayPal", false, 60)]
-        private static void EditorMenuPayPal()
-        {
-            Application.OpenURL("https://paypal.me/henrydejongh");
-        }
-
-        [UnityEditor.MenuItem("Dynamic Lighting/Thank You/Donation: Ko-fi", false, 60)]
-        private static void EditorMenuKofi()
-        {
-            Application.OpenURL("https://ko-fi.com/henry00");
-        }
-
-        [UnityEditor.MenuItem("Dynamic Lighting/Thank You/Donation: Patreon", false, 60)]
-        private static void EditorMenuPatreon()
-        {
-            Application.OpenURL("https://patreon.com/henrydejongh");
-        }
-
-        [UnityEditor.MenuItem("Dynamic Lighting/Thank You/Join Discord Server", false, 80)]
-        private static void EditorMenuDiscord()
-        {
-            Application.OpenURL("https://discord.gg/sKEvrBwHtq");
-        }
-
-        [UnityEditor.MenuItem("Dynamic Lighting/Thank You/GitHub Repository (Star Me!)", false, 100)]
-        private static void EditorMenuRepository()
-        {
-            Application.OpenURL("https://github.com/Henry00IS/DynamicLighting");
-        }*/
-
         [UnityEditor.MenuItem("GameObject/Light/Dynamic Point Light", false, 40)]
         private static void EditorCreateDynamicPointLight()
         {

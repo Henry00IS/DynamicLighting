@@ -1,20 +1,23 @@
-﻿// * * * * * * * * * * * * * * * * * * * * * *
-//  Author:  Lindsey Keene (nukeandbeans)
-//  Contact: Twitter @nukeandbeans, Discord @nukeandbeans
-//
-//  Description:
-//
-//  * * * * * * * * * * * * * * * * * * * * * *
+﻿using UnityEngine;
 
-using UnityEngine;
-
-namespace AlpacaIT.DynamicLighting.Editor {
+namespace AlpacaIT.DynamicLighting.Editor
+{
     //[CreateAssetMenu(fileName = "DynamicLightingEditorResources", menuName = "ScriptableObjects/DynamicLightingEditorResources", order = 1)]
-    internal class DynamicLightingEditorResources : ScriptableObject {
+    internal class DynamicLightingEditorResources : ScriptableObject
+    {
         private static DynamicLightingEditorResources _Instance;
 
-        public static DynamicLightingEditorResources Instance {
-            get => _Instance ??= Resources.Load<DynamicLightingEditorResources>( "Editor/DynamicLightingEditorResources" );
+        public static DynamicLightingEditorResources Instance
+        {
+            get
+            {
+                if( _Instance == null )
+                {
+                    _Instance = Resources.Load<DynamicLightingEditorResources>( "Editor/DynamicLightingEditorResources" );
+                }
+
+                return _Instance;
+            }
         }
 
         public Texture2D paypalIcon;

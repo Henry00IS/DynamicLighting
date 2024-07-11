@@ -1,35 +1,29 @@
-﻿// * * * * * * * * * * * * * * * * * * * * * *
-//  Author:  Lindsey Keene (nukeandbeans)
-//  Contact: Twitter @nukeandbeans, Discord @nukeandbeans
-//
-//  Description:
-//
-//  * * * * * * * * * * * * * * * * * * * * * *
-
+﻿#if UNITY_2021_3_OR_NEWER
 using UnityEditor;
 using UnityEditor.Overlays;
 using UnityEditor.Toolbars;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace AlpacaIT.DynamicLighting.Editor {
+namespace AlpacaIT.DynamicLighting.Editor
+{
     [Overlay( typeof(SceneView), "Dynamic Lighting" )]
-    internal class DynamicLightingToolbar : ToolbarOverlay {
-        private static readonly string[] elementIDs = {
-            LightGroupElement.ID, BakeButtonGroup.ID
-        };
-
-        public DynamicLightingToolbar() : base( elementIDs ) {
+    internal class DynamicLightingToolbar : ToolbarOverlay
+    {
+        public DynamicLightingToolbar() : base( LightGroupElement.ID, BakeButtonGroup.ID )
+        {
         }
     }
 
 #region Bake Buttons
 
     [EditorToolbarElement( ID, typeof(SceneView) )]
-    internal class BakeButtonGroup : VisualElement {
+    internal class BakeButtonGroup : VisualElement
+    {
         public const string ID = nameof(DynamicLightingToolbar) + "_" + nameof(BakeButtonGroup);
 
-        public BakeButtonGroup() {
+        public BakeButtonGroup()
+        {
             name = ID;
 
             Add( new BakeButton() );
@@ -39,74 +33,80 @@ namespace AlpacaIT.DynamicLighting.Editor {
         }
     }
 
-    internal class BakeButton : EditorToolbarButton, IAccessContainerWindow {
+    internal class BakeButton : EditorToolbarButton
+    {
         public const string ID = nameof(DynamicLightingToolbar) + "_" + nameof(BakeButton);
 
-        public BakeButton() {
+        public BakeButton()
+        {
             name    = ID;
             icon    = EditorGUIUtility.TrIconContent( "Refresh@2x" ).image as Texture2D;
             text    = "Bake";
             tooltip = "Bakes scene lighting.";
 
-            clicked += () => {
+            clicked += () =>
+            {
                 DynamicLightManager.Instance.Raytrace( DynamicLightingPrefs.BakeResolution );
             };
         }
-
-        public EditorWindow containerWindow { get; set; }
     }
 
-    internal class BakeOptionsButton : EditorToolbarDropdown {
+    internal class BakeOptionsButton : EditorToolbarDropdown
+    {
         public const string ID = nameof(DynamicLightingToolbar) + "_" + nameof(BakeOptionsButton);
 
-        private GenericMenu _Menu = new();
+        private GenericMenu menu = new GenericMenu();
 
-        public BakeOptionsButton() {
+        public BakeOptionsButton()
+        {
             name    = ID;
             tooltip = "Scene bake options.";
 
             style.minWidth = 14f;
 
-            clicked += () => {
-                _Menu ??= new GenericMenu();
-                CreateMenu( _Menu );
+            CreateMenu( menu );
 
-                _Menu.ShowAsContext();
+            clicked += () =>
+            {
+                menu.ShowAsContext();
             };
         }
 
-        private void CreateMenu( GenericMenu menu ) {
+        private void CreateMenu( GenericMenu genericMenu )
+        {
             addItem( "Bake Resolution: 512", set512, isResolution( 512 ) );
             addItem( "Bake Resolution: 1024", set1024, isResolution( 1024 ) );
             addItem( "Bake Resolution: 2048", set2048, isResolution( 2048 ) );
             addItem( "Bake Resolution: 4096", set4096, isResolution( 4096 ) );
             addItem( "Bake Resolution: Unlimited", setUnlimited, isResolution( 23170 ) );
 
-            addSeparator();
+            genericMenu.AddSeparator( "" );
 
             addItem(
-                "Clear Lightmap Data", () => {
+                "Clear Lightmap Data", () =>
+                {
                     DynamicLightManager.Instance.EditorDeleteLightmaps();
                 }
             );
 
-            addSeparator();
+            genericMenu.AddSeparator( "" );
 
             addItem(
-                "New Lights Use Bounce Pass", () => {
+                "New Lights Use Bounce Pass", () =>
+                {
                     DynamicLightingPrefs.DefaultToBounceLighting = !DynamicLightingPrefs.DefaultToBounceLighting;
                 }, DynamicLightingPrefs.DefaultToBounceLighting
             );
 
             return; // local methods
 
-            void addItem( string label, GenericMenu.MenuFunction func, bool enabled = false ) {
-                menu.AddItem( new GUIContent( label ), enabled, func );
+            void addItem( string label, GenericMenu.MenuFunction func, bool enabled = false )
+            {
+                genericMenu.AddItem( new GUIContent( label ), enabled, func );
             }
 
-            void addSeparator( string path = "" ) => menu.AddSeparator( path );
-
-            void setResolution( int res ) {
+            void setResolution( int res )
+            {
                 DynamicLightingPrefs.BakeResolution = res;
             }
 
@@ -126,10 +126,12 @@ namespace AlpacaIT.DynamicLighting.Editor {
 #region Basic Light Types
 
     [EditorToolbarElement( ID, typeof(SceneView) )]
-    internal class LightGroupElement : VisualElement {
+    internal class LightGroupElement : VisualElement
+    {
         public const string ID = nameof(DynamicLightingToolbar) + "_" + nameof(LightGroupElement);
 
-        public LightGroupElement() {
+        public LightGroupElement()
+        {
             Add( new PointLightButton() );
             Add( new SpotLightButton() );
             Add( new DirectionalLightButton() );
@@ -139,17 +141,20 @@ namespace AlpacaIT.DynamicLighting.Editor {
         }
     }
 
-    internal class PointLightButton : EditorToolbarButton {
+    internal class PointLightButton : EditorToolbarButton
+    {
         public const string ID = nameof(DynamicLightingToolbar) + "_" + nameof(PointLightButton);
 
-        public PointLightButton() {
+        public PointLightButton()
+        {
             name    = ID;
             icon    = EditorGUIUtility.TrIconContent( "PointLight Gizmo" ).image as Texture2D;
             text    = "Point";
             tooltip = "Creates a new point light in the scene.";
 
-            clicked += () => {
-                GameObject go = new( "Point Light" );
+            clicked += () =>
+            {
+                GameObject go = new GameObject( "Point Light" );
 
                 Undo.RegisterCreatedObjectUndo( go, "Create new point light" );
 
@@ -163,17 +168,20 @@ namespace AlpacaIT.DynamicLighting.Editor {
         }
     }
 
-    internal class SpotLightButton : EditorToolbarButton {
+    internal class SpotLightButton : EditorToolbarButton
+    {
         public const string ID = nameof(DynamicLightingToolbar) + "_" + nameof(SpotLightButton);
 
-        public SpotLightButton() {
+        public SpotLightButton()
+        {
             name    = ID;
             icon    = EditorGUIUtility.TrIconContent( "SpotLight Gizmo" ).image as Texture2D;
             text    = "Spot";
             tooltip = "Creates a new spot light in the scene.";
 
-            clicked += () => {
-                GameObject go = new( "Spot Light" );
+            clicked += () =>
+            {
+                GameObject go = new GameObject( "Spot Light" );
 
                 Undo.RegisterCreatedObjectUndo( go, "Create new point light" );
 
@@ -187,21 +195,24 @@ namespace AlpacaIT.DynamicLighting.Editor {
         }
     }
 
-    internal class DirectionalLightButton : EditorToolbarButton {
+    internal class DirectionalLightButton : EditorToolbarButton
+    {
         public const string ID = nameof(DynamicLightingToolbar) + "_" + nameof(DirectionalLightButton);
 
-        public DirectionalLightButton() {
+        public DirectionalLightButton()
+        {
             name    = ID;
             icon    = EditorGUIUtility.TrIconContent( "DirectionalLight Gizmo" ).image as Texture2D;
             text    = "Directional";
             tooltip = "Creates a new directional light in the scene.";
 
-            clicked += () => {
-                GameObject rootObj = new( "Directional Light" );
+            clicked += () =>
+            {
+                GameObject rootObj = new GameObject( "Directional Light" );
 
                 Undo.RegisterCreatedObjectUndo( rootObj, "Create new point light" );
 
-                GameObject lightObj = new( "Light" );
+                GameObject lightObj = new GameObject( "Light" );
 
                 lightObj.transform.SetParent( rootObj.transform );
                 lightObj.transform.localPosition = new Vector3( 0.0f, 0.0f, -2500.0f );
@@ -223,42 +234,47 @@ namespace AlpacaIT.DynamicLighting.Editor {
 
 #region Other Lights
 
-    internal class OtherLightsButton : EditorToolbarDropdown {
+    internal class OtherLightsButton : EditorToolbarDropdown
+    {
         public const string ID = nameof(DynamicLightingToolbar) + "_" + nameof(OtherLightsButton);
 
-        private readonly GenericMenu _Menu = new();
+        private readonly GenericMenu menu = new GenericMenu();
 
-        public OtherLightsButton() {
-            CreateMenu( _Menu );
+        public OtherLightsButton()
+        {
+            CreateMenu( menu );
 
             name    = ID;
             tooltip = "Other light types.";
 
             style.minWidth = 14f;
 
-            clicked += () => {
-                _Menu.ShowAsContext();
+            clicked += () =>
+            {
+                menu.ShowAsContext();
             };
         }
 
-        private void CreateMenu( GenericMenu menu ) {
+        private void CreateMenu( GenericMenu genericMenu )
+        {
             addItem( "New Disco Ball Light", createDiscoBall );
             addItem( "New Flicker Light", createFlicker );
             addItem( "New Pulse Light", createPulse );
             addItem( "New Random Noise Light", createRand );
             addItem( "New Strobe Light", createStrobe );
 
-            menu.AddSeparator( "" );
+            genericMenu.AddSeparator( "" );
 
             addItem(
-                "Placed Lights Snap To Grid", () => {
+                "Placed Lights Snap To Grid", () =>
+                {
                     DynamicLightingPrefs.SnapToGridWhenPlaced = !DynamicLightingPrefs.SnapToGridWhenPlaced;
                 }, DynamicLightingPrefs.SnapToGridWhenPlaced
             );
 
             return; // local methods
 
-            void addItem( string label, GenericMenu.MenuFunction func, bool enabled = false ) => menu.AddItem( new GUIContent( label ), enabled, func );
+            void addItem( string label, GenericMenu.MenuFunction func, bool enabled = false ) => genericMenu.AddItem( new GUIContent( label ), enabled, func );
 
             void createDiscoBall() => createLight( "Disco Ball Light", DynamicLightType.Discoball );
             void createFlicker()   => createLight( "Flicker Light", DynamicLightType.Point, DynamicLightEffect.Flicker );
@@ -266,18 +282,27 @@ namespace AlpacaIT.DynamicLighting.Editor {
             void createRand()      => createLight( "Random Noise Light", DynamicLightType.Point, DynamicLightEffect.Random );
             void createStrobe()    => createLight( "Strobe Light", DynamicLightType.Point, DynamicLightEffect.Strobe );
 
-            void createLight( string lightName, DynamicLightType lightType = DynamicLightType.Point, DynamicLightEffect lightEffect = DynamicLightEffect.Steady ) {
-                GameObject go = new( lightName );
+            void createLight( string lightName, DynamicLightType lightType = DynamicLightType.Point, DynamicLightEffect lightEffect = DynamicLightEffect.Steady )
+            {
+                GameObject go = new GameObject( lightName );
 
                 Undo.RegisterCreatedObjectUndo( go, $"Create new {lightType} light (effect {lightEffect})." );
 
                 DynamicLight light = go.AddComponent<DynamicLight>();
 
-                light.lightType         = lightType;
-                light.lightEffect       = lightEffect;
+                light.lightType   = lightType;
+                light.lightEffect = lightEffect;
+
+                if( lightType == DynamicLightType.Discoball )
+                {
+                    light.lightCutoff      = 12.5f;
+                    light.lightOuterCutoff = 14.0f;
+                }
+
                 light.lightIllumination = DynamicLightingPrefs.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
 
-                if( DynamicLightingPrefs.SnapToGridWhenPlaced ) {
+                if( DynamicLightingPrefs.SnapToGridWhenPlaced )
+                {
                     ToolbarUtilities.PlaceInScene( go.transform );
                 }
 
@@ -288,3 +313,4 @@ namespace AlpacaIT.DynamicLighting.Editor {
 
 #endregion Other Lights
 }
+#endif
