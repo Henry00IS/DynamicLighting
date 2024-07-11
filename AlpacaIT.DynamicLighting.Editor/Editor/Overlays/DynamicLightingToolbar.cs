@@ -248,9 +248,17 @@ namespace AlpacaIT.DynamicLighting.Editor {
             addItem( "New Random Noise Light", createRand );
             addItem( "New Strobe Light", createStrobe );
 
+            menu.AddSeparator( "" );
+
+            addItem(
+                "Placed Lights Snap To Grid", () => {
+                    DynamicLightingPrefs.SnapToGridWhenPlaced = !DynamicLightingPrefs.SnapToGridWhenPlaced;
+                }, DynamicLightingPrefs.SnapToGridWhenPlaced
+            );
+
             return; // local methods
 
-            void addItem( string label, GenericMenu.MenuFunction func ) => menu.AddItem( new GUIContent( label ), false, func );
+            void addItem( string label, GenericMenu.MenuFunction func, bool enabled = false ) => menu.AddItem( new GUIContent( label ), enabled, func );
 
             void createDiscoBall() => createLight( "Disco Ball Light", DynamicLightType.Discoball );
             void createFlicker()   => createLight( "Flicker Light", DynamicLightType.Point, DynamicLightEffect.Flicker );
@@ -269,7 +277,10 @@ namespace AlpacaIT.DynamicLighting.Editor {
                 light.lightEffect       = lightEffect;
                 light.lightIllumination = DynamicLightingPrefs.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
 
-                ToolbarUtilities.PlaceInScene( go.transform );
+                if( DynamicLightingPrefs.SnapToGridWhenPlaced ) {
+                    ToolbarUtilities.PlaceInScene( go.transform );
+                }
+
                 ToolbarUtilities.Select( go );
             }
         }
