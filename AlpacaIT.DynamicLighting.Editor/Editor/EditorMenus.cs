@@ -1,4 +1,5 @@
 ﻿using AlpacaIT.DynamicLighting.Internal;
+using UnityEditor;
 using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting.Editor
@@ -36,7 +37,12 @@ namespace AlpacaIT.DynamicLighting.Editor
             DynamicLightManager.Instance.Raytrace(4096);
         }
 
-        [UnityEditor.MenuItem("Dynamic Lighting/Thank You/Donation: PayPal", false, 60)]
+        [UnityEditor.MenuItem( "Dynamic Lighting/About", false, 60 )]
+        private static void EditorMenuAbout() {
+            AboutWindow.Init();
+        }
+
+        /*[UnityEditor.MenuItem("Dynamic Lighting/Thank You/Donation: PayPal", false, 60)]
         private static void EditorMenuPayPal()
         {
             Application.OpenURL("https://paypal.me/henrydejongh");
@@ -64,7 +70,7 @@ namespace AlpacaIT.DynamicLighting.Editor
         private static void EditorMenuRepository()
         {
             Application.OpenURL("https://github.com/Henry00IS/DynamicLighting");
-        }
+        }*/
 
         [UnityEditor.MenuItem("GameObject/Light/Dynamic Point Light", false, 40)]
         private static void EditorCreateDynamicPointLight()

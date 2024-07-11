@@ -3,7 +3,8 @@
     "rootNamespace": "AlpacaIT.DynamicLighting.Editor",
     "references": [
         "Unity.Mathematics",
-        "de.alpacait.dynamiclighting"
+        "de.alpacait.dynamiclighting",
+        "RealtimeCSG"
     ],
     "includePlatforms": [
         "Editor"
@@ -14,6 +15,12 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "com.prenominal.realtimecsg",
+            "expression": "1.60.1",
+            "define": "REALTIME_CSG"
+        }
+    ],
     "noEngineReferences": false
 }
