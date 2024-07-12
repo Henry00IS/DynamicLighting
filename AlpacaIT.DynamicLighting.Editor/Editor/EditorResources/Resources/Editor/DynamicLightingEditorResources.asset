@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b4b18f2aa634487aa447ff09a02def5, type: 3}
+  m_Name: DynamicLightingEditorResources
+  m_EditorClassIdentifier: 
+  paypalIcon: {fileID: 2800000, guid: 0a949cbea0080ac4b80b47079e1183a6, type: 3}
+  kofiIcon: {fileID: 2800000, guid: 53265a6cff3b4a64fa71deee6ac77d4a, type: 3}
+  patreonIcon: {fileID: 2800000, guid: bf794c5fa10bc7945a84d33312e734bc, type: 3}
+  patreonIconWhite: {fileID: 2800000, guid: 0e6b04406826ed445ab55577ac7823e8, type: 3}
+  discordIcon: {fileID: 2800000, guid: fd0bc9b0b2828ed498c74215668639cf, type: 3}
+  gitHubIcon: {fileID: 2800000, guid: ed585c3b37097164bbf7a6e9924e7a58, type: 3}
+  gitHubIconWhite: {fileID: 2800000, guid: 39a83caaf1e7a934fb58f255a230d960, type: 3}

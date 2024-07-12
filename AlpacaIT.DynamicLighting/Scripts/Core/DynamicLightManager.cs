@@ -187,7 +187,7 @@ namespace AlpacaIT.DynamicLighting
         /// before clearing the lightmaps collection. Then deletes all lightmap files from disk.
         /// This method call must be followed up by a call to <see cref="Reload"/>
         /// </summary>
-        internal void EditorDeleteLightmaps()
+        public void EditorDeleteLightmaps()
         {
             // free up the compute buffers.
             Cleanup();
