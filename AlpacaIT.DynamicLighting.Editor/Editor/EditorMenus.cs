@@ -1,5 +1,4 @@
 ﻿using AlpacaIT.DynamicLighting.Internal;
-using UnityEditor;
 using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting.Editor
@@ -37,26 +36,64 @@ namespace AlpacaIT.DynamicLighting.Editor
             DynamicLightManager.Instance.Raytrace(4096);
         }
 
-        [UnityEditor.MenuItem( "Dynamic Lighting/About", false, 60 )]
-        private static void EditorMenuAbout() {
+#if !UNITY_2021_2_OR_NEWER
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Thank You/Donation: PayPal", false, 60)]
+        private static void EditorMenuPayPal()
+        {
+            Application.OpenURL("https://paypal.me/henrydejongh");
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Thank You/Donation: Ko-fi", false, 60)]
+        private static void EditorMenuKofi()
+        {
+            Application.OpenURL("https://ko-fi.com/henry00");
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Thank You/Donation: Patreon", false, 60)]
+        private static void EditorMenuPatreon()
+        {
+            Application.OpenURL("https://patreon.com/henrydejongh");
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Thank You/Join Discord Server", false, 80)]
+        private static void EditorMenuDiscord()
+        {
+            Application.OpenURL("https://discord.gg/sKEvrBwHtq");
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Thank You/GitHub Repository (Star Me!)", false, 100)]
+        private static void EditorMenuRepository()
+        {
+            Application.OpenURL("https://github.com/Henry00IS/DynamicLighting");
+        }
+
+#else
+
+        [UnityEditor.MenuItem("Dynamic Lighting/About...", false, 60)]
+        private static void EditorMenuAbout()
+        {
             AboutWindow.Init();
         }
 
+#endif
+
         [UnityEditor.MenuItem("GameObject/Light/Dynamic Point Light", false, 40)]
-        private static void EditorCreateDynamicPointLight()
+        internal static DynamicLight EditorCreateDynamicPointLight(UnityEditor.MenuCommand menuCommand)
         {
-            EditorCreateDynamicLight("Dynamic Light");
+            return EditorCreateDynamicLight("Dynamic Light", menuCommand == null);
         }
 
         [UnityEditor.MenuItem("GameObject/Light/Dynamic Spot Light", false, 40)]
-        private static void EditorCreateDynamicSpotLight()
+        internal static DynamicLight EditorCreateDynamicSpotLight(UnityEditor.MenuCommand menuCommand)
         {
-            var light = EditorCreateDynamicLight("Dynamic Spot Light");
+            var light = EditorCreateDynamicLight("Dynamic Spot Light", menuCommand == null);
             light.lightType = DynamicLightType.Spot;
+            return light;
         }
 
         [UnityEditor.MenuItem("GameObject/Light/Dynamic Directional Light", false, 40)]
-        private static void EditorCreateDynamicDirectionalLight()
+        internal static DynamicLight EditorCreateDynamicDirectionalLight(UnityEditor.MenuCommand menuCommand)
         {
             // create the outer object.
             var name = "Dynamic Directional Light";
@@ -78,31 +115,46 @@ namespace AlpacaIT.DynamicLighting.Editor
 
             // make sure it's selected and unity editor will let the user rename the game object.
             UnityEditor.Selection.activeGameObject = parent;
+
+            return light;
         }
 
         [UnityEditor.MenuItem("GameObject/Light/Dynamic Discoball Light", false, 40)]
-        private static void EditorCreateDynamicDiscoballLight()
+        internal static DynamicLight EditorCreateDynamicDiscoballLight(UnityEditor.MenuCommand menuCommand)
         {
-            var light = EditorCreateDynamicLight("Dynamic Discoball Light");
+            var light = EditorCreateDynamicLight("Dynamic Discoball Light", menuCommand == null);
             light.lightType = DynamicLightType.Discoball;
             light.lightCutoff = 12.5f;
             light.lightOuterCutoff = 14.0f;
+            return light;
         }
 
         /// <summary>Adds a new dynamic light game object to the scene.</summary>
         /// <param name="name">The name of the game object that will be created.</param>
+        /// <param name="siblings">Whether to add the game object as a sibling not a child.</param>
         /// <returns>The dynamic light component.</returns>
-        private static DynamicLight EditorCreateDynamicLight(string name)
+        internal static DynamicLight EditorCreateDynamicLight(string name, bool siblings = true)
         {
             GameObject go = new GameObject(name);
             UnityEditor.Undo.RegisterCreatedObjectUndo(go, "Create " + name);
 
-            // place the new game object as a child of the current selection in the editor.
             var parent = UnityEditor.Selection.activeTransform;
             if (parent)
             {
-                // keep the game object transform identity.
-                go.transform.SetParent(parent, false);
+                // place the new game object next to the current selection in the editor.
+                if (siblings)
+                {
+                    var grandgo = parent.parent;
+                    if (grandgo)
+                        go.transform.SetParent(grandgo, false);
+                    go.transform.SetSiblingIndex(parent.GetSiblingIndex() + 1);
+                }
+                // place the new game object as a child of the current selection in the editor.
+                else
+                {
+                    // keep the game object transform identity.
+                    go.transform.SetParent(parent, false);
+                }
             }
             else
             {
@@ -110,7 +162,32 @@ namespace AlpacaIT.DynamicLighting.Editor
                 var camera = Utilities.GetSceneViewCamera();
                 if (camera)
                 {
-                    go.transform.position = camera.transform.TransformPoint(Vector3.forward * 2f);
+                    // cast a ray into the scene at the center of the scene view.
+                    var ray = camera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0.0f));
+
+                    Vector3 hitPoint;
+                    if (Physics.Raycast(ray, out RaycastHit hit, 10f))
+                        hitPoint = hit.point + hit.normal * 0.25f; // place 0.25m off the surface.
+                    else
+                        hitPoint = camera.transform.TransformPoint(Vector3.forward * 2f);
+
+#if REALTIME_CSG
+                    // while having realtimecsg enabled we use those snapping tools.
+                    if (RealtimeCSG.CSGSettings.EnableRealtimeCSG)
+                    {
+                        if (RealtimeCSG.CSGSettings.GridSnapping)
+                        {
+                            hitPoint = Snapping.Snap(hitPoint, RealtimeCSG.CSGSettings.SnapVector);
+                        }
+                    }
+                    else
+#endif
+                    // snap to grid when enabled in the editor.
+                    if (UnityEditor.EditorSnapSettings.gridSnapEnabled)
+                    {
+                        hitPoint = Snapping.Snap(hitPoint, Vector3.one * UnityEditor.EditorSnapSettings.scale);
+                    }
+                    go.transform.position = hitPoint;
                 }
             }
 

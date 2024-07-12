@@ -8,7 +8,7 @@ namespace AlpacaIT.DynamicLighting
     /// serialize the asset references. Use the static property <see cref="Instance"/> to access
     /// (and load once) the singleton into memory.
     /// </summary>
-    [CreateAssetMenu(fileName = "DynamicLightingResources", menuName = "ScriptableObjects/DynamicLightingResources", order = 1)]
+    // [CreateAssetMenu(fileName = "DynamicLightingResources", menuName = "ScriptableObjects/DynamicLightingResources", order = 1)]
     internal class DynamicLightingResources : ScriptableObject
     {
         private static DynamicLightingResources s_Instance;
@@ -21,7 +21,7 @@ namespace AlpacaIT.DynamicLighting
                 // if known, immediately return the instance.
                 if (s_Instance) return s_Instance;
 
-                // load the shape editor resources from the resources directory.
+                // load the dynamic lighting resources from the resources directory.
                 LoadResources();
 
                 return s_Instance;
@@ -34,11 +34,11 @@ namespace AlpacaIT.DynamicLighting
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         public static void BeforeSceneLoad()
         {
-            // load the shape editor resources from the resources directory.
+            // load the dynamic lighting resources from the resources directory.
             LoadResources();
         }
 
-        /// <summary>Loads the shape editor resources from the resources directory.</summary>
+        /// <summary>Loads the dynamic lighting resources from the resources directory.</summary>
         private static void LoadResources()
         {
             s_Instance = (DynamicLightingResources)Resources.Load("DynamicLightingResources");

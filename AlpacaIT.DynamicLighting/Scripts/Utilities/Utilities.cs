@@ -283,6 +283,25 @@ namespace AlpacaIT.DynamicLighting.Internal
             return null;
         }
 
+        /// <summary>Gets the version number of the specified package.</summary>
+        /// <param name="packageName">The package name to find (e.g. "de.alpacait.dynamiclighting")</param>
+        /// <returns>
+        /// The version number of the package such as 1.0.0 or an empty string if not found.
+        /// </returns>
+        public static string GetPackageVersion(string packageName = "de.alpacait.dynamiclighting")
+        {
+#if UNITY_2021_2_OR_NEWER
+            var packages = UnityEditor.PackageManager.PackageInfo.GetAllRegisteredPackages();
+            for (int i = 0; i < packages.Length; i++)
+            {
+                var package = packages[i];
+                if (package.name == packageName)
+                    return package.version;
+            }
+#endif
+            return "";
+        }
+
 #endif
     }
 }
