@@ -142,6 +142,11 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Sets the global shader color property "dynamic_ambient_color".</summary>
         private void ShadersSetGlobalDynamicAmbientColor(Color value)
         {
+            // push the alpha down to allow for more flexibility in the lower end.
+            var a = Mathf.Pow(value.a, 2.0f);
+            value.r *= a;
+            value.g *= a;
+            value.b *= a;
             Shader.SetGlobalColor(shadersGlobalPropertyIdDynamicAmbientColor, value);
         }
 

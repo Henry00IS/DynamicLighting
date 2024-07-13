@@ -82,11 +82,11 @@ namespace AlpacaIT.DynamicLighting
         /// The ambient lighting color is added to the whole scene, thus making it look like there
         /// is always some scattered light, even when there is no direct light source. This prevents
         /// absolute black, dark patches from appearing in the scene that are impossible to see
-        /// through (unless this is desired). This color should be very dark to achieve the best effect.
+        /// through (unless this is desired). This color should be very dark to achieve the best
+        /// effect. You can make use of the alpha color to finetune the brightness.
         /// </summary>
-        [Tooltip("The ambient lighting color is added to the whole scene, thus making it look like there is always some scattered light, even when there is no direct light source. This prevents absolute black, dark patches from appearing in the scene that are impossible to see through (unless this is desired). This color should be very dark to achieve the best effect.")]
-        [ColorUsage(showAlpha: false)]
-        public Color ambientColor = new Color(0.01568628f, 0.01568628f, 0.01568628f);
+        [Tooltip("The ambient lighting color is added to the whole scene, thus making it look like there is always some scattered light, even when there is no direct light source. This prevents absolute black, dark patches from appearing in the scene that are impossible to see through (unless this is desired). This color should be very dark to achieve the best effect. You can make use of the alpha color to finetune the brightness.")]
+        public Color ambientColor = new Color(1.0f, 1.0f, 1.0f, 0.1254902f);
 
         /// <summary>
         /// The number of realtime dynamic lights that can be active at the same time. Realtime

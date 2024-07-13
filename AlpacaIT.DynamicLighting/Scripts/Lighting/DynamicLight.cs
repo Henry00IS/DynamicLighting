@@ -15,6 +15,7 @@ namespace AlpacaIT.DynamicLighting
         /// calculations are correct.
         /// </summary>
         [Tooltip("The color of the light. It would be best to keep this number within the RGB range (i.e. not HDR with super bright colors) so that both current and future shader math calculations are correct.")]
+        [ColorUsage(showAlpha: false)]
         public Color lightColor = Color.white;
 
         /// <summary>
