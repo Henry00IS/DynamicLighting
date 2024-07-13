@@ -125,7 +125,7 @@ namespace AlpacaIT.DynamicLighting.Editor
                 contributorHeaderLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
                 contributorHeaderLabel.style.color = contributorStyleColor;
 
-                var contributorLabel = new Label("Lindsey Keene (nukeandbeans), Gawidev (Gawi)");
+                var contributorLabel = new Label("Lindsey Keene (nukeandbeans), Gawidev (Gawi),\nBenjamin Moir (DaZombieKiller)");
                 contributorLabel.style.fontSize = smallFont;
                 contributorLabel.style.paddingLeft = fontLeftPadding;
                 contributorLabel.style.paddingTop = fontTopPadding;

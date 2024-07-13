@@ -80,7 +80,12 @@ namespace AlpacaIT.DynamicLighting
             photonCamera.cameraType = CameraType.Reflection;
             // we render depth using a special shader.
             photonCamera.SetReplacementShader(photonCameraDepthShader, "RenderType");
-
+#if UNITY_EDITOR
+            // we only render the temporary raytracing scene.
+            photonCamera.scene = temporaryScene.scene;
+            photonCamera.overrideSceneCullingMask = temporaryScene.GetCombinedSceneCullingMaskForCamera() | UnityEditor.SceneManagement.SceneCullingMasks.DefaultSceneCullingMask;
+            // fixme: this whole culling mask thing does not work.
+#endif
             // create photon cubemap array.
             photonCameraCubemaps = new RenderTexture(photonCameraRenderTextureDescriptor);
             photonCameraCubemaps.dimension = TextureDimension.Cube;

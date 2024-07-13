@@ -59,6 +59,9 @@ namespace AlpacaIT.DynamicLighting
             raycastProcessor = new ShadowRaycastProcessor();
             callbackRaycastProcessor = new CallbackRaycastProcessor();
 
+            // -> partial class DynamicLightManager.TemporaryScene initialize.
+            TemporarySceneInitialize();
+
             // -> partial class DynamicLightManager.PhotonCamera initialize.
             PhotonCameraInitialize();
 
@@ -84,7 +87,13 @@ namespace AlpacaIT.DynamicLighting
 
             // prepare a raycast command that is recycled for raytracing.
 #if UNITY_2021_2_OR_NEWER && !UNITY_2021_2_17 && !UNITY_2021_2_16 && !UNITY_2021_2_15 && !UNITY_2021_2_14 && !UNITY_2021_2_13 && !UNITY_2021_2_12 && !UNITY_2021_2_11 && !UNITY_2021_2_10 && !UNITY_2021_2_9 && !UNITY_2021_2_8 && !UNITY_2021_2_7 && !UNITY_2021_2_6 && !UNITY_2021_2_5 && !UNITY_2021_2_4 && !UNITY_2021_2_3 && !UNITY_2021_2_2 && !UNITY_2021_2_1 && !UNITY_2021_2_0
+#if UNITY_EDITOR
+            raycastCommand.physicsScene = temporaryScenePhysics;
+#else
             raycastCommand.physicsScene = Physics.defaultPhysicsScene;
+#endif
+#else
+            Debug.LogWarning("Dynamic Lighting only officially supports Unity Editor 2021.2.18f1 and beyond. Please try to upgrade your project for the best experience.");
 #endif
 #if UNITY_2022_2_OR_NEWER
             raycastCommand.queryParameters = new QueryParameters(raycastLayermask, false, QueryTriggerInteraction.Ignore, true);
@@ -191,21 +200,25 @@ namespace AlpacaIT.DynamicLighting
                     }
                 }
 
-                // iterate over all compatible mesh filters and raytrace their lighting.
+                // iterate over all compatible mesh filters and build a temporary scene with them.
                 var meshFilters = Object.FindObjectsOfType<MeshFilter>();
+                var goodFilters = new bool[meshFilters.Length];
+                for (int i = 0; i < meshFilters.Length; i++)
+                    goodFilters[i] = TemporarySceneAdd(meshFilters[i]);
+
+                // iterate over all compatible mesh filters and raytrace their lighting.
                 for (int i = 0; i < meshFilters.Length; i++)
                 {
-                    var meshFilter = meshFilters[i];
-                    if (meshFilter.gameObject.isStatic && meshFilter.sharedMesh != null)
-                    {
-                        float progressMin = i / (float)meshFilters.Length;
-                        float progressMax = (i + 1) / (float)meshFilters.Length;
+                    if (!goodFilters[i]) continue;
 
-                        Raytrace(meshFilter, progressMin, progressMax);
+                    var meshFilter = meshFilters[i];
+                    float progressMin = i / (float)meshFilters.Length;
+                    float progressMax = (i + 1) / (float)meshFilters.Length;
+
+                    Raytrace(meshFilter, progressMin, progressMax);
 #if UNITY_EDITOR
-                        if (progressBarCancel) { cancelled?.Invoke(this, null); break; }
+                    if (progressBarCancel) { cancelled?.Invoke(this, null); break; }
 #endif
-                    }
                 }
 
                 // stop measuring the total time here as the asset database refresh is slow.
@@ -249,6 +262,9 @@ namespace AlpacaIT.DynamicLighting
 
                 // -> partial class DynamicLightManager.PhotonCamera cleanup.
                 PhotonCameraCleanup();
+
+                // -> partial class DynamicLightManager.TemporaryScene cleanup.
+                TemporarySceneCleanup();
             }
         }
 

@@ -8,7 +8,7 @@ It is inspired by Tim Sweeney's lighting system in Unreal Gold and Unreal Tourna
 
 This lighting technique precomputes unique shadows for each light source, allowing dynamic adjustments such as color changes, flickering, or even water refraction. This level of realtime customization is not possible with Unity's baked lighting alone. It utilizes straightforward custom shaders similar to Unity's Standard shader and is compatible with the built-in render pipeline.
 
-To raytrace the scene, meshes with shadows must be marked as static and must have a mesh collider.
+To raytrace the scene, game objects must be marked as static.
 
 | High Quality Shadows | Volumetric Fog |
 :---: | :---:

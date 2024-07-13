@@ -101,6 +101,15 @@ namespace AlpacaIT.DynamicLighting.Editor
                 }, DynamicLightingPreferences.DefaultToBounceLighting
             );
 
+            menu.AddSeparator("");
+
+            addItem(
+                "About...", () =>
+                {
+                    AboutWindow.Init();
+                }
+            );
+
             return; // local methods
 
             void addItem(string label, GenericMenu.MenuFunction func, bool enabled = false)
