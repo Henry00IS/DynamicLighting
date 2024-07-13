@@ -255,19 +255,37 @@ namespace AlpacaIT.DynamicLighting
                 // decided to bake the uv1 coordinates, this code is used to undo that operation.
                 if (meshRenderer.isPartOfStaticBatch)
                 {
+                    // make sure that the reference has a mesh filter.
+                    if (!meshRenderer.TryGetComponent<MeshFilter>(out var meshFilter))
+                        continue;
+
+                    // make sure that the mesh filter has a mesh assigned.
+                    var mesh = meshFilter.sharedMesh;
+                    if (!mesh) continue;
+
                     // fetch the active material on the mesh renderer.
                     var materialPropertyBlock = new MaterialPropertyBlock();
 
-                    // play nice with other scripts.
                     if (meshRenderer.HasPropertyBlock())
-                        meshRenderer.GetPropertyBlock(materialPropertyBlock);
+                        meshRenderer.GetPropertyBlock(materialPropertyBlock, 0);
 
                     var lightmapScaleOffset = meshRenderer.lightmapScaleOffset;
                     if (lightmapScaleOffset.x == 0.0f) lightmapScaleOffset.x = 0.00001f;
                     if (lightmapScaleOffset.y == 0.0f) lightmapScaleOffset.y = 0.00001f;
-                    materialPropertyBlock.SetVector("dynamic_lighting_unity_LightmapST", new Vector4(1.0f / lightmapScaleOffset.x, 1.0f / lightmapScaleOffset.y, lightmapScaleOffset.z, lightmapScaleOffset.w));
+                    lightmapScaleOffset = new Vector4(1.0f / lightmapScaleOffset.x, 1.0f / lightmapScaleOffset.y, lightmapScaleOffset.z, lightmapScaleOffset.w);
 
-                    meshRenderer.SetPropertyBlock(materialPropertyBlock);
+                    // assign the material property block to each submesh.
+                    var hasPropertyBlock = meshRenderer.HasPropertyBlock(); // unity api oversight: cannot differentiate between submesh blocks and normal ones.
+                    for (int j = 0; j < lightmap.activeSubMeshCount; j++)
+                    {
+                        // play nice with other scripts.
+                        if (hasPropertyBlock)
+                            meshRenderer.GetPropertyBlock(materialPropertyBlock, j);
+
+                        materialPropertyBlock.SetVector("dynamic_lighting_unity_LightmapST", lightmapScaleOffset);
+
+                        meshRenderer.SetPropertyBlock(materialPropertyBlock, j);
+                    }
                 }
             }
         }
@@ -361,6 +379,10 @@ namespace AlpacaIT.DynamicLighting
             ShadersSetGlobalDynamicLightsCount(shadersLastDynamicLightsCount = 0);
             ShadersSetGlobalRealtimeLightsCount(shadersLastRealtimeLightsCount = 0);
 
+            // unity api oversight: cannot get material count as it's a private method, so to
+            // prevent allocations on the garbage collector we recycle a list here.
+            var materialsScratchMemory = new List<Material>();
+
             // prepare the scene for dynamic lighting.
             var raycastedMeshRenderersCount = raycastedMeshRenderers.Count;
             for (int i = 0; i < raycastedMeshRenderersCount; i++)
@@ -371,6 +393,14 @@ namespace AlpacaIT.DynamicLighting
                 // make sure the scene reference is still valid.
                 var meshRenderer = lightmap.renderer;
                 if (!meshRenderer) continue;
+
+                // make sure that the reference has a mesh filter.
+                if (!meshRenderer.TryGetComponent<MeshFilter>(out var meshFilter))
+                    continue;
+
+                // make sure that the mesh filter has a mesh assigned.
+                var mesh = meshFilter.sharedMesh;
+                if (!mesh) continue;
 
                 // fetch the active material on the mesh renderer.
                 var materialPropertyBlock = new MaterialPropertyBlock();
@@ -385,9 +415,18 @@ namespace AlpacaIT.DynamicLighting
                     lightmap.buffer = new ComputeBuffer(triangles.Length, 4);
                     lightmap.buffer.SetData(triangles);
                     materialPropertyBlock.SetBuffer("dynamic_triangles", lightmap.buffer);
-                    materialPropertyBlock.SetInt("lightmap_resolution", lightmap.resolution); // legacy- required in shader to detect raytraced meshes.
+                    materialPropertyBlock.SetInteger("lightmap_resolution", lightmap.resolution);
                     materialPropertyBlock.SetVector("dynamic_lighting_unity_LightmapST", new Vector4(1f, 1f, 0f, 0f)); // identity.
-                    meshRenderer.SetPropertyBlock(materialPropertyBlock);
+
+                    // assign the material property block to each submesh.
+                    meshRenderer.GetSharedMaterials(materialsScratchMemory);
+                    lightmap.activeSubMeshCount = materialsScratchMemory.Count;
+                    for (int j = 0; j < lightmap.activeSubMeshCount; j++)
+                    {
+                        // add a triangle offset to fix sv_primitiveid starting at zero.
+                        materialPropertyBlock.SetInteger("triangle_index_submesh_offset", (int)(mesh.GetIndexStart(j) / 3));
+                        meshRenderer.SetPropertyBlock(materialPropertyBlock, j);
+                    }
                 }
                 else Debug.LogError("Unable to read the dynamic lighting " + lightmap.identifier + " data file! Probably because you upgraded from an older version. Please raytrace your scene again.");
             }
@@ -459,7 +498,7 @@ namespace AlpacaIT.DynamicLighting
                 // remove the lightmap data from the material property block.
                 materialPropertyBlock.SetBuffer("lightmap", (ComputeBuffer)null);
                 materialPropertyBlock.SetBuffer("dynamic_triangles", (ComputeBuffer)null);
-                materialPropertyBlock.SetInt("lightmap_resolution", 0);
+                materialPropertyBlock.SetInteger("lightmap_resolution", 0);
                 meshRenderer.SetPropertyBlock(materialPropertyBlock);
             }
 

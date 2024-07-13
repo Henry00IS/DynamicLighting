@@ -283,6 +283,7 @@ StructuredBuffer<DynamicLight> dynamic_lights;
 uint dynamic_lights_count;
 uint realtime_lights_count;
 
+int triangle_index_submesh_offset;
 uint lightmap_resolution;
 
 TextureCubeArray shadow_cubemaps;
@@ -370,11 +371,14 @@ struct DynamicTriangle
     void load(uint triangle_index)
     {
         // read the dynamic triangles header.
-        uint offset = triangle_index * 4; // struct size.
+        uint offset = (triangle_index + triangle_index_submesh_offset) * 4; // struct size.
         
         // we increase the light data offset by one to skip the light count field.
         lightDataOffset = dynamic_triangles[offset++];
         lightCount = dynamic_triangles[lightDataOffset++];
+        
+        // we can crash the gpu driver when we read a garbage light count.
+        if (lightCount > 32) lightCount = 32; // tracing limit is 32 overlapping lights.
         
         // read the bounds of the triangle as floats.
         bounds.x = dynamic_triangles[offset++];

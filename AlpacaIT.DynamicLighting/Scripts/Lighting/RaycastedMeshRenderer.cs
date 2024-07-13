@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
@@ -21,5 +22,11 @@ namespace AlpacaIT.DynamicLighting
 
         /// <summary>The binary triangle data buffer uploaded to the graphics card.</summary>
         public ComputeBuffer buffer;
+
+        /// <summary>
+        /// The active sub mesh count based on the amount of materials (valid after <see cref="DynamicLightManager.OnEnable"/>).
+        /// </summary>
+        [NonSerialized]
+        public int activeSubMeshCount;
     }
 }
