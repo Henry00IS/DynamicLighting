@@ -27,6 +27,18 @@ namespace AlpacaIT.DynamicLighting
         /// The active sub mesh count based on the amount of materials (valid after <see cref="DynamicLightManager.OnEnable"/>).
         /// </summary>
         [NonSerialized]
-        public int activeSubMeshCount;
+        internal int activeSubMeshCount;
+
+        /// <summary>Used in the editor to detect mesh data changes on raycasted geometry.</summary>
+        [NonSerialized]
+        internal MeshFilter lastMeshFilter;
+
+        /// <summary>Used in the editor to detect mesh data changes on raycasted geometry.</summary>
+        [NonSerialized]
+        internal int lastMeshHash;
+
+        /// <summary>Used in the editor to remember that the mesh data changed on this geometry.</summary>
+        [NonSerialized]
+        internal bool lastMeshModified;
     }
 }

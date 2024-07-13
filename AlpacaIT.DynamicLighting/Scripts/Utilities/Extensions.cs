@@ -19,5 +19,19 @@ namespace AlpacaIT.DynamicLighting
             materialPropertyBlock.SetInt(name, value);
         }
 #endif
+
+        /// <summary>
+        /// Retrieves a hash based on underlying graphics API pointers of the mesh which are only
+        /// likely to change with significant mesh edits (DX11).
+        /// </summary>
+        /// <param name="mesh">The <see cref="Mesh"/> to generate a hash for.</param>
+        /// <returns>The hash of the mesh.</returns>
+        public static int GetFastHash(this Mesh mesh)
+        {
+            int hash = mesh.GetNativeIndexBufferPtr().GetHashCode();
+            for (int i = 0; i < mesh.vertexBufferCount; i++)
+                hash += mesh.GetNativeVertexBufferPtr(i).GetHashCode();
+            return hash;
+        }
     }
 }

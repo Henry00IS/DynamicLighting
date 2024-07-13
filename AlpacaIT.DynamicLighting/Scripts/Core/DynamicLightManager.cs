@@ -263,12 +263,6 @@ namespace AlpacaIT.DynamicLighting
                     var mesh = meshFilter.sharedMesh;
                     if (!mesh) continue;
 
-                    // fetch the active material on the mesh renderer.
-                    var materialPropertyBlock = new MaterialPropertyBlock();
-
-                    if (meshRenderer.HasPropertyBlock())
-                        meshRenderer.GetPropertyBlock(materialPropertyBlock, 0);
-
                     var lightmapScaleOffset = meshRenderer.lightmapScaleOffset;
                     if (lightmapScaleOffset.x == 0.0f) lightmapScaleOffset.x = 0.00001f;
                     if (lightmapScaleOffset.y == 0.0f) lightmapScaleOffset.y = 0.00001f;
@@ -278,6 +272,8 @@ namespace AlpacaIT.DynamicLighting
                     var hasPropertyBlock = meshRenderer.HasPropertyBlock(); // unity api oversight: cannot differentiate between submesh blocks and normal ones.
                     for (int j = 0; j < lightmap.activeSubMeshCount; j++)
                     {
+                        var materialPropertyBlock = new MaterialPropertyBlock();
+
                         // play nice with other scripts.
                         if (hasPropertyBlock)
                             meshRenderer.GetPropertyBlock(materialPropertyBlock, j);
@@ -401,28 +397,36 @@ namespace AlpacaIT.DynamicLighting
                 // make sure that the mesh filter has a mesh assigned.
                 var mesh = meshFilter.sharedMesh;
                 if (!mesh) continue;
-
-                // fetch the active material on the mesh renderer.
-                var materialPropertyBlock = new MaterialPropertyBlock();
-
-                // play nice with other scripts.
-                if (meshRenderer.HasPropertyBlock())
-                    meshRenderer.GetPropertyBlock(materialPropertyBlock);
-
+#if UNITY_EDITOR
+                // prepare to detect mesh changes in edit mode.
+                if (!editorIsPlaying)
+                {
+                    lightmap.lastMeshFilter = meshFilter;
+                    lightmap.lastMeshHash = mesh.GetFastHash();
+                }
+#endif
                 // assign the dynamic triangles data to the material property block.
                 if (Utilities.ReadLightmapData(lightmap.identifier, "DynamicLighting2", out uint[] triangles))
                 {
                     lightmap.buffer = new ComputeBuffer(triangles.Length, 4);
                     lightmap.buffer.SetData(triangles);
-                    materialPropertyBlock.SetBuffer("dynamic_triangles", lightmap.buffer);
-                    materialPropertyBlock.SetInteger("lightmap_resolution", lightmap.resolution);
-                    materialPropertyBlock.SetVector("dynamic_lighting_unity_LightmapST", new Vector4(1f, 1f, 0f, 0f)); // identity.
 
                     // assign the material property block to each submesh.
+                    var hasPropertyBlock = meshRenderer.HasPropertyBlock(); // unity api oversight: cannot differentiate between submesh blocks and normal ones.
                     meshRenderer.GetSharedMaterials(materialsScratchMemory);
                     lightmap.activeSubMeshCount = materialsScratchMemory.Count;
                     for (int j = 0; j < lightmap.activeSubMeshCount; j++)
                     {
+                        var materialPropertyBlock = new MaterialPropertyBlock();
+
+                        // play nice with other scripts.
+                        if (hasPropertyBlock)
+                            meshRenderer.GetPropertyBlock(materialPropertyBlock, j);
+
+                        materialPropertyBlock.SetBuffer("dynamic_triangles", lightmap.buffer);
+                        materialPropertyBlock.SetInteger("lightmap_resolution", lightmap.resolution);
+                        materialPropertyBlock.SetVector("dynamic_lighting_unity_LightmapST", new Vector4(1f, 1f, 0f, 0f)); // identity.
+
                         // add a triangle offset to fix sv_primitiveid starting at zero.
                         materialPropertyBlock.SetInteger("triangle_index_submesh_offset", (int)(mesh.GetIndexStart(j) / 3));
                         meshRenderer.SetPropertyBlock(materialPropertyBlock, j);
@@ -484,22 +488,8 @@ namespace AlpacaIT.DynamicLighting
                     raycastedMeshRenderer.buffer = null;
                 }
 
-                // make sure the scene reference is still valid.
-                var meshRenderer = raycastedMeshRenderer.renderer;
-                if (!meshRenderer) continue;
-
-                // fetch the active material on the mesh renderer.
-                var materialPropertyBlock = new MaterialPropertyBlock();
-
-                // play nice with other scripts.
-                if (meshRenderer.HasPropertyBlock())
-                    meshRenderer.GetPropertyBlock(materialPropertyBlock);
-
                 // remove the lightmap data from the material property block.
-                materialPropertyBlock.SetBuffer("lightmap", (ComputeBuffer)null);
-                materialPropertyBlock.SetBuffer("dynamic_triangles", (ComputeBuffer)null);
-                materialPropertyBlock.SetInteger("lightmap_resolution", 0);
-                meshRenderer.SetPropertyBlock(materialPropertyBlock);
+                CleanupMaterialPropertyBlock(raycastedMeshRenderer);
             }
 
             sceneRealtimeLights = null;
@@ -510,6 +500,33 @@ namespace AlpacaIT.DynamicLighting
 
             // -> partial class DynamicLightManager.LightCookie cleanup.
             LightCookieCleanup();
+        }
+
+        /// <summary>Removes the lightmap data from the given material property block.</summary>
+        /// <param name="meshRenderer">The mesh renderer to be modified.</param>
+        private static void CleanupMaterialPropertyBlock(RaycastedMeshRenderer raycastedMeshRenderer)
+        {
+            // make sure the scene reference is still valid.
+            var meshRenderer = raycastedMeshRenderer.renderer;
+            if (!meshRenderer) return;
+
+            // assign the material property block to each submesh.
+            var hasPropertyBlock = meshRenderer.HasPropertyBlock(); // unity api oversight: cannot differentiate between submesh blocks and normal ones.
+            for (int j = 0; j < raycastedMeshRenderer.activeSubMeshCount; j++)
+            {
+                var materialPropertyBlock = new MaterialPropertyBlock();
+
+                // play nice with other scripts.
+                if (hasPropertyBlock)
+                    meshRenderer.GetPropertyBlock(materialPropertyBlock, j);
+
+                // remove the lightmap data from the material property block.
+                materialPropertyBlock.SetBuffer("lightmap", (ComputeBuffer)null);
+                materialPropertyBlock.SetBuffer("dynamic_triangles", (ComputeBuffer)null);
+                materialPropertyBlock.SetInteger("lightmap_resolution", 0);
+
+                meshRenderer.SetPropertyBlock(materialPropertyBlock, j);
+            }
         }
 
         internal void RegisterDynamicLight(DynamicLight light)
@@ -801,6 +818,65 @@ namespace AlpacaIT.DynamicLighting
                     shadersKeywordShadowSoftEnabled = true;
                     break;
             }
+
+#if UNITY_EDITOR
+            // detect mesh changes in edit mode.
+            if (!editorIsPlaying)
+            {
+                var raycastedMeshRenderersCount = raycastedMeshRenderers.Count;
+                for (int i = 0; i < raycastedMeshRenderersCount; i++)
+                {
+                    // for every game object that requires a lightmap:
+                    var lightmap = raycastedMeshRenderers[i];
+
+                    // make sure this object has not already been cleaned.
+                    if (lightmap.lastMeshModified) continue;
+
+                    // make sure the scene reference is still valid.
+                    var meshRenderer = lightmap.renderer;
+                    if (!meshRenderer) continue;
+
+                    // make sure the mesh filter is still valid.
+                    var meshFilter = lightmap.lastMeshFilter;
+                    if (!meshFilter)
+                    {
+                        cleanupMaterialPropertyBlock();
+                        continue;
+                    }
+
+                    // make sure the mesh is still valid.
+                    var mesh = meshFilter.sharedMesh;
+                    if (!mesh)
+                    {
+                        cleanupMaterialPropertyBlock();
+                        continue;
+                    }
+
+                    // if the hash has changed (likely a significant mesh edit):
+                    if (mesh.GetFastHash() != lightmap.lastMeshHash)
+                    {
+                        cleanupMaterialPropertyBlock();
+                        continue;
+                    }
+
+                    // temporarily disables dynamic lighting on the current renderer.
+                    void cleanupMaterialPropertyBlock()
+                    {
+                        // remember that this mesh was modified.
+                        lightmap.lastMeshModified = true;
+
+                        // remove the lightmap data from the material property block.
+                        CleanupMaterialPropertyBlock(lightmap);
+
+                        // try to get the mesh name.
+                        var meshName = meshFilter ? $" ({meshFilter.name})" : "";
+
+                        // inform the user about the reason for the visual change.
+                        Debug.LogWarning($"Temporarily disabled Dynamic Lighting for {lightmap.renderer.name}{meshName}.\nA change in the mesh was detected, which is expected when editing level geometry. Please raytrace your scene again once you have finished editing. If you're curious about the reason for this action, hit play now to see for yourself.");
+                    }
+                }
+            }
+#endif
         }
 
         /// <summary>
