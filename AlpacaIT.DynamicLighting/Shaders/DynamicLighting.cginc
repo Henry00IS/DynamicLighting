@@ -32,6 +32,9 @@ struct DynamicLight
     uint   cookieIndex;
     uint   shadowCubemapIndex;
     // -- 16 byte boundary --
+    float  falloff;
+    float3 reserved;
+    // -- 16 byte boundary --
     
     // the first 5 bits are unused (used to be channel index).
 
@@ -272,6 +275,14 @@ struct DynamicLight
 
         // clamp the range down to change the intensity.
         return modifier + (1.0 - modifier) * stablerng;
+    }
+    
+    // special thanks to Nikita Lisitsa https://lisyarus.github.io/blog/posts/point-light-attenuation.html
+    // calculates attenuation for the light source.
+    float calculate_attenuation(float distanceSqr)
+    {
+        float s = saturate(distanceSqr / radiusSqr);
+        return intensity * pow(1.0 - s, 2.0) / (1.0 + falloff * s);
     }
 
     #define GENERATE_FUNCTION_NAME calculate_randomshimmer_bilinear

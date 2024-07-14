@@ -68,5 +68,23 @@ namespace AlpacaIT.DynamicLighting
         public uint shadowCubemapIndex;
 
         // -- 16 byte boundary --
+
+        /// <summary>
+        /// The falloff parameter controls the decay of light within its radius, providing artistic
+        /// flexibility over light attenuation. While setting this above zero deviates from physical
+        /// accuracy, it enables unique effects, such as a desk lamp emitting a bright, localized light.
+        /// <para>
+        /// The value itself doesn't correspond to any easily understood unit. Internally, it's
+        /// adjusted to stay consistent with the light radius. A value of 0.0 disables the falloff,
+        /// while 1.0 matches the falloff to the light radius. This "magic number" requires some
+        /// experimentation to achieve the desired effect but not exceeding 1.0 is a good rule.
+        /// </para>
+        /// </summary>
+        public float falloff;
+
+        /// <summary>Unused field for struct alignment.</summary>
+        public Vector3 reserved;
+
+        // -- 16 byte boundary --
     };
 }

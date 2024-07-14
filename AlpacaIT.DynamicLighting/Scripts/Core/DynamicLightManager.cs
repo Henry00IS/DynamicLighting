@@ -921,6 +921,7 @@ namespace AlpacaIT.DynamicLighting
             // retrieving the slow information about the light.
             var lightRadius = light.lightRadius;
             var lightColor = light.lightColor;
+            var lightFalloff = light.lightFalloff;
 
             // the first 5 bits are unused (used to be channel index).
             // bit 6 marks lights as realtime without shadows.
@@ -933,6 +934,7 @@ namespace AlpacaIT.DynamicLighting
             shaderLight->color.z = lightColor.b;
 
             shaderLight->radiusSqr = lightRadius * lightRadius;
+            shaderLight->falloff = lightRadius * lightFalloff * lightFalloff;
 
             Quaternion lightRotation;
             switch (light.lightType)

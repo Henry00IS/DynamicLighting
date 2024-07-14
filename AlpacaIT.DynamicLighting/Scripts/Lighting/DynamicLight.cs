@@ -38,6 +38,21 @@ namespace AlpacaIT.DynamicLighting
         public float lightRadius = 4.0f;
 
         /// <summary>
+        /// The falloff parameter controls the decay of light within its radius, providing artistic
+        /// flexibility over light attenuation. While setting this above zero deviates from physical
+        /// accuracy, it enables unique effects, such as a desk lamp emitting a bright, localized light.
+        /// <para>
+        /// The value itself doesn't correspond to any easily understood unit. Internally, it's
+        /// adjusted to stay consistent with the light radius. A value of 0.0 disables the falloff,
+        /// while 1.0 matches the falloff to the light radius. This "magic number" requires some
+        /// experimentation to achieve the desired effect but not exceeding 1.0 is a good rule.
+        /// </para>
+        /// </summary>
+        [Tooltip("The falloff parameter controls the decay of light within its radius, providing artistic flexibility over light attenuation. While setting this above zero deviates from physical accuracy, it enables unique effects, such as a desk lamp emitting a bright, localized light.\n\nThe value itself doesn't correspond to any easily understood unit. Internally, it's adjusted to stay consistent with the light radius. A value of 0.0 disables the falloff, while 1.0 matches the falloff to the light radius. This \"magic number\" requires some experimentation to achieve the desired effect but not exceeding 1.0 is a good rule.")]
+        [Min(0f)]
+        public float lightFalloff = 0.0f;
+
+        /// <summary>
         /// This is the channel that the light occupies. This value is automatically assigned to the
         /// light during ray tracing. Dynamic realtime lights must always use channel 32 (they can
         /// move around the scene without shadows). This value is a crucial part of the inner
