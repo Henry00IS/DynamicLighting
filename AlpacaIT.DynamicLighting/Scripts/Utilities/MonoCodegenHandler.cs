@@ -40,7 +40,7 @@ namespace AlpacaIT.DynamicLighting
             {
                 var assemblyType = assemblyTypes[i];
 
-                // find every single method in the type:x
+                // find every single method in the type:
                 var methods = assemblyType.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
                 for (int j = 0; j < methods.Length; j++)
                 {

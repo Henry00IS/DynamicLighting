@@ -371,6 +371,9 @@ namespace AlpacaIT.DynamicLighting
             // -> partial class DynamicLightManager.LightCookie initialize.
             LightCookieInitialize();
 
+            // -> partial class DynamicLightManager.LightPositions initialize.
+            LightPositionsInitialize();
+
             ShadersSetGlobalDynamicLights(dynamicLightsBuffer);
             ShadersSetGlobalDynamicLightsCount(shadersLastDynamicLightsCount = 0);
             ShadersSetGlobalRealtimeLightsCount(shadersLastRealtimeLightsCount = 0);
@@ -500,6 +503,9 @@ namespace AlpacaIT.DynamicLighting
 
             // -> partial class DynamicLightManager.LightCookie cleanup.
             LightCookieCleanup();
+
+            // -> partial class DynamicLightManager.LightPositions cleanup.
+            LightPositionsCleanup();
         }
 
         /// <summary>Removes the lightmap data from the given material property block.</summary>
@@ -568,6 +574,11 @@ namespace AlpacaIT.DynamicLighting
                 if (raycastedDynamicLight.light == light)
                 {
                     raycastedDynamicLight.lightAvailable = available;
+
+                    // -> partial class DynamicLightManager.LightPositions.
+                    if (available)
+                        LightPositionsOnRaycastedDynamicLightAvailable(i);
+
                     break;
                 }
             }
@@ -648,6 +659,9 @@ namespace AlpacaIT.DynamicLighting
             if (shaderDynamicLights.Length != totalLightBudget)
                 ReallocateShaderLightBuffer();
 
+            // -> partial class DynamicLightManager.LightPositions.
+            LightPositionsUpdate();
+
             // always process the raycasted dynamic lights.
             for (int i = 0; i < raycastedDynamicLightsCount; i++)
             {
@@ -660,7 +674,7 @@ namespace AlpacaIT.DynamicLighting
                 var lightCache = light.cache;
 
                 // when a raycasted light position has been moved away from the origin:
-                lightCache.transformPosition = light.transform.position;
+                lightCache.transformPosition = lightPositionsRaycastedLightPositions[i];
                 if (lightCache.transformPosition.FastNotEquals(raycastedDynamicLight.origin))
                 {
                     if (!lightCache.movedFromOrigin)
