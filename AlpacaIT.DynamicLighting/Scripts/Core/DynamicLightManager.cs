@@ -921,12 +921,9 @@ namespace AlpacaIT.DynamicLighting
 
         private unsafe void SetShaderDynamicLight(ShaderDynamicLight* shaderLight, DynamicLight light, bool lightAvailable, bool realtime)
         {
-            // retrieving light fields to reduce overhead.
-            var lightCache = light.cache;
-
             // destroyed raycasted lights in the scene, must still exist in the shader. we can make
             // the radius negative causing an early out whenever a fragment tries to use it.
-            if (!lightAvailable || (!realtime && lightCache.movedFromOrigin))
+            if (!lightAvailable || (!realtime && light.cache.movedFromOrigin))
             {
                 shaderLight->radiusSqr = -1.0f;
                 return;
@@ -941,7 +938,7 @@ namespace AlpacaIT.DynamicLighting
             // bit 6 marks lights as realtime without shadows.
             shaderLight->channel = realtime ? 32 : (uint)0;
             // -> the light intensity is set by the effects update step.
-            shaderLight->position = lightCache.transformPosition;
+            shaderLight->position = light.cache.transformPosition;
 
             shaderLight->color.x = lightColor.r;
             shaderLight->color.y = lightColor.g;
