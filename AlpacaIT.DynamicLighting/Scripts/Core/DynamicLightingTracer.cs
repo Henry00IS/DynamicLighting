@@ -34,7 +34,8 @@ namespace AlpacaIT.DynamicLighting
         private DynamicLight[] pointLights;
         private CachedLightData[] pointLightsCache;
         private ShadowRaycastProcessor raycastProcessor;
-        private CallbackRaycastProcessor callbackRaycastProcessor;
+        private RaycastProcessor callbackRaycastProcessor;
+        private RaycastHandlerPool<BounceTriangleRaycastMissHandler> bounceRaycastHandlerPool;
         private int lightmapSize = 2048;
         private float lightmapSizeMin1;
         private int uniqueIdentifier = 0;
@@ -57,7 +58,8 @@ namespace AlpacaIT.DynamicLighting
 
             // prepare to process raycasts on the job system.
             raycastProcessor = new ShadowRaycastProcessor();
-            callbackRaycastProcessor = new CallbackRaycastProcessor();
+            callbackRaycastProcessor = new RaycastProcessor();
+            bounceRaycastHandlerPool = new RaycastHandlerPool<BounceTriangleRaycastMissHandler>(256 * 256);
 
             // -> partial class DynamicLightManager.TemporaryScene initialize.
             TemporarySceneInitialize();
@@ -630,7 +632,7 @@ namespace AlpacaIT.DynamicLighting
             // calculate the world position for every UV position on a triangle.
             var triangleUvTo3dStep = new TriangleUvTo3dStep(v1, v2, v3, t1, t2, t3, triangleSurfaceArea, triangleBoundingBox, lightmapSize);
             triangleUvTo3dStep.Execute();
-            var uvWorldPositions = triangleUvTo3dStep.worldPositions;
+            var uvWorldPositions = triangleUvTo3dStep.worldPositionsPtr;
 
             // prepare to only iterate over lights potentially affecting the current triangle.
             var triangleLightIndices = dynamic_triangles.GetRaycastedLightIndices(triangle_index);
@@ -730,8 +732,11 @@ namespace AlpacaIT.DynamicLighting
 
         private const int bounceSamples = 32;
 
-        private unsafe class BounceTriangleRaycastMissHandler : IRaycastMissHandler
+        private unsafe class BounceTriangleRaycastMissHandler : RaycastHandler
         {
+            private int x;
+            private int y;
+
             /// <summary>The full lightmap size of the current mesh.</summary>
             private int lightmapSize;
 
@@ -741,37 +746,35 @@ namespace AlpacaIT.DynamicLighting
             /// <summary>The accumulated bounce lighting for taking an average.</summary>
             private float3 accumulator;
 
-            /// <summary>The amount of samples that have been processed.</summary>
-            private int samples;
-
             public float3[] fresnels = new float3[bounceSamples];
 
-            public BounceTriangleRaycastMissHandler(Color* pixels_bounce_ptr, int lightmapSize)
+            public void Setup(Color* pixels_bounce_ptr, int lightmapSize, int x, int y)
             {
+                // reset:
+                accumulator.x = 0f;
+                accumulator.y = 0f;
+                accumulator.z = 0f;
+
+                // setup:
                 this.pixels_bounce_ptr = pixels_bounce_ptr;
                 this.lightmapSize = lightmapSize;
+                this.x = x;
+                this.y = y;
             }
 
-            public void OnRaycastMiss(int x, int y)
+            public override void OnRaycastMiss()
             {
-                accumulator += fresnels[samples];
-
-                samples++;
-                if (samples == bounceSamples)
-                {
-                    var average = accumulator / samples;
-                    pixels_bounce_ptr[y * lightmapSize + x] = new Color(average.x, average.y, average.z);
-                }
+                accumulator += fresnels[raycastsIndex];
             }
 
-            public void OnRaycastHit(int x, int y)
+            public override unsafe void OnRaycastHit(RaycastHit* hit)
             {
-                samples++;
-                if (samples == bounceSamples)
-                {
-                    var average = accumulator / samples;
-                    pixels_bounce_ptr[y * lightmapSize + x] = new Color(average.x, average.y, average.z);
-                }
+            }
+
+            public override void OnHandlerFinished()
+            {
+                var average = accumulator / raycastsExpected;
+                pixels_bounce_ptr[y * lightmapSize + x] = new Color(average.x, average.y, average.z);
             }
         }
 
@@ -808,7 +811,7 @@ namespace AlpacaIT.DynamicLighting
             // calculate the world position for every UV position on a triangle.
             var triangleUvTo3dStep = new TriangleUvTo3dStep(v1, v2, v3, t1, t2, t3, triangleSurfaceArea, triangleBoundingBox, lightmapSize);
             triangleUvTo3dStep.Execute();
-            var uvWorldPositions = triangleUvTo3dStep.worldPositions;
+            var uvWorldPositions = triangleUvTo3dStep.worldPositionsPtr;
 
             // calculate some values in advance.
             var triangleNormalOffset = triangleNormal * 0.001f;
@@ -845,7 +848,8 @@ namespace AlpacaIT.DynamicLighting
                     float3 light_direction = math.normalize(lightPosition - world);
                     float3 light_direction_negative = -light_direction;
 
-                    var raycastHandler = new BounceTriangleRaycastMissHandler(pixels_bounce_ptr, lightmapSize);
+                    var raycastHandler = bounceRaycastHandlerPool.GetInstance();
+                    raycastHandler.Setup(pixels_bounce_ptr, lightmapSize, x, y);
 
                     // take 32 bounce samples around this world position.
                     for (int i = 0; i < bounceSamples; i++)
@@ -864,41 +868,34 @@ namespace AlpacaIT.DynamicLighting
                         // check whether the world position received direct illumination.
                         var photonWorld = photonCube.SampleWorldFast(cube_direction, lightPosition3, photonCubeFace, photonCubeFaceIndex);
                         var photonNormal = photonCube.SampleNormalFast(photonCubeFace, photonCubeFaceIndex);
-                        if (photonCube.SampleShadow(lightPosition3, photonWorld, photonNormal))
-                        {
-                            var photonDiffuse = photonCube.SampleDiffuseFast(photonCubeFace, photonCubeFaceIndex);
+                        var photonDiffuse = photonCube.SampleDiffuseFast(photonCubeFace, photonCubeFaceIndex);
 
-                            // ---
-                            // source code from https://github.com/Arlorean/UnityComputeShaderTest (see Licenses/UnityComputeShaderTest.txt).
-                            // shoutouts to Adam Davidson and Kevin Fung!
-                            //
-                            // schlick's approximation.
-                            float3 r0 = photonDiffuse * materialSpecular;
-                            float hv = Mathf.Clamp(math.dot(photonNormal, light_direction), 0.0f, 1.0f);
-                            float3 fresnel = r0 + (1.0f - r0) * math.pow(1.0f - hv, 5.0f);
-                            raycastHandler.fresnels[i] = fresnel;
-                            // ---
+                        // ---
+                        // source code from https://github.com/Arlorean/UnityComputeShaderTest (see Licenses/UnityComputeShaderTest.txt).
+                        // shoutouts to Adam Davidson and Kevin Fung!
+                        //
+                        // schlick's approximation.
+                        float3 r0 = photonDiffuse * materialSpecular;
+                        float hv = Mathf.Clamp(math.dot(photonNormal, light_direction), 0.0f, 1.0f);
+                        float3 fresnel = r0 + (1.0f - r0) * math.pow(1.0f - hv, 5.0f);
+                        raycastHandler.fresnels[i] = fresnel;
+                        // ---
 
-                            var photonWorldMinusWorldWithNormalOffset = photonWorld - worldWithNormalOffset3;
-                            var photonToWorldDirection = math.normalize(photonWorldMinusWorldWithNormalOffset);
-                            var photonToWorldDistance = math.length(photonWorldMinusWorldWithNormalOffset);
+                        var photonWorldMinusWorldWithNormalOffset = photonWorld - worldWithNormalOffset3;
+                        var photonToWorldDirection = math.normalize(photonWorldMinusWorldWithNormalOffset);
+                        var photonToWorldDistance = math.length(photonWorldMinusWorldWithNormalOffset);
 
-                            // create a raycast command as fast as possible.
-                            raycastCommand.from = worldWithNormalOffset;
-                            raycastCommand.direction = *(Vector3*)&photonToWorldDirection;
-                            raycastCommand.distance = photonToWorldDistance;
+                        // create a raycast command as fast as possible.
+                        raycastCommand.from = worldWithNormalOffset;
+                        raycastCommand.direction = *(Vector3*)&photonToWorldDirection;
+                        raycastCommand.distance = photonToWorldDistance;
 
-                            callbackRaycastProcessor.Add(
-                                raycastCommand,
-                                new RaycastOriginMeta(x, y),
-                                raycastHandler
-                            );
-                        }
-                        else
-                        {
-                            raycastHandler.OnRaycastHit(x, y);
-                        }
+                        callbackRaycastProcessor.Add(
+                            raycastCommand,
+                            raycastHandler
+                        );
                     }
+                    raycastHandler.Ready();
                 }
             }
 

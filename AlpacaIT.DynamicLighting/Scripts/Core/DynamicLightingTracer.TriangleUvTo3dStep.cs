@@ -1,4 +1,5 @@
 ﻿using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using UnityEngine;
 using UnityEngine.Jobs;
@@ -10,7 +11,7 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>
         /// Uses the Unity job system to to calculate the world position for every UV position on a triangle.
         /// </summary>
-        public class TriangleUvTo3dStep
+        public unsafe class TriangleUvTo3dStep
         {
             /// <summary>The first world-space vertex of the triangle.</summary>
             private Vector3 vertex1;
@@ -40,7 +41,10 @@ namespace AlpacaIT.DynamicLighting
             private float meshTextureSize;
 
             /// <summary>The world-space coordinates for all pixels in <see cref="pixelTriangleRect"/>.</summary>
-            public NativeArray<Vector3> worldPositions;
+            private NativeArray<Vector3> worldPositions;
+
+            /// <summary>The world-space coordinates for all pixels in <see cref="pixelTriangleRect"/>.</summary>
+            public Vector3* worldPositionsPtr; // native pointer to disable bounds checking.
 
             /// <summary>Creates a new instance of <see cref="TriangleUvTo3dStep"/>.</summary>
             /// <param name="vertex1">The first world-space vertex of the triangle.</param>
@@ -108,7 +112,8 @@ namespace AlpacaIT.DynamicLighting
                 public float inHalf;
 
                 /// <summary>The world-space coordinates for all pixels in <see cref="inPixelTriangleRect"/>.</summary>
-                public NativeArray<Vector3> outWorldPositions;
+                [NativeDisableUnsafePtrRestriction]
+                public Vector3* outWorldPositionsPtr; // native pointer to disable bounds checking.
 
                 public void Execute(int i)
                 {
@@ -126,7 +131,7 @@ namespace AlpacaIT.DynamicLighting
                     float yy = y / inMeshTextureSize;
 
                     // converts the uv-space coordinate to world space.
-                    outWorldPositions[i] = MathEx.UvTo3dFast(inTriangleSurfaceArea, new Vector2(xx + inHalf, yy + inHalf), inVertex1, inVertex2, inVertex3, inUv1, inUv2, inUv3);
+                    outWorldPositionsPtr[i] = MathEx.UvTo3dFast(inTriangleSurfaceArea, new Vector2(xx + inHalf, yy + inHalf), inVertex1, inVertex2, inVertex3, inUv1, inUv2, inUv3);
                 }
             }
 
@@ -136,6 +141,7 @@ namespace AlpacaIT.DynamicLighting
 
                 // prepare native memory to store the results.
                 worldPositions = new NativeArray<Vector3>(texelCount, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+                worldPositionsPtr = (Vector3*)NativeArrayUnsafeUtility.GetUnsafeBufferPointerWithoutChecks(worldPositions);
 
                 // prepare a job that will process all uv coordinates in parallel.
                 var processUvTo3dJob = new ProcessUvTo3dJob()
@@ -150,7 +156,7 @@ namespace AlpacaIT.DynamicLighting
                     inPixelTriangleRect = pixelTriangleRect,
                     inMeshTextureSize = meshTextureSize,
                     inHalf = 1.0f / (meshTextureSize * 2f),
-                    outWorldPositions = worldPositions,
+                    outWorldPositionsPtr = worldPositionsPtr,
                 };
 
                 // wait here while processing the job on multiple threads (including the main thread).

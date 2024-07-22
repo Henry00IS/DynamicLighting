@@ -1,5 +1,4 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
@@ -7,6 +6,27 @@ namespace AlpacaIT.DynamicLighting
 
     internal partial class DynamicLightingTracer
     {
+        /// <summary>
+        /// Takes two <see cref="RaycastHandler[]"/> and swaps them on demand. This is used instead of
+        /// copying the accumulator into a secondary array.
+        /// </summary>
+        private unsafe class RaycastCommandMetaSwapper
+        {
+            public RaycastCommandMeta[] a;
+            public RaycastCommandMeta[] b;
+
+            public RaycastCommandMetaSwapper(RaycastCommandMeta[] a, RaycastCommandMeta[] b)
+            {
+                this.a = a;
+                this.b = b;
+            }
+
+            public void Swap()
+            {
+                (b, a) = (a, b);
+            }
+        }
+
         private struct RaycastCommandMeta
         {
             public int x;
@@ -21,25 +41,6 @@ namespace AlpacaIT.DynamicLighting
                 this.world = world;
                 this.lightChannel = lightChannel;
             }
-        }
-
-        private struct RaycastOriginMeta
-        {
-            public int x;
-            public int y;
-
-            public RaycastOriginMeta(int x, int y)
-            {
-                this.x = x;
-                this.y = y;
-            }
-        }
-
-        private interface IRaycastMissHandler
-        {
-            void OnRaycastMiss(int x, int y);
-
-            void OnRaycastHit(int x, int y);
         }
 
         private struct CachedLightData
