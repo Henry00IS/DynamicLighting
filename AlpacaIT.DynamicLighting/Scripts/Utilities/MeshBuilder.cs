@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
@@ -54,11 +54,27 @@ namespace AlpacaIT.DynamicLighting
                 surfaceArea += MathEx.CalculateSurfaceAreaOfTriangle(worldVertices[meshTriangles[i]], worldVertices[meshTriangles[i + 1]], worldVertices[meshTriangles[i + 2]]);
             }
 
+            // check whether the mesh has lightmap coordinates.
+            hasLightmapCoordinates = meshUv1.Length > 0;
+
             // calculate the triangle count.
             triangleCount = meshTriangles.Length / 3;
 
-            // check whether the mesh has lightmap coordinates.
-            hasLightmapCoordinates = meshUv1.Length > 0;
+            // protect against uv1 having not-a-number values as they cause severe errors.
+            if (hasLightmapCoordinates)
+            {
+                bool finiteWarning = false;
+                for (int i = 0; i < meshUv1.Length; i++)
+                {
+                    var v1 = meshUv1[i];
+                    if (!float.IsFinite(v1.x + v1.y))
+                    {
+                        meshUv1[i] = Vector2.zero;
+                        finiteWarning = true;
+                    }
+                }
+                if (finiteWarning) Debug.LogWarning("The mesh " + mesh.name + " has non-finite UV1 coordinates (NaN or Infinite)!");
+            }
         }
 
         /// <summary>Gets the 3 vertices that make up the triangle at the given triangle index.</summary>
