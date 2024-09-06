@@ -19,16 +19,16 @@ namespace AlpacaIT.DynamicLighting
         private const int batchSize = 256 * 256;
 
         /// <summary>The <see cref="RaycastCommand"/> accumulator array to be scheduled on the job system OR the array used by the currently active job.</summary>
-        private NativeArray<RaycastCommand> nativeRaycastCommandsA = new NativeArray<RaycastCommand>(batchSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+        private NativeArray<RaycastCommand> nativeRaycastCommandsA;
 
         /// <summary>The <see cref="RaycastCommand"/> accumulator array to be scheduled on the job system OR the array used by the currently active job.</summary>
-        private NativeArray<RaycastCommand> nativeRaycastCommandsB = new NativeArray<RaycastCommand>(batchSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+        private NativeArray<RaycastCommand> nativeRaycastCommandsB;
 
         /// <summary>The <see cref="RaycastCommand"/> accumulator array and array used by currently active jobs that keep swapping places.</summary>
         private RaycastCommandSwapper nativeRaycastCommands;
 
         /// <summary>Native collection used by the currently active jobs.</summary>
-        private NativeArray<RaycastHit> nativeRaycastHits = new NativeArray<RaycastHit>(batchSize, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+        private NativeArray<RaycastHit> nativeRaycastHits;
 
         /// <summary>Additional information per <see cref="RaycastCommand"/> for the results.</summary>
         private RaycastHandler[] raycastCommandsHandlersA = new RaycastHandler[batchSize];
@@ -57,8 +57,12 @@ namespace AlpacaIT.DynamicLighting
 
         private RaycastHit* nativeRaycastHitsPtr;
 
-        public RaycastProcessor()
+        public RaycastProcessor(Allocator allocator = Allocator.TempJob)
         {
+            nativeRaycastCommandsA = new NativeArray<RaycastCommand>(batchSize, allocator, NativeArrayOptions.UninitializedMemory);
+            nativeRaycastCommandsB = new NativeArray<RaycastCommand>(batchSize, allocator, NativeArrayOptions.UninitializedMemory);
+            nativeRaycastHits = new NativeArray<RaycastHit>(batchSize, allocator, NativeArrayOptions.UninitializedMemory);
+
             nativeRaycastCommands = new RaycastCommandSwapper(nativeRaycastCommandsA, nativeRaycastCommandsB);
             raycastCommandsHandlers = new RaycastHandlerSwapper(raycastCommandsHandlersA, raycastCommandsHandlersB);
             nativeRaycastHitsPtr = (RaycastHit*)NativeArrayUnsafeUtility.GetUnsafeBufferPointerWithoutChecks(nativeRaycastHits);

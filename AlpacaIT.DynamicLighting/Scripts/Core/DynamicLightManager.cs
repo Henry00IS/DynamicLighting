@@ -28,6 +28,12 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Called when a <see cref="DynamicLight"/> gets unregistered (i.e. disabled).</summary>
         public event EventHandler<DynamicLightUnregisteredEventArgs> lightUnregistered;
 
+        /// <summary>Called when a <see cref="DynamicLightingReceiver"/> gets registered (i.e. enabled).</summary>
+        public event EventHandler<DynamicObjectRegisteredEventArgs> objectRegistered;
+
+        /// <summary>Called when a <see cref="DynamicLightingReceiver"/> gets unregistered (i.e. disabled).</summary>
+        public event EventHandler<DynamicObjectUnregisteredEventArgs> objectUnregistered;
+
         /// <summary>Called when computing shadows for the current scene has started.</summary>
         public event EventHandler<EventArgs> traceStarted;
 
@@ -374,6 +380,9 @@ namespace AlpacaIT.DynamicLighting
             // -> partial class DynamicLightManager.LightPositions initialize.
             LightPositionsInitialize();
 
+            // -> partial class DynamicLightManager.DynamicObjects initialize.
+            DynamicObjectsInitialize(reload);
+
             ShadersSetGlobalDynamicLights(dynamicLightsBuffer);
             ShadersSetGlobalDynamicLightsCount(shadersLastDynamicLightsCount = 0);
             ShadersSetGlobalRealtimeLightsCount(shadersLastRealtimeLightsCount = 0);
@@ -506,6 +515,9 @@ namespace AlpacaIT.DynamicLighting
 
             // -> partial class DynamicLightManager.LightPositions cleanup.
             LightPositionsCleanup();
+
+            // -> partial class DynamicLightManager.DynamicObjects cleanup.
+            DynamicObjectsCleanup();
         }
 
         /// <summary>Removes the lightmap data from the given material property block.</summary>
@@ -555,9 +567,8 @@ namespace AlpacaIT.DynamicLighting
                 sceneRealtimeLights.Remove(light);
                 activeRealtimeLights.Remove(light);
                 SetRaycastedDynamicLightAvailable(light, false);
-
-                lightUnregistered?.Invoke(this, new DynamicLightUnregisteredEventArgs(light));
             }
+            lightUnregistered?.Invoke(this, new DynamicLightUnregisteredEventArgs(light));
         }
 
         /// <summary>
@@ -758,7 +769,7 @@ namespace AlpacaIT.DynamicLighting
             var activeRealtimeLightsCount = activeRealtimeLights.Count;
             fixed (ShaderDynamicLight* shaderLightsPtr = shaderDynamicLights)
             {
-                var idx = 0;
+                var idx = 0u;
                 for (int i = 0; i < raycastedDynamicLightsCount; i++)
                 {
                     var raycastedDynamicLight = raycastedDynamicLights[i];
@@ -767,10 +778,12 @@ namespace AlpacaIT.DynamicLighting
                     var lightAvailable = raycastedDynamicLight.lightAvailable;
                     SetShaderDynamicLight(shaderLight, light, lightAvailable, false);
                     UpdateLightEffects(shaderLight, light, lightAvailable);
-                    idx++;
 
                     if (lightAvailable)
                     {
+                        var lightCache = light.cache;
+                        lightCache.shaderIndex = idx;
+
                         // -> partial class DynamicLightManager.ShadowCamera.
                         ShadowCameraProcessLight(shaderLight, light);
 
@@ -781,6 +794,8 @@ namespace AlpacaIT.DynamicLighting
                         // -> partial class DynamicLightManager.PostProcessing.
                         PostProcessingProcessLight(shaderLight, light);
                     }
+
+                    idx++;
                 }
 
                 for (int i = 0; i < activeRealtimeLightsCount; i++)
@@ -790,10 +805,12 @@ namespace AlpacaIT.DynamicLighting
                     bool lightAvailable = light;
                     SetShaderDynamicLight(shaderLight, light, lightAvailable, true);
                     UpdateLightEffects(shaderLight, light, lightAvailable);
-                    idx++;
 
                     if (lightAvailable)
                     {
+                        var lightCache = light.cache;
+                        lightCache.shaderIndex = idx;
+
                         // -> partial class DynamicLightManager.ShadowCamera.
                         ShadowCameraProcessLight(shaderLight, light);
 
@@ -804,11 +821,16 @@ namespace AlpacaIT.DynamicLighting
                         // -> partial class DynamicLightManager.PostProcessing.
                         PostProcessingProcessLight(shaderLight, light);
                     }
+
+                    idx++;
                 }
             }
 
             // -> partial class DynamicLightManager.ShadowCamera.
             ShadowCameraPostUpdate();
+
+            // -> partial class DynamicLightManager.DynamicObjects.
+            DynamicObjectsUpdate();
 
             // upload the active light data to the graphics card.
             var activeDynamicLightsCount = raycastedDynamicLightsCount + activeRealtimeLightsCount;

@@ -153,6 +153,6 @@ if (map != 0.0)
 #endif
 
 // important attenuation that actually creates the point light with maximum radius.
-float attenuation = light.calculate_attenuation(light_distanceSqr);
+float attenuation = light.calculate_attenuation(light_distanceSqr) * light_fade;
 
 #undef GENERATE_NORMAL

@@ -39,5 +39,11 @@ namespace AlpacaIT.DynamicLighting
         /// during <see cref="DynamicLightManager.Update"/>.
         /// </summary>
         public Vector3 transformPosition;
+
+        /// <summary>
+        /// The current index into the <see cref="DynamicLightManager.shaderDynamicLights"/> array
+        /// (stale if this light is not rendering this frame.
+        /// </summary>
+        public uint shaderIndex;
     }
 }

@@ -70,6 +70,9 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Global <see cref="Shader.PropertyToID"/> for integer "dynamic_lights_count".</summary>
         private int shadersGlobalPropertyIdDynamicLightsCount;
 
+        /// <summary>Global <see cref="Shader.PropertyToID"/> for buffer "dynamic_objects".</summary>
+        private int shadersGlobalPropertyIdDynamicObjects;
+
         /// <summary>Global <see cref="Shader.PropertyToID"/> for integer "realtime_lights_count".</summary>
         private int shadersGlobalPropertyIdRealtimeLightsCount;
 
@@ -78,6 +81,9 @@ namespace AlpacaIT.DynamicLighting
 
         /// <summary>Global <see cref="Shader.PropertyToID"/> for buffer "dynamic_lights_bvh".</summary>
         private int shadersGlobalPropertyIdDynamicLightsBvh;
+
+        /// <summary>Material <see cref="Shader.PropertyToID"/> for integer "dynamic_objects_index".</summary>
+        private int shadersPropertyIdDynamicObjectsIndex;
 
         /// <summary>Stores the value last assigned with <see cref="ShadersSetGlobalDynamicLightsCount"/>.</summary>
         private int shadersLastDynamicLightsCount;
@@ -139,6 +145,12 @@ namespace AlpacaIT.DynamicLighting
 #endif
         }
 
+        /// <summary>Sets the global shader buffer property "dynamic_objects".</summary>
+        private void ShadersSetGlobalDynamicObjects(ComputeBuffer buffer)
+        {
+            Shader.SetGlobalBuffer(shadersGlobalPropertyIdDynamicObjects, buffer);
+        }
+
         /// <summary>Sets the global shader color property "dynamic_ambient_color".</summary>
         private void ShadersSetGlobalDynamicAmbientColor(Color value)
         {
@@ -169,8 +181,10 @@ namespace AlpacaIT.DynamicLighting
             shadersGlobalPropertyIdDynamicLights = Shader.PropertyToID("dynamic_lights");
             shadersGlobalPropertyIdDynamicLightsCount = Shader.PropertyToID("dynamic_lights_count");
             shadersGlobalPropertyIdRealtimeLightsCount = Shader.PropertyToID("realtime_lights_count");
+            shadersGlobalPropertyIdDynamicObjects = Shader.PropertyToID("dynamic_objects");
             shadersGlobalPropertyIdDynamicAmbientColor = Shader.PropertyToID("dynamic_ambient_color");
             shadersGlobalPropertyIdDynamicLightsBvh = Shader.PropertyToID("dynamic_lights_bvh");
+            shadersPropertyIdDynamicObjectsIndex = Shader.PropertyToID("dynamic_objects_index");
 
             // upon startup (or level transitions):
 
