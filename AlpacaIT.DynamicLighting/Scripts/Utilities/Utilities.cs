@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.IO.Compression;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -40,125 +39,94 @@ namespace AlpacaIT.DynamicLighting.Internal
         }
 
         /// <summary>
-        /// Gets the path to the resources directory of the active scene in Unity Editor. This path
-        /// is relative and usually starts with "Assets/" (the forward- or backslash depends on the
+        /// Gets the path to the directory of the active scene in Unity Editor. This path is
+        /// relative and usually starts with "Assets/" (the forward- or backslash depends on the
         /// operating system).
         /// </summary>
         /// <param name="ensureExists">
-        /// Whether to check for the existence of the resource directory and create it if it is not found.
+        /// Whether to check for the existence of the scene directory and create it if it is not found.
         /// </param>
         /// <returns>
-        /// The path to the resources directory without trailing slash. If the active scene has not
-        /// been saved to disk then this property returns null. If <paramref name="ensureExists"/>
-        /// fails to create the directory it will also return null (and log an error message to the
-        /// Unity console, but it will not throw an exception).
+        /// The path to the scene directory without trailing slash. If the active scene has not been
+        /// saved to disk then this property returns null. If <paramref name="ensureExists"/> fails
+        /// to create the directory it will also return null (and log an error message to the Unity
+        /// console, but it will not throw an exception).
         /// </returns>
-        public static string CreateResourcesPath(this Scene scene, bool ensureExists = true)
+        public static string CreateScenePath(this Scene scene, bool ensureExists = true)
         {
             if (!scene.IsSavedToDisk()) return null;
-            var resourcesPath = Path.GetDirectoryName(scene.path) + Path.DirectorySeparatorChar + scene.GetSceneName() + Path.DirectorySeparatorChar + "Resources";
+            var scenePath = Path.GetDirectoryName(scene.path) + Path.DirectorySeparatorChar + scene.GetSceneName();
 
             if (ensureExists)
             {
                 try
                 {
-                    if (!Directory.Exists(resourcesPath))
-                        Directory.CreateDirectory(resourcesPath);
+                    if (!Directory.Exists(scenePath))
+                        Directory.CreateDirectory(scenePath);
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"Unable to create the resources directory at {resourcesPath}. " + ex.Message);
+                    Debug.LogError($"Unable to create the scene directory at {scenePath}. " + ex.Message);
                     return null;
                 }
             }
 
-            return resourcesPath;
+            return scenePath;
         }
 
         /// <summary>
-        /// For the active scene, ensures the resources directory exists (or returns false and logs
-        /// an error message to the Unity console) then tries to write the lightmap data file with
-        /// the specified identifier (or returns false when an exception occurs). Requires a call to
-        /// <see cref="UnityEditor.AssetDatabase.Refresh"/> afterwards.
+        /// For the active scene, ensures the scene directory exists (or returns false and logs an
+        /// error message to the Unity console) then tries to write the <see cref="RaycastedScene"/>
+        /// asset (or returns false when an exception occurs). Requires a call to <see
+        /// cref="UnityEditor.AssetDatabase.Refresh"/> afterwards.
         /// </summary>
-        /// <param name="identifier">
-        /// The lightmap identifier is an index stored in the scene and (using this function) to
-        /// disk, allowing us to find these resource files later.
-        /// </param>
-        /// <param name="pixels">The raytraced shadow bits data.</param>
+        /// <param name="raycastedScene">The <see cref="RaycastedScene"/> to be written to disk.</param>
         /// <returns>True when the file has been successfully written else false.</returns>
-        public static bool WriteLightmapData(int identifier, string name, uint[] pixels)
+        internal static bool WriteRaycastedScene(RaycastedScene raycastedScene)
         {
             var scene = SceneManager.GetActiveScene();
 
             // ensure the resources path exists (and thus also that scene was saved to disk).
-            var resourcesPath = scene.CreateResourcesPath();
-            if (string.IsNullOrEmpty(resourcesPath)) return false;
+            var scenePath = scene.CreateScenePath();
+            if (string.IsNullOrEmpty(scenePath)) return false;
 
             var sceneName = scene.GetSceneName();
             if (string.IsNullOrEmpty(sceneName)) return false; // redundant.
 
             try
             {
-                byte[] byteArray = new byte[pixels.Length * 4];
-                Buffer.BlockCopy(pixels, 0, byteArray, 0, pixels.Length * 4);
-
-                using (var memory = new MemoryStream(byteArray))
-                using (var compressed = new MemoryStream())
-                using (var gzip = new GZipStream(compressed, System.IO.Compression.CompressionLevel.Optimal))
-                {
-                    memory.CopyTo(gzip);
-                    gzip.Close();
-
-                    var lightmapFilePath = resourcesPath + Path.DirectorySeparatorChar + sceneName + "-" + name + "-" + identifier + ".bytes";
-                    File.WriteAllBytes(lightmapFilePath, compressed.ToArray());
-                }
-
+#if UNITY_EDITOR
+                UnityEditor.AssetDatabase.CreateAsset(raycastedScene, scenePath + Path.DirectorySeparatorChar + "DynamicLighting3-" + sceneName + ".asset");
+                UnityEditor.AssetDatabase.SaveAssets();
+#endif
                 return true;
             }
             catch (Exception ex)
             {
-                Debug.LogError("Error writing " + name + " " + identifier + " data file: " + ex.Message);
+                Debug.LogError("Error writing raycasted scene data file: " + ex.Message);
                 return false;
             }
         }
 
-        public static bool ReadLightmapData(int identifier, string name, out uint[] pixels)
+        /// <summary>
+        /// For the active scene, tries to delete the <see cref="RaycastedScene"/> asset. When there
+        /// is an exception during file deletion an error message is logged to the Unity console.
+        /// </summary>
+        /// <returns>True when the file has been successfully deleted else false.</returns>
+        public static bool DeleteRaycastedScene()
         {
-            try
-            {
-                string scene = Path.GetFileNameWithoutExtension(SceneManager.GetActiveScene().path);
+            var scene = SceneManager.GetActiveScene();
 
-                var lightmap = Resources.Load<TextAsset>(scene + "-" + name + "-" + identifier);
-                if (lightmap == null)
-                {
-                    Debug.LogError("Cannot find '" + scene + "-" + name + "-" + identifier + ".bytes'!");
-                    pixels = null;
-                    return false;
-                }
-                var byteArray = lightmap.bytes;
+            // get the scene path without creating it on disk (but we know scene was saved to disk).
+            var scenePath = scene.CreateScenePath(false);
+            if (string.IsNullOrEmpty(scenePath)) return true;
 
-                using (var memory = new MemoryStream(byteArray))
-                using (var decompressed = new MemoryStream())
-                using (var gzip = new GZipStream(memory, CompressionMode.Decompress))
-                {
-                    gzip.CopyTo(decompressed);
-                    gzip.Close();
-                    byteArray = decompressed.ToArray();
-                }
-
-                uint[] uintArray = new uint[byteArray.Length / 4];
-                Buffer.BlockCopy(byteArray, 0, uintArray, 0, byteArray.Length);
-                pixels = uintArray;
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError(ex);
-                pixels = default;
-                return false;
-            }
+            var sceneName = scene.GetSceneName();
+            if (string.IsNullOrEmpty(sceneName)) return true; // redundant.
+#if UNITY_EDITOR
+            UnityEditor.AssetDatabase.DeleteAsset(scenePath + Path.DirectorySeparatorChar + "DynamicLighting3-" + sceneName + ".asset");
+#endif
+            return true;
         }
 
         /// <summary>
@@ -170,16 +138,18 @@ namespace AlpacaIT.DynamicLighting.Internal
         /// unsaved scene and missing resources directory. Returns false only when there was an
         /// exception during file deletion.
         /// </returns>
-        public static bool DeleteLightmapData(string name)
+        public static bool DeleteLegacyLightmapData(string name)
         {
             var scene = SceneManager.GetActiveScene();
 
             // get the resources path without creating it on disk (but we know scene was saved to disk).
-            var resourcesPath = scene.CreateResourcesPath(false);
-            if (string.IsNullOrEmpty(resourcesPath)) return true;
+            var scenePath = scene.CreateScenePath(false);
+            if (string.IsNullOrEmpty(scenePath)) return true;
 
             var sceneName = scene.GetSceneName();
             if (string.IsNullOrEmpty(sceneName)) return true; // redundant.
+
+            var resourcesPath = scenePath + Path.DirectorySeparatorChar + "Resources";
 
             // if the resources path does not exist there is no work to be done.
             if (!Directory.Exists(resourcesPath)) return true;

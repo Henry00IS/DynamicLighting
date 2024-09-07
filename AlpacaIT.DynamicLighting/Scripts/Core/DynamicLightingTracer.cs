@@ -38,7 +38,6 @@ namespace AlpacaIT.DynamicLighting
         private RaycastHandlerPool<BounceTriangleRaycastMissHandler> bounceRaycastHandlerPool;
         private int lightmapSize = 2048;
         private float lightmapSizeMin1;
-        private int uniqueIdentifier = 0;
         private LayerMask raycastLayermask = ~0;
         private int pixelDensityPerSquareMeter = 128;
         private DynamicLightManager dynamicLightManager;
@@ -61,10 +60,10 @@ namespace AlpacaIT.DynamicLighting
             callbackRaycastProcessor = new RaycastProcessor();
             bounceRaycastHandlerPool = new RaycastHandlerPool<BounceTriangleRaycastMissHandler>(256 * 256);
 
-            // -> partial class DynamicLightManager.TemporaryScene initialize.
+            // -> partial class DynamicLightingTracer.TemporaryScene initialize.
             TemporarySceneInitialize();
 
-            // -> partial class DynamicLightManager.PhotonCamera initialize.
+            // -> partial class DynamicLightingTracer.PhotonCamera initialize.
             PhotonCameraInitialize();
 
             log = new StringBuilder();
@@ -83,7 +82,6 @@ namespace AlpacaIT.DynamicLighting
             vramDynamicTrianglesTotal = 0;
             vramBvhTotal = 0;
             lightmapSizeMin1 = lightmapSize - 1;
-            uniqueIdentifier = 0;
             raycastLayermask = dynamicLightManager.raytraceLayers;
             pixelDensityPerSquareMeter = dynamicLightManager.pixelDensityPerSquareMeter;
 
@@ -122,12 +120,12 @@ namespace AlpacaIT.DynamicLighting
             // there must be at least one light in order to create the bounding volume hierarchy.
             if (dynamicLights.Length > 0)
             {
-                // create the dynamic lights bounding volume hierarchy and write it to disk.
+                // create the dynamic lights bounding volume hierarchy and store it.
                 var bvhDynamicLights = new BvhLightStructure(dynamicLights);
                 var bvhDynamicLights32 = bvhDynamicLights.ToUInt32Array();
                 vramBvhTotal += (ulong)bvhDynamicLights32.Length * 4;
-                if (!Utilities.WriteLightmapData(0, "DynamicLightingBvh2", bvhDynamicLights32))
-                    Debug.LogError($"Unable to write the dynamic lights bounding volume hierarchy file in the active scene resources directory!");
+                if (!dynamicLightManager.raycastedScene.dynamicLightsBvh.Write(bvhDynamicLights32))
+                    Debug.LogError($"Unable to compress and store the dynamic lights bounding volume hierarchy!");
 
                 // create the point lights array with the order the bvh tree desires.
                 pointLights = new DynamicLight[dynamicLights.Length];
@@ -159,16 +157,18 @@ namespace AlpacaIT.DynamicLighting
 
                 // reset the internal state and collect required scene information.
                 Prepare();
-
 #if UNITY_EDITOR
                 // delete all of the old lightmap data in the scene and on disk.
                 dynamicLightManager.EditorDeleteLightmaps();
 #endif
+                // store everything inside of a scripted object.
+                dynamicLightManager.raycastedScene = ScriptableObject.CreateInstance<RaycastedScene>();
+
                 // from here we begin measuring the total time spent.
                 totalTime.Begin();
 
                 // try to remember the version used.
-                dynamicLightManager.version = 2;
+                dynamicLightManager.version = 3;
                 dynamicLightManager.activateBounceLightingInCurrentScene = false;
 
                 // find all light sources and calculate the bounding volume hierarchy.
@@ -225,6 +225,9 @@ namespace AlpacaIT.DynamicLighting
 
                 // stop measuring the total time here as the asset database refresh is slow.
                 totalTime.Stop();
+
+                // write the raycasted scene data to disk.
+                Utilities.WriteRaycastedScene(dynamicLightManager.raycastedScene);
 
 #if UNITY_EDITOR
                 // have unity editor reload the modified assets.
@@ -536,18 +539,19 @@ namespace AlpacaIT.DynamicLighting
             pixels_lightmap_gc.Free();
             pixels_visited_gc.Free();
 
+            // compress the dynamic triangles data and store it inside of the raycasted scene.
+            var dynamic_triangles32 = dynamic_triangles.BuildDynamicTrianglesData(bounceLightingInScene).ToArray();
+            vramDynamicTrianglesTotal += (ulong)dynamic_triangles32.Length * 4;
+
             // store the scene reference renderer in the dynamic light manager with lightmap metadata.
             var lightmap = new RaycastedMeshRenderer();
             lightmap.renderer = meshFilter.GetComponent<MeshRenderer>();
             lightmap.resolution = lightmapSize;
-            lightmap.identifier = uniqueIdentifier++;
-            dynamicLightManager.raycastedMeshRenderers.Add(lightmap);
-
-            // write the dynamic triangles to disk.
-            var dynamic_triangles32 = dynamic_triangles.BuildDynamicTrianglesData(bounceLightingInScene).ToArray();
-            vramDynamicTrianglesTotal += (ulong)dynamic_triangles32.Length * 4;
-            if (!Utilities.WriteLightmapData(lightmap.identifier, "DynamicLighting2", dynamic_triangles32))
-                Debug.LogError($"Unable to write the dynamic lighting {lightmap.identifier} data file in the active scene resources directory!");
+            lightmap.identifier = dynamicLightManager.raycastedScene.StoreDynamicTriangles(dynamic_triangles32);
+            if (lightmap.identifier == -1)
+                Debug.LogError($"Unable to compress the dynamic lighting data for '" + meshFilter.name + "'!");
+            else
+                dynamicLightManager.raycastedMeshRenderers.Add(lightmap);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -189,6 +189,11 @@ namespace AlpacaIT.DynamicLighting
         [HideInInspector]
         internal List<RaycastedDynamicLight> raycastedDynamicLights = new List<RaycastedDynamicLight>();
 
+        /// <summary>The compressed raycasted scene data such as dynamic triangles and the BVH.</summary>
+        [SerializeField]
+        [HideInInspector]
+        internal RaycastedScene raycastedScene;
+
         /// <summary>The memory size in bytes of the <see cref="ShaderDynamicLight"/> struct.</summary>
         private int dynamicLightStride;
         private List<DynamicLight> sceneRealtimeLights;
@@ -234,13 +239,18 @@ namespace AlpacaIT.DynamicLighting
             // delete the lightmap files from disk.
             if (version == 0)
             {
-                Utilities.DeleteLightmapData("Lightmap"); // legacy.
-                Utilities.DeleteLightmapData("Triangles"); // legacy.
-                Utilities.DeleteLightmapData("DynamicLightsBvh"); // legacy.
+                Utilities.DeleteLegacyLightmapData("Lightmap"); // legacy.
+                Utilities.DeleteLegacyLightmapData("Triangles"); // legacy.
+                Utilities.DeleteLegacyLightmapData("DynamicLightsBvh"); // legacy.
+            }
+            if (version == 2)
+            {
+                Utilities.DeleteLegacyLightmapData("DynamicLighting2-"); // legacy.
+                Utilities.DeleteLegacyLightmapData("DynamicLightingBvh2-"); // legacy.
             }
 
-            Utilities.DeleteLightmapData("DynamicLighting2-");
-            Utilities.DeleteLightmapData("DynamicLightingBvh2-");
+            raycastedScene = null;
+            Utilities.DeleteRaycastedScene();
 
             // make sure the user gets prompted to save their scene.
             UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
@@ -444,7 +454,7 @@ namespace AlpacaIT.DynamicLighting
                 }
 #endif
                 // assign the dynamic triangles data to the material property block.
-                if (Utilities.ReadLightmapData(lightmap.identifier, "DynamicLighting2", out uint[] triangles))
+                if (raycastedScene != null && raycastedScene.ReadDynamicTriangles(lightmap.identifier, out uint[] triangles))
                 {
                     lightmap.buffer = new ComputeBuffer(triangles.Length, 4);
                     lightmap.buffer.SetData(triangles);
@@ -470,14 +480,14 @@ namespace AlpacaIT.DynamicLighting
                         meshRenderer.SetPropertyBlock(materialPropertyBlock, j);
                     }
                 }
-                else Debug.LogError("Unable to read the dynamic lighting " + lightmap.identifier + " data file! Probably because you upgraded from an older version. Please raytrace your scene again.");
+                else Debug.LogError("Unable to read the dynamic lighting data file! Probably because you upgraded from an older version. Please raytrace your scene again.");
             }
 
             // the scene may not have lights which would not be an error:
             if (raycastedDynamicLights.Count > 0)
             {
                 // assign the dynamic lights bounding volume hierarchy to a global buffer.
-                if (Utilities.ReadLightmapData(0, "DynamicLightingBvh2", out uint[] bvhData))
+                if (raycastedScene && raycastedScene.dynamicLightsBvh.Read(out uint[] bvhData))
                 {
                     dynamicLightsBvhBuffer = new ComputeBuffer(bvhData.Length / 8, dynamicLightsBvhNodeStride, ComputeBufferType.Default);
                     dynamicLightsBvhBuffer.SetData(bvhData);
