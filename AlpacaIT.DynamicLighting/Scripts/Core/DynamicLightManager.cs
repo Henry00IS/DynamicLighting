@@ -22,20 +22,55 @@ namespace AlpacaIT.DynamicLighting
     [ExecuteInEditMode]
     public partial class DynamicLightManager : MonoBehaviour
     {
-        /// <summary>Called when a <see cref="DynamicLight"/> gets registered (i.e. enabled).</summary>
-        public event EventHandler<DynamicLightRegisteredEventArgs> lightRegistered;
+        /// <summary>
+        /// Called when a <see cref="DynamicLight"/> gets registered (i.e. enabled).
+        /// <para>
+        /// Warning: You must unsubscribe static events to prevent memory leaks during scene reloads
+        ///          (unless your code is wholly static). <br/>
+        ///          Consider using an [InitializeOnLoadMethod] or [RuntimeInitializeOnLoadMethod].
+        /// </para>
+        /// </summary>
+        public static event EventHandler<DynamicLightRegisteredEventArgs> lightRegistered;
 
-        /// <summary>Called when a <see cref="DynamicLight"/> gets unregistered (i.e. disabled).</summary>
-        public event EventHandler<DynamicLightUnregisteredEventArgs> lightUnregistered;
+        /// <summary>
+        /// Called when a <see cref="DynamicLight"/> gets unregistered (i.e. disabled).
+        /// <para>
+        /// Warning: You must unsubscribe static events to prevent memory leaks during scene reloads
+        ///          (unless your code is wholly static). <br/>
+        ///          Consider using an [InitializeOnLoadMethod] or [RuntimeInitializeOnLoadMethod].
+        /// </para>
+        /// </summary>
+        public static event EventHandler<DynamicLightUnregisteredEventArgs> lightUnregistered;
 
-        /// <summary>Called when computing shadows for the current scene has started.</summary>
-        public event EventHandler<EventArgs> traceStarted;
+        /// <summary>
+        /// Called when computing shadows for the current scene has started.
+        /// <para>
+        /// Warning: You must unsubscribe static events to prevent memory leaks during scene reloads
+        ///          (unless your code is wholly static). <br/>
+        ///          Consider using an [InitializeOnLoadMethod] or [RuntimeInitializeOnLoadMethod].
+        /// </para>
+        /// </summary>
+        public static event EventHandler<DynamicLightingTraceStartedEventArgs> traceStarted;
 
-        /// <summary>Called when computing shadows for the current scene has been cancelled.</summary>
-        public event EventHandler<EventArgs> traceCancelled;
+        /// <summary>
+        /// Called when computing shadows for the current scene has been cancelled.
+        /// <para>
+        /// Warning: You must unsubscribe static events to prevent memory leaks during scene reloads
+        ///          (unless your code is wholly static). <br/>
+        ///          Consider using an [InitializeOnLoadMethod] or [RuntimeInitializeOnLoadMethod].
+        /// </para>
+        /// </summary>
+        public static event EventHandler<DynamicLightingTraceCancelledEventArgs> traceCancelled;
 
-        /// <summary>Called when computing shadows for the current scene has completed.</summary>
-        public event EventHandler<EventArgs> traceCompleted;
+        /// <summary>
+        /// Called when computing shadows for the current scene has completed.
+        /// <para>
+        /// Warning: You must unsubscribe static events to prevent memory leaks during scene reloads
+        ///          (unless your code is wholly static). <br/>
+        ///          Consider using an [InitializeOnLoadMethod] or [RuntimeInitializeOnLoadMethod].
+        /// </para>
+        /// </summary>
+        public static event EventHandler<DynamicLightingTraceCompletedEventArgs> traceCompleted;
 
         /// <summary>The light channel number used by realtime lights without baked shadows.</summary>
         public const int realtimeLightChannel = 32;
@@ -545,7 +580,7 @@ namespace AlpacaIT.DynamicLighting
 
             SetRaycastedDynamicLightAvailable(light, true);
 
-            lightRegistered?.Invoke(this, new DynamicLightRegisteredEventArgs(light));
+            lightRegistered?.Invoke(this, new DynamicLightRegisteredEventArgs(this, light));
         }
 
         internal void UnregisterDynamicLight(DynamicLight light)
@@ -556,7 +591,7 @@ namespace AlpacaIT.DynamicLighting
                 activeRealtimeLights.Remove(light);
                 SetRaycastedDynamicLightAvailable(light, false);
 
-                lightUnregistered?.Invoke(this, new DynamicLightUnregisteredEventArgs(light));
+                lightUnregistered?.Invoke(this, new DynamicLightUnregisteredEventArgs(this, light));
             }
         }
 
@@ -1149,14 +1184,14 @@ namespace AlpacaIT.DynamicLighting
             tracer.maximumLightmapSize = maximumLightmapSize;
 
             bool cancelled = false;
-            tracer.cancelled += (s, e) => { cancelled = true; traceCancelled?.Invoke(this, null); };
+            tracer.cancelled += (s, e) => { cancelled = true; traceCancelled?.Invoke(this, new DynamicLightingTraceCancelledEventArgs(this)); };
 
-            traceStarted?.Invoke(this, null);
+            traceStarted?.Invoke(this, new DynamicLightingTraceStartedEventArgs(this));
 
             tracer.StartRaytracing();
 
             if (!cancelled)
-                traceCompleted?.Invoke(this, null);
+                traceCompleted?.Invoke(this, new DynamicLightingTraceCompletedEventArgs(this));
         }
     }
 }
