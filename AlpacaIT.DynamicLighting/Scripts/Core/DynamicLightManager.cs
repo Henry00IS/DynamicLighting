@@ -462,7 +462,7 @@ namespace AlpacaIT.DynamicLighting
                     // assign the material property block to each submesh.
                     var hasPropertyBlock = meshRenderer.HasPropertyBlock(); // unity api oversight: cannot differentiate between submesh blocks and normal ones.
                     meshRenderer.GetSharedMaterials(materialsScratchMemory);
-                    lightmap.activeSubMeshCount = materialsScratchMemory.Count;
+                    lightmap.activeSubMeshCount = Math.Min(mesh.subMeshCount - meshRenderer.subMeshStartIndex, materialsScratchMemory.Count);
                     for (int j = 0; j < lightmap.activeSubMeshCount; j++)
                     {
                         var materialPropertyBlock = new MaterialPropertyBlock();
