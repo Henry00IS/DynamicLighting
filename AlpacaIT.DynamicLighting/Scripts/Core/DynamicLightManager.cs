@@ -668,12 +668,21 @@ namespace AlpacaIT.DynamicLighting
             // editor scene view support.
             if (!editorIsPlaying)
             {
-                camera = Utilities.GetSceneViewCamera();
+                // try using the scene view or current camera.
+                var sceneViewCamera = Utilities.GetSceneViewCamera();
+
+                // if the scene view camera does not exist then fallback to the main camera.
+                if (sceneViewCamera != null)
+                    camera = sceneViewCamera;
             }
             else
             {
                 Debug.Assert(camera != null, "Could not find a camera that is tagged \"MainCamera\" for lighting calculations.");
             }
+
+            // if no camera exists in the editor then we stop processing.
+            if (camera == null)
+                return;
 
             // respect the scene view lighting toggle.
             {
