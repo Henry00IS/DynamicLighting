@@ -14,12 +14,35 @@ namespace AlpacaIT.DynamicLighting.Editor
     {
         public override void OnInspectorGUI()
         {
+            var iterator = serializedObject.GetIterator();
+
+            // during play we hide the template related code.
+            var applicationIsPlaying = Application.isPlaying;
+            if (applicationIsPlaying)
+            {
+                if (iterator.NextVisible(enterChildren: true))
+                {
+                    do
+                    {
+                        if (iterator.propertyPath == "m_Script")
+                            continue;
+
+                        if (iterator.propertyPath == nameof(DynamicLightManager.settingsTemplate))
+                            continue;
+
+                        EditorGUILayout.PropertyField(iterator, includeChildren: true);
+                    } while (iterator.NextVisible(enterChildren: false));
+                }
+
+                serializedObject.ApplyModifiedProperties();
+                return;
+            }
+
             var manager = (DynamicLightManager)serializedObject.targetObject;
             bool hasSettingsTemplate = manager.settingsTemplate;
 
             EditorGUI.BeginChangeCheck();
 
-            var iterator = serializedObject.GetIterator();
             if (iterator.NextVisible(enterChildren: true))
             {
                 do

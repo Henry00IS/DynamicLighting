@@ -57,6 +57,8 @@ namespace AlpacaIT.DynamicLighting
             raytraceLayers = ~0;
             realtimeShadowLayers = ~(4 | 16 | 32);
             pixelDensityPerSquareMeter = 128;
+
+            TryApply();
         }
 
         /// <summary>
@@ -100,7 +102,17 @@ namespace AlpacaIT.DynamicLighting
         private void OnValidate()
         {
             // when the current settings template is modified then update the scene accordingly.
-            if (!Application.isPlaying && DynamicLightManager.hasInstance)
+            if (!Application.isPlaying)
+                TryApply();
+        }
+
+        /// <summary>
+        /// When the current settings template is modified then the scene is updated accordingly.
+        /// </summary>
+        private void TryApply()
+        {
+            // when the current settings template is modified then update the scene accordingly.
+            if (DynamicLightManager.hasInstance)
             {
                 var dynamicLightManager = DynamicLightManager.Instance;
                 if (dynamicLightManager.settingsTemplate == this)
