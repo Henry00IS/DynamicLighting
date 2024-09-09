@@ -114,6 +114,16 @@ namespace AlpacaIT.DynamicLighting
         internal bool activateBounceLightingInCurrentScene;
 
         /// <summary>
+        /// The settings of the dynamic light manager can be shared across several scenes by
+        /// assigning a template here. The values are copied from the template to this instance
+        /// during initialization (typically when the scene is loaded). In the editor, changes to
+        /// the template are automatically applied to this instance.
+        /// </summary>
+        [Tooltip("The settings of the dynamic light manager can be shared across several scenes by assigning a template here. The values are copied from the template to this instance during initialization (typically when the scene is loaded). In the editor, changes to the template are automatically applied to this instance.")]
+        [FormerlySerializedAs("lightingSettings")]
+        public DynamicLightingSettings settingsTemplate;
+
+        /// <summary>
         /// The ambient lighting color is added to the whole scene, thus making it look like there
         /// is always some scattered light, even when there is no direct light source. This prevents
         /// absolute black, dark patches from appearing in the scene that are impossible to see
@@ -379,6 +389,9 @@ namespace AlpacaIT.DynamicLighting
             if (isInitialized) return;
             isInitialized = true;
 
+            // apply the lighting settings template if set.
+            if (settingsTemplate)
+                settingsTemplate.Apply();
 #if UNITY_EDITOR
             // check whether we are currently in play mode.
             editorIsPlaying = Application.isPlaying;
