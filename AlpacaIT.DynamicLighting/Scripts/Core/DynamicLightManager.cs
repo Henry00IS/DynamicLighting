@@ -464,7 +464,7 @@ namespace AlpacaIT.DynamicLighting
                     // assign the material property block to each submesh.
                     var hasPropertyBlock = meshRenderer.HasPropertyBlock(); // unity api oversight: cannot differentiate between submesh blocks and normal ones.
                     meshRenderer.GetSharedMaterials(materialsScratchMemory);
-                    lightmap.activeSubMeshCount = materialsScratchMemory.Count;
+                    lightmap.activeSubMeshCount = Math.Min(mesh.subMeshCount - meshRenderer.subMeshStartIndex, materialsScratchMemory.Count);
                     for (int j = 0; j < lightmap.activeSubMeshCount; j++)
                     {
                         var materialPropertyBlock = new MaterialPropertyBlock();
@@ -670,12 +670,21 @@ namespace AlpacaIT.DynamicLighting
             // editor scene view support.
             if (!editorIsPlaying)
             {
-                camera = Utilities.GetSceneViewCamera();
+                // try using the scene view or current camera.
+                var sceneViewCamera = Utilities.GetSceneViewCamera();
+
+                // if the scene view camera does not exist then fallback to the main camera.
+                if (sceneViewCamera != null)
+                    camera = sceneViewCamera;
             }
             else
             {
                 Debug.Assert(camera != null, "Could not find a camera that is tagged \"MainCamera\" for lighting calculations.");
             }
+
+            // if no camera exists in the editor then we stop processing.
+            if (camera == null)
+                return;
 
             // respect the scene view lighting toggle.
             {
