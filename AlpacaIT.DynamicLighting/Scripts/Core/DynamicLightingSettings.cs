@@ -106,6 +106,8 @@ namespace AlpacaIT.DynamicLighting
                 TryApply();
         }
 
+#endif
+
         /// <summary>
         /// When the current settings template is modified then the scene is updated accordingly.
         /// </summary>
@@ -119,7 +121,5 @@ namespace AlpacaIT.DynamicLighting
                     Apply();
             }
         }
-
-#endif
     }
 }
