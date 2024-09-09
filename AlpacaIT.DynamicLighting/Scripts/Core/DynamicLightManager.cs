@@ -114,13 +114,24 @@ namespace AlpacaIT.DynamicLighting
         internal bool activateBounceLightingInCurrentScene;
 
         /// <summary>
+        /// The settings of the dynamic light manager can be shared across several scenes by
+        /// assigning a template here. The values are copied from the template to this instance
+        /// during initialization (typically when the scene is loaded). In the editor, changes to
+        /// the template are automatically applied to this instance.
+        /// </summary>
+        [Tooltip("The settings of the dynamic light manager can be shared across several scenes by assigning a template here. The values are copied from the template to this instance during initialization (typically when the scene is loaded). In the editor, changes to the template are automatically applied to this instance.")]
+        [FormerlySerializedAs("lightingSettings")]
+        public DynamicLightingSettings settingsTemplate;
+
+        /// <summary>
         /// The ambient lighting color is added to the whole scene, thus making it look like there
         /// is always some scattered light, even when there is no direct light source. This prevents
         /// absolute black, dark patches from appearing in the scene that are impossible to see
         /// through (unless this is desired). This color should be very dark to achieve the best
         /// effect. You can make use of the alpha color to finetune the brightness.
         /// </summary>
-        public Color ambientColor => GetSettingsOrDefaults().ambientColor;
+        [Tooltip("The ambient lighting color is added to the whole scene, thus making it look like there is always some scattered light, even when there is no direct light source. This prevents absolute black, dark patches from appearing in the scene that are impossible to see through (unless this is desired). This color should be very dark to achieve the best effect. You can make use of the alpha color to finetune the brightness.")]
+        public Color ambientColor = new Color(1.0f, 1.0f, 1.0f, 0.1254902f);
 
         /// <summary>
         /// The number of realtime dynamic lights that can be active at the same time. Realtime
@@ -131,7 +142,9 @@ namespace AlpacaIT.DynamicLighting
         /// older graphics hardware when there are many realtime lights in the scene. Budgeting does
         /// not begin until the number of active realtime dynamic lights actually exceeds this number.
         /// </summary>
-        public int realtimeLightBudget => GetSettingsOrDefaults().realtimeLightBudget;
+        [Tooltip("The number of realtime dynamic lights that can be active at the same time. Realtime lights have no shadows and can move around the scene. They are useful for glowing particles, car headlights, etc. If this budget is exceeded, lights that are out of view or furthest away from the camera will automatically fade out in a way that the player will hopefully not notice. A conservative budget as per the game requirements will help older graphics hardware when there are many realtime lights in the scene. Budgeting does not begin until the number of active realtime dynamic lights actually exceeds this number.")]
+        [Min(0)]
+        public int realtimeLightBudget = 32;
 
         /// <summary>
         /// The layer mask used while raytracing to determine which hits to ignore. There are many
@@ -146,14 +159,16 @@ namespace AlpacaIT.DynamicLighting
         /// that nothing else can touch or interact with. These were just two example names, you can
         /// freely choose the names of the physics layers.
         /// </summary>
-        public LayerMask raytraceLayers => GetSettingsOrDefaults().raytraceLayers;
+        [Tooltip("The layer mask used while raytracing to determine which hits to ignore. There are many scenarios where you have objects that should collide with everything in the scene, but not cause shadows. You should consider creating a physics layer (click on 'Layer: Default' at the top of the Game Object Inspector -> Add Layer...) and naming it 'Collision'. You can then remove this layer from the list so it will be ignored by the raytracer. The rest of the scene will still have regular collisions with it. You can also do the opposite by creating a physics layer called 'Lighting' and disabling regular collisions with other colliders (in Edit -> Project Settings -> Physics), but leaving the layer checked in this list. Now you have a special shadow casting collision that nothing else can touch or interact with. These were just two example names, you can freely choose the names of the physics layers.")]
+        public LayerMask raytraceLayers = ~0;
 
         /// <summary>
         /// The layer mask used for real-time shadows to discern which objects are shadow casters.
         /// In some cases, specific objects may require raytracing for baked lighting and visual
         /// appeal, yet they shouldn't contribute to real-time shadow casting (e.g. thin objects).
         /// </summary>
-        public LayerMask realtimeShadowLayers => GetSettingsOrDefaults().realtimeShadowLayers;
+        [Tooltip("The layer mask used for real-time shadows to discern which objects are shadow casters. In some cases, specific objects may require raytracing for baked lighting and visual appeal, yet they shouldn't contribute to real-time shadow casting (e.g. thin objects).")]
+        public LayerMask realtimeShadowLayers = ~(4 | 16 | 32);
 
         /// <summary>
         /// The desired pixel density (e.g. 128 for 128x128 per meter squared). This lighting system
@@ -169,10 +184,9 @@ namespace AlpacaIT.DynamicLighting
         /// exactly the amount needed to cover all polygons with the same amount of shadow pixels.
         /// Higher details require more VRAM (exponentially)!
         /// </summary>
-        public int pixelDensityPerSquareMeter => GetSettingsOrDefaults().pixelDensityPerSquareMeter;
-
-        /// <summary>The <see cref="DynamicLightingSettings"/> asset used by this dynamic light manager.</summary>
-        public DynamicLightingSettings lightingSettings;
+        [Tooltip("The desired pixel density (e.g. 128 for 128x128 per meter squared). This lighting system does not require \"power of two\" textures. You may have heard this term before because graphics cards can render textures in such sizes much faster. This system relies on binary data on the GPU using compute buffers and it's quite different. Without going into too much detail, this simply means that we can choose any texture size. An intelligent algorithm calculates the surface area of the meshes and determines exactly how many pixels are needed to cover them evenly with shadow pixels, regardless of the ray tracing resolution (unless it exceeds that maximum ray tracing resolution, of course, then those shadow pixels will start to increase in size). Here you can set how many pixels should cover a square meter. It can result in a 47x47 texture or 328x328, exactly the amount needed to cover all polygons with the same amount of shadow pixels. Higher details require more VRAM (exponentially)!")]
+        [Min(1)]
+        public int pixelDensityPerSquareMeter = 128;
 
         /// <summary>The collection of raycasted mesh renderers in the scene.</summary>
         [SerializeField]
@@ -269,12 +283,6 @@ namespace AlpacaIT.DynamicLighting
         private void OnDisable()
         {
             Cleanup();
-        }
-
-        /// <summary>Gets the lighting settings asset currently in use by the dynamic light manager.</summary>
-        public DynamicLightingSettings GetSettingsOrDefaults()
-        {
-            return lightingSettings != null ? lightingSettings : DynamicLightingSettings.defaultSettings;
         }
 
         /// <summary>Immediately reloads the lighting.</summary>
@@ -381,6 +389,9 @@ namespace AlpacaIT.DynamicLighting
             if (isInitialized) return;
             isInitialized = true;
 
+            // apply the lighting settings template if set.
+            if (settingsTemplate)
+                settingsTemplate.Apply();
 #if UNITY_EDITOR
             // check whether we are currently in play mode.
             editorIsPlaying = Application.isPlaying;
