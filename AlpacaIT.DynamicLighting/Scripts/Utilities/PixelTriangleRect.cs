@@ -23,6 +23,13 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>The maximum y-position (guaranteed to be within 0 - <see cref="textureSizeMin1"/> and larger than <see cref="yMin"/>.</summary>
         public readonly int yMax;
 
+        // todo: fact check this comment.
+        /// <summary>The width of the rectangle (guaranteed to be at least 1).</summary>
+        public readonly int width;
+        // todo: fact check this comment.
+        /// <summary>The height of the rectangle (guaranteed to be at least 1).</summary>
+        public readonly int height;
+
         /// <summary>Creates a new <see cref="PixelTriangleRect"/>.</summary>
         /// <param name="textureSize">The total texture dimension (e.g. 256 for 256x256).</param>
         /// <param name="triangleRect">The triangle rectangle in UV coordinates.</param>
@@ -88,14 +95,10 @@ namespace AlpacaIT.DynamicLighting
                     yMax++;
                 }
             }
+
+            // pre-compute the width and height fields.
+            width = xMax - xMin;
+            height = yMax - yMin;
         }
-
-        // todo: fact check this comment.
-        /// <summary>Gets the width of the rectangle (guaranteed to be at least 1).</summary>
-        public readonly int width => xMax - xMin;
-
-        // todo: fact check this comment.
-        /// <summary>Gets the height of the rectangle (guaranteed to be at least 1).</summary>
-        public readonly int height => yMax - yMin;
     }
 }

@@ -118,6 +118,16 @@ namespace AlpacaIT.DynamicLighting
             lhs->z -= rhs->z;
         }
 
+        /// <summary>Applies the result of a componentwise subtraction operation on two Vector2 vectors.</summary>
+        /// <param name="lhs">Left hand side Vector2 to use to compute componentwise subtraction.</param>
+        /// <param name="rhs">Right hand side Vector2 to use to compute componentwise subtraction.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Subtract(Vector2* lhs, Vector2* rhs)
+        {
+            lhs->x -= rhs->x;
+            lhs->y -= rhs->y;
+        }
+
         /// <summary>Returns the dot product of two float3 vectors.</summary>
         /// <param name="x">The first vector.</param>
         /// <param name="y">The second vector.</param>

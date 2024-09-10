@@ -131,7 +131,11 @@ namespace AlpacaIT.DynamicLighting
                     float yy = y / inMeshTextureSize;
 
                     // converts the uv-space coordinate to world space.
-                    outWorldPositionsPtr[i] = MathEx.UvTo3dFast(inTriangleSurfaceArea, new Vector2(xx + inHalf, yy + inHalf), inVertex1, inVertex2, inVertex3, inUv1, inUv2, inUv3);
+                    // [unsafe] new Vector2(xx + inHalf, yy + inHalf)
+                    Vector2 uv; _ = &uv;
+                    uv.x = xx + inHalf;
+                    uv.y = yy + inHalf;
+                    outWorldPositionsPtr[i] = MathEx.UvTo3dFast(inTriangleSurfaceArea, uv, inVertex1, inVertex2, inVertex3, inUv1, inUv2, inUv3);
                 }
             }
 

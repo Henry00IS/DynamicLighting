@@ -1,5 +1,4 @@
 ﻿using System.Runtime.CompilerServices;
-using Unity.Mathematics;
 using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
@@ -183,11 +182,16 @@ namespace AlpacaIT.DynamicLighting
         /// <param name="b">The second vertex position of the triangle.</param>
         /// <param name="c">The third vertex position of the triangle.</param>
         /// <returns>The signed triangle area.</returns>
-        public static float SignedTriangleArea(Vector2 a, Vector2 b, Vector2 c)
+        public static unsafe float SignedTriangleArea(Vector2 a, Vector2 b, Vector2 c)
         {
-            var v1 = a - c;
-            var v2 = b - c;
-            return (v1.x * v2.y - v1.y * v2.x) * 0.5f;
+            // [unsafe] var v1 = a - c;
+            //          var v2 = b - c;
+            var cPtr = &c;
+            UMath.Subtract(&a, cPtr);
+            UMath.Subtract(&b, cPtr);
+
+            // [unsafe] (v1.x * v2.y - v1.y * v2.x) * 0.5f
+            return (a.x * b.y - a.y * b.x) * 0.5f;
         }
 
         /// <summary>
@@ -230,16 +234,25 @@ namespace AlpacaIT.DynamicLighting
         /// The point converted to vertex-space or else <see cref="Vector3.zero"/> when outside of
         /// the triangle's uv-coordinates.
         /// </returns>
-        public static Vector3 UvTo3dFast(float triangleSurfaceArea, Vector2 uv, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        public static unsafe Vector3 UvTo3dFast(float triangleSurfaceArea, Vector2 uv, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // calculate barycentric coordinates of u1, u2 and u3.
             // if anyone is negative, point is outside the triangle: skip it.
-            var a1 = SignedTriangleArea(t2, t3, uv) / triangleSurfaceArea; if (a1 < 0f) return Vector3.zero;
-            var a2 = SignedTriangleArea(t3, t1, uv) / triangleSurfaceArea; if (a2 < 0f) return Vector3.zero;
-            var a3 = SignedTriangleArea(t1, t2, uv) / triangleSurfaceArea; if (a3 < 0f) return Vector3.zero;
+            var a1 = SignedTriangleArea(t2, t3, uv) / triangleSurfaceArea; if (a1 < 0f) { v1.x = 0; v1.y = 0; v1.z = 0; return v1; } // prevent call to Vector3.zero
+            var a2 = SignedTriangleArea(t3, t1, uv) / triangleSurfaceArea; if (a2 < 0f) { v1.x = 0; v1.y = 0; v1.z = 0; return v1; }
+            var a3 = SignedTriangleArea(t1, t2, uv) / triangleSurfaceArea; if (a3 < 0f) { v1.x = 0; v1.y = 0; v1.z = 0; return v1; }
 
             // point inside the triangle - find mesh position by interpolation.
-            return a1 * v1 + a2 * v2 + a3 * v3;
+            // [unsafe] a1 * v1 + a2 * v2 + a3 * v3
+            var v1Ptr = &v1;
+            var v2Ptr = &v2;
+            var v3Ptr = &v3;
+            UMath.Scale(v1Ptr, a1);
+            UMath.Scale(v2Ptr, a2);
+            UMath.Scale(v3Ptr, a3);
+            UMath.Add(v1Ptr, v2Ptr);
+            UMath.Add(v1Ptr, v3Ptr);
+            return v1;
         }
 
         /// <summary>
