@@ -14,6 +14,9 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>The vertices of the mesh in world-space coordinates.</summary>
         public readonly Vector3[] worldVertices;
 
+        /// <summary>The world-space bounding box of the mesh.</summary>
+        public readonly Bounds worldBounds;
+
         /// <summary>The surface area of the mesh in meters squared.</summary>
         public readonly float surfaceArea;
 
@@ -53,6 +56,9 @@ namespace AlpacaIT.DynamicLighting
                 // add the surface area of every triangle of the mesh.
                 surfaceArea += MathEx.CalculateSurfaceAreaOfTriangle(worldVertices[meshTriangles[i]], worldVertices[meshTriangles[i + 1]], worldVertices[meshTriangles[i + 2]]);
             }
+
+            // calculate the bounding box of the mesh in world space.
+            worldBounds = GeometryUtility.CalculateBounds(meshVertices, localToWorldMatrix);
 
             // check whether the mesh has lightmap coordinates.
             hasLightmapCoordinates = meshUv1.Length > 0;

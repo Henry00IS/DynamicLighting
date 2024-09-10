@@ -296,7 +296,7 @@ namespace AlpacaIT.DynamicLighting
                 ulong vramLightmap = (ulong)(lightmapSize * lightmapSize * 4); // uint32
                 vramLegacyTotal += vramLightmap;
 
-                //log.AppendLine(meshFilter.name + " surface area: " + meshBuilder.surfaceArea.ToString("0.00") + "m² lightmap size: " + lightmapSize + "x" + lightmapSize + " (Legacy VRAM: " + MathEx.BytesToUnitString(vramLightmap) + ")");
+                log.AppendLine(meshFilter.name + " surface area: " + meshBuilder.surfaceArea.ToString("0.00") + "m² lightmap size: " + lightmapSize + "x" + lightmapSize);
             }
 
             tracingTime.Begin();
@@ -347,6 +347,11 @@ namespace AlpacaIT.DynamicLighting
 
                     // the light must have bounce lighting enabled.
                     if (pointLight.lightIllumination != DynamicLightIlluminationMode.SingleBounce)
+                        continue;
+
+                    // cheap test using bounding boxes whether the light intersects the mesh.
+                    var pointLightBounds = pointLightCache.bounds;
+                    if (!pointLightBounds.Intersects(meshBuilder.worldBounds))
                         continue;
 
                     // create a bounce lighting texture.
