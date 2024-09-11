@@ -1006,6 +1006,15 @@ namespace AlpacaIT.DynamicLighting
             maxX = Mathf.Clamp(maxX, 0, lightmapSize - 1);
             maxY = Mathf.Clamp(maxY, 0, lightmapSize - 1);
 
+            // calculate the shadow bits size and intentionally add 2px padding, as the shader with
+            // bilinear filtering will otherwise read outside the bounds on the UV borders, causing
+            // visual artifacts to appear as lines of shadow.
+            var shadowBitsWidth = 5 + maxX - minX;
+            var shadowBitsHeight = 5 + maxY - minY;
+
+            // prepare scratch memory to hold a copy of the shadow bits used during dilation.
+            var shadowBitsScratchMemory = new BitArray2(shadowBitsWidth, shadowBitsHeight);
+
             // prepare to iterate over lights associated with the current triangle.
             var triangleRaycastedLightIndices = dynamic_triangles.GetRaycastedLightIndices(triangle_index);
             var triangleRaycastedLightIndicesCount = triangleRaycastedLightIndices.Count;
@@ -1019,7 +1028,7 @@ namespace AlpacaIT.DynamicLighting
                 // intentionally add 2px padding, as the shader with bilinear filtering will
                 // otherwise read outside the bounds on the UV borders, causing visual artifacts to
                 // appear as lines of shadow.
-                var shadowBits = new BitArray2(5 + maxX - minX, 5 + maxY - minY);
+                var shadowBits = new BitArray2(shadowBitsWidth, shadowBitsHeight);
 
                 var yy = 2;
                 for (int y = minY; y <= maxY; y++)
@@ -1042,37 +1051,72 @@ namespace AlpacaIT.DynamicLighting
                     yy++;
                 }
 
-                // todo: optimize this (two calls are necessary).
-                DilateShadowBits(shadowBits);
-                DilateShadowBits(shadowBits);
+                // dilate the border pixels to fill the 2px padding.
+                DilateShadowBits(shadowBits, shadowBitsScratchMemory);
 
                 dynamic_triangles.SetShadowOcclusionBits(triangle_index, i, shadowBits);
             }
         }
 
-        private void DilateShadowBits(BitArray2 shadowBits)
+        private void DilateShadowBits(BitArray2 shadowBits, BitArray2 copy)
         {
-            BitArray2 copy = new BitArray2(shadowBits);
+            var width = shadowBits.Width;
+            var height = shadowBits.Height;
 
-            for (int y = 0; y < shadowBits.Height; y++)
+            shadowBits.CopyTo(copy);
+
+            if (height >= 2)
+                DilateShadowBitsRow(shadowBits, copy, width, 1);
+            if (height >= 4)
+                DilateShadowBitsRow(shadowBits, copy, width, height - 2);
+            if (width >= 2)
+                DilateShadowBitsColumn(shadowBits, copy, height, 1);
+            if (width >= 4)
+                DilateShadowBitsColumn(shadowBits, copy, height, width - 2);
+
+            shadowBits.CopyTo(copy);
+
+            if (height >= 1)
+                DilateShadowBitsRow(shadowBits, copy, width, 0);
+            if (height >= 3)
+                DilateShadowBitsRow(shadowBits, copy, width, height - 1);
+            if (width >= 1)
+                DilateShadowBitsColumn(shadowBits, copy, height, 0);
+            if (width >= 3)
+                DilateShadowBitsColumn(shadowBits, copy, height, width - 1);
+        }
+
+        private void DilateShadowBitsRow(BitArray2 shadowBits, BitArray2 copy, int width, int y)
+        {
+            for (int x = 0; x < width; x++)
             {
-                for (int x = 0; x < shadowBits.Width; x++)
-                {
-                    // todo: optimize this (very wasteful iterations).
-                    if (x >= 2 && y >= 2 && x < shadowBits.Width - 2 && y < shadowBits.Height - 2)
-                        continue;
+                bool c = copy[x, y];
+                c = c ? c : TryGetShadowBit(copy, x - 1, y - 1);
+                c = c ? c : TryGetShadowBit(copy, x, y - 1);
+                c = c ? c : TryGetShadowBit(copy, x + 1, y - 1);
+                c = c ? c : TryGetShadowBit(copy, x - 1, y);
+                c = c ? c : TryGetShadowBit(copy, x + 1, y);
+                c = c ? c : TryGetShadowBit(copy, x - 1, y + 1);
+                c = c ? c : TryGetShadowBit(copy, x, y + 1);
+                c = c ? c : TryGetShadowBit(copy, x + 1, y + 1);
+                shadowBits[x, y] = c;
+            }
+        }
 
-                    bool c = copy[x, y];
-                    c = c ? c : TryGetShadowBit(copy, x - 1, y - 1);
-                    c = c ? c : TryGetShadowBit(copy, x, y - 1);
-                    c = c ? c : TryGetShadowBit(copy, x + 1, y - 1);
-                    c = c ? c : TryGetShadowBit(copy, x - 1, y);
-                    c = c ? c : TryGetShadowBit(copy, x + 1, y);
-                    c = c ? c : TryGetShadowBit(copy, x - 1, y + 1);
-                    c = c ? c : TryGetShadowBit(copy, x, y + 1);
-                    c = c ? c : TryGetShadowBit(copy, x + 1, y + 1);
-                    shadowBits[x, y] = c;
-                }
+        private void DilateShadowBitsColumn(BitArray2 shadowBits, BitArray2 copy, int height, int x)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                bool c = copy[x, y];
+                c = c ? c : TryGetShadowBit(copy, x - 1, y - 1);
+                c = c ? c : TryGetShadowBit(copy, x, y - 1);
+                c = c ? c : TryGetShadowBit(copy, x + 1, y - 1);
+                c = c ? c : TryGetShadowBit(copy, x - 1, y);
+                c = c ? c : TryGetShadowBit(copy, x + 1, y);
+                c = c ? c : TryGetShadowBit(copy, x - 1, y + 1);
+                c = c ? c : TryGetShadowBit(copy, x, y + 1);
+                c = c ? c : TryGetShadowBit(copy, x + 1, y + 1);
+                shadowBits[x, y] = c;
             }
         }
 

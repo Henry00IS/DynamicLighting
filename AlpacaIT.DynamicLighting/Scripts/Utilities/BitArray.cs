@@ -910,5 +910,22 @@ namespace AlpacaIT.DynamicLighting
         }
 
         #endregion ICloneable Implementation
+
+        /// <summary>
+        /// Copies all the bits of the current <see cref="BitArray"/> to the specified <see
+        /// cref="BitArray"/>. The <paramref name="destination"/> must have the same amount of bits.
+        /// </summary>
+        /// <param name="destination">The destination <see cref="BitArray"/> to write to.</param>
+        /// <exception cref="ArgumentNullException">Value is null.</exception>
+        /// <exception cref="ArgumentException">
+        /// The value and the current <see cref="BitArray"/> do not have the same number of bits.
+        /// </exception>
+        public void CopyTo(BitArray destination)
+        {
+            if (destination == null) throw new ArgumentNullException(nameof(destination));
+            if (_Size != destination._Size) throw new ArgumentException("The destination and the current " + nameof(BitArray) + " do not have the same number of bits.");
+
+            _Data.CopyTo(destination._Data, 0);
+        }
     }
 }
