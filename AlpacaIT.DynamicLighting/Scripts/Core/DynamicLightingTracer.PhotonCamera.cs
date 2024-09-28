@@ -39,7 +39,7 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Temporary render texture used by the photon camera to render the scene.</summary>
         private RenderTexture photonCameraRenderTexture;
 
-        private const int photonCameraResolution = 512; // anything above 1024 will fail.
+        private const int photonCameraResolution = 1024;
         private int photonCameraCubemapIndex;
 
         /// <summary>Initialization of the DynamicLightingTracer.PhotonCamera partial class.</summary>
@@ -112,7 +112,8 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Renders the photon camera for a light source.</summary>
         /// <param name="lightPosition">The world position of the light.</param>
         /// <param name="lightRadius">The radius of the light.</param>
-        private PhotonCube PhotonCameraRender(Vector3 lightPosition, float lightRadius)
+        /// <param name="distanceOnly">Whether to store the distance only to reduce RAM usage.</param>
+        private PhotonCube PhotonCameraRender(Vector3 lightPosition, float lightRadius, bool distanceOnly)
         {
             // get a temporary render texture.
             photonCameraRenderTexture = RenderTexture.GetTemporary(photonCameraRenderTextureDescriptor);
@@ -150,7 +151,7 @@ namespace AlpacaIT.DynamicLighting
             RenderTexture.ReleaseTemporary(photonCameraRenderTexture);
 
             // create the photon cube.
-            return new PhotonCube(photonCameraCubemaps);
+            return new PhotonCube(photonCameraCubemaps, distanceOnly);
         }
     }
 }

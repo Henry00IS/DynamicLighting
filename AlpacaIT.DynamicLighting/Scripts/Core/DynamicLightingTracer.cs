@@ -189,6 +189,7 @@ namespace AlpacaIT.DynamicLighting
                     pointLightsCache[i] = new CachedLightData(light);
 
                     bool requiresPhotonCube = false;
+                    bool requiresDistanceOnly = true;
 
                     // computing transparency in raycasted shadows requires a photon cube.
                     if (light.lightTransparency == DynamicLightTransparencyMode.Enabled)
@@ -199,6 +200,7 @@ namespace AlpacaIT.DynamicLighting
                     {
                         // bounce lighting requires a photon cube.
                         requiresPhotonCube = true;
+                        requiresDistanceOnly = false;
 
                         // remember whether bounce lighting is used in the scene, this allows us to
                         // skip steps and checks later on.
@@ -210,7 +212,7 @@ namespace AlpacaIT.DynamicLighting
 
                     // render and create photon cubes for all lights that require it.
                     if (requiresPhotonCube)
-                        pointLightsCache[i].photonCube = PhotonCameraRender(pointLightsCache[i].position, light.lightRadius);
+                        pointLightsCache[i].photonCube = PhotonCameraRender(pointLightsCache[i].position, light.lightRadius, requiresDistanceOnly);
                 }
 
                 // iterate over all compatible mesh filters and build a temporary scene with them.

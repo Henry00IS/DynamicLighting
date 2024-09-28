@@ -63,20 +63,26 @@ namespace AlpacaIT.DynamicLighting
                 return result;
             }
 
-            public PhotonCubeFace(Color[] colors, int size)
+            public PhotonCubeFace(Color[] colors, int size, bool distanceOnly)
             {
                 this.size = size;
 
                 distances = new float[colors.Length];
-                normals = new float3[colors.Length];
-                diffuse = new float3[colors.Length];
+                if (!distanceOnly)
+                {
+                    normals = new float3[colors.Length];
+                    diffuse = new float3[colors.Length];
+                }
 
                 // unpack the shader data.
                 for (int i = 0; i < colors.Length; i++)
                 {
                     distances[i] = colors[i].r;
-                    normals[i] = unpack_normalized_float4_from_float(colors[i].g).xyz;
-                    diffuse[i] = unpack_saturated_float4_from_float(colors[i].b).xyz;
+                    if (!distanceOnly)
+                    {
+                        normals[i] = unpack_normalized_float4_from_float(colors[i].g).xyz;
+                        diffuse[i] = unpack_saturated_float4_from_float(colors[i].b).xyz;
+                    }
                 }
             }
 
@@ -132,7 +138,8 @@ namespace AlpacaIT.DynamicLighting
         /// The cubemap <see cref="RenderTexture"/> with a <see cref="RenderTexture.volumeDepth"/>
         /// of 6 faces.
         /// </param>
-        public PhotonCube(RenderTexture cubemapRenderTexture)
+        /// <param name="distanceOnly">Whether to store the distance only to reduce RAM usage.</param>
+        public PhotonCube(RenderTexture cubemapRenderTexture, bool distanceOnly)
         {
             // validate the arguments to prevent any errors.
             if (cubemapRenderTexture == null) throw new System.ArgumentNullException(nameof(cubemapRenderTexture));
@@ -160,7 +167,7 @@ namespace AlpacaIT.DynamicLighting
                 RenderTexture.active = rt;
                 readableTexture.ReadPixels(new Rect(0, 0, size, size), 0, 0);
                 readableTexture.Apply();
-                faces[face] = new PhotonCubeFace(readableTexture.GetPixels(), size);
+                faces[face] = new PhotonCubeFace(readableTexture.GetPixels(), size, distanceOnly);
                 RenderTexture.active = null;
             }
             Object.DestroyImmediate(readableTexture);
