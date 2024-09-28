@@ -188,10 +188,17 @@ namespace AlpacaIT.DynamicLighting
                     dynamicLightManager.raycastedDynamicLights.Add(new RaycastedDynamicLight(light));
                     pointLightsCache[i] = new CachedLightData(light);
 
-                    // render and create photon cubes for all bounce lights.
+                    bool requiresPhotonCube = false;
+
+                    // computing transparency in raycasted shadows requires a photon cube.
+                    if (light.lightTransparency == DynamicLightTransparencyMode.Enabled)
+                        requiresPhotonCube = true;
+
+                    // check for the usage of bounce lighting in the scene.
                     if (light.lightIllumination == DynamicLightIlluminationMode.SingleBounce)
                     {
-                        pointLightsCache[i].photonCube = PhotonCameraRender(pointLightsCache[i].position, light.lightRadius);
+                        // bounce lighting requires a photon cube.
+                        requiresPhotonCube = true;
 
                         // remember whether bounce lighting is used in the scene, this allows us to
                         // skip steps and checks later on.
@@ -200,6 +207,10 @@ namespace AlpacaIT.DynamicLighting
                         // also save this flag into the scene.
                         dynamicLightManager.activateBounceLightingInCurrentScene = true;
                     }
+
+                    // render and create photon cubes for all lights that require it.
+                    if (requiresPhotonCube)
+                        pointLightsCache[i].photonCube = PhotonCameraRender(pointLightsCache[i].position, light.lightRadius);
                 }
 
                 // iterate over all compatible mesh filters and build a temporary scene with them.
@@ -329,7 +340,7 @@ namespace AlpacaIT.DynamicLighting
                 var (v1, v2, v3) = meshBuilder.GetTriangleVertices(i);
                 var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
 
-                RaycastTriangle(i, dynamic_triangles, pixels_visited_ptr, v1, v2, v3, t1, t2, t3);
+                RaycastTriangle(i, dynamic_triangles, pixels_visited_ptr, pixels_lightmap_ptr, v1, v2, v3, t1, t2, t3);
             }
 
             // finish any remaining raycasting work.
@@ -567,7 +578,7 @@ namespace AlpacaIT.DynamicLighting
             return pixels[offset];
         }
 
-        private unsafe void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, uint* pixels_visited, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        private unsafe void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, uint* pixels_visited, uint* pixels_lightmap, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // calculate the triangle normal (this may fail when degenerate or very small).
             var triangleNormal3 = math.normalizesafe(math.cross(v2 - v1, v3 - v1));
@@ -693,18 +704,29 @@ namespace AlpacaIT.DynamicLighting
                         if (UMath.Dot(triangleNormalPtr, lightDirectionPtr) < -0.1f)
                             continue;
 
-                        // prepare to trace from the world to the light position.
+                        // when using alpha transparency we already did all the work on the graphics card.
+                        if (pointLight.lightTransparency == DynamicLightTransparencyMode.Enabled)
+                        {
+                            if (pointLightCache.photonCube.SampleShadow(lightDirection, lightDistanceToWorld, triangleNormal3))
+                            {
+                                pixels_lightmap[y * lightmapSize + x] |= (uint)1 << ((int)pointLight.lightChannel);
+                            }
+                        }
+                        else
+                        {
+                            // prepare to trace from the world to the light position.
 
-                        // create a raycast command as fast as possible.
-                        raycastCommand.from = worldPlusTriangleNormalOffset;
-                        raycastCommand.direction = lightDirection;
-                        raycastCommand.distance = lightDistanceToWorld;
+                            // create a raycast command as fast as possible.
+                            raycastCommand.from = worldPlusTriangleNormalOffset;
+                            raycastCommand.direction = lightDirection;
+                            raycastCommand.distance = lightDistanceToWorld;
 
-                        localTracesCounter++;
-                        raycastProcessor.Add(
-                            raycastCommand,
-                            new RaycastCommandMeta(x, y, world, pointLight.lightChannel)
-                        );
+                            localTracesCounter++;
+                            raycastProcessor.Add(
+                                raycastCommand,
+                                new RaycastCommandMeta(x, y, world, pointLight.lightChannel)
+                            );
+                        }
                     }
 
                     // write this pixel into the visited map.

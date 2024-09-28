@@ -82,6 +82,12 @@ namespace AlpacaIT.DynamicLighting
         public DynamicLightIlluminationMode lightIllumination = DynamicLightIlluminationMode.DirectIllumination;
 
         /// <summary>
+        /// The transparency handling mode of the dynamic light (e.g. shining through transparent textures).
+        /// </summary>
+        [Tooltip("The transparency handling mode of the dynamic light (e.g. shining through transparent textures).")]
+        public DynamicLightTransparencyMode lightTransparency = DynamicLightTransparencyMode.Disabled;
+
+        /// <summary>
         /// When using the 'Spot' light type, this specifies the outer cutoff angle in degrees where
         /// the light is darkest. There is a smooth transition between the inner and outer cutoff
         /// angle. The outer cutoff angle must be larger or equal to the inner cutoff angle

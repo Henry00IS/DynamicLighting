@@ -252,6 +252,15 @@ namespace AlpacaIT.DynamicLighting
             return distance < 0.5f ? 0.0f : distance; // account for skybox.
         }
 
+        /// <summary>Gets the distance to the closest fragment in the given direction.</summary>
+        /// <param name="direction">The direction to sample the cubemap in.</param>
+        /// <returns>The distance to the fragment.</returns>
+        public float SampleDistanceRaw(float3 direction)
+        {
+            var uv = GetFaceUvByDirection(direction, out var face);
+            return faces[face].SampleDistance(uv);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float SampleDistanceFast(int photonCubeFace, int photonCubeFaceIndex)
         {
@@ -340,6 +349,39 @@ namespace AlpacaIT.DynamicLighting
             // negative!
             UMath.Negate(light_direction);
             float shadow_mapping_distance = SampleDistance(*light_direction);
+
+            // when the fragment is occluded we can early out here.
+            if (light_distance - autobias > shadow_mapping_distance)
+                return false;
+
+            return true;
+        }
+
+        /// <summary>
+        /// Gets software rendered real-time shadows returning true when the given fragment by
+        /// direction and distance is in the light else false.
+        /// </summary>
+        /// <param name="lightDirection">The direction between the light source and the fragment.</param>
+        /// <param name="lightDistanceToWorld">The distance between the light source and the fragment.</param>
+        /// <param name="worldNormal">The normal of the fragment (e.g. triangle normal).</param>
+        /// <returns>True when the fragment position is in light else false.</returns>
+        public unsafe bool SampleShadow(float3 lightDirection, float lightDistanceToWorld, float3 worldNormal)
+        {
+            // calculate the square distance between the light source and the fragment.
+            float light_distanceSqr = lightDistanceToWorld * lightDistanceToWorld;
+
+            // a simple dot product with the normal gives us diffusion.
+            float NdotL = Mathf.Max(math.dot(worldNormal, lightDirection), 0);
+
+            // magic bias function! it is amazing!
+            float light_distance = lightDistanceToWorld;
+            float magic = 0.02f + 0.01f * (light_distanceSqr / light_distance);
+            float autobias = magic * math.tan(math.acos(1.0f - NdotL));
+            autobias = Mathf.Clamp(autobias, 0.0f, magic);
+
+            // negative!
+            UMath.Negate(&lightDirection);
+            float shadow_mapping_distance = SampleDistanceRaw(lightDirection);
 
             // when the fragment is occluded we can early out here.
             if (light_distance - autobias > shadow_mapping_distance)
