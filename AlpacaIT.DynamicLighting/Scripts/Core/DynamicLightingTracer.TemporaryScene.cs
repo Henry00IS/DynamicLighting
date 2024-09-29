@@ -23,8 +23,6 @@ namespace AlpacaIT.DynamicLighting
         {
 #if UNITY_EDITOR
             temporaryScene = ScriptableObject.CreateInstance<TemporaryScene>();
-            // fixme: this whole culling mask thing does not work.
-            EditorSceneManager.SetSceneCullingMask(temporaryScene.scene, EditorSceneManager.CalculateAvailableSceneCullingMask());
             StageUtility.GoToStage(temporaryScene, true);
 
             // get the physics scene for raycasting.

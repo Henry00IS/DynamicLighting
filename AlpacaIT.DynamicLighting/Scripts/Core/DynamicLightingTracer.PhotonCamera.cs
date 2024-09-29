@@ -83,8 +83,6 @@ namespace AlpacaIT.DynamicLighting
 #if UNITY_EDITOR
             // we only render the temporary raytracing scene.
             photonCamera.scene = temporaryScene.scene;
-            photonCamera.overrideSceneCullingMask = temporaryScene.GetCombinedSceneCullingMaskForCamera() | UnityEditor.SceneManagement.SceneCullingMasks.DefaultSceneCullingMask;
-            // fixme: this whole culling mask thing does not work.
 #endif
             // create photon cubemap array.
             photonCameraCubemaps = new RenderTexture(photonCameraRenderTextureDescriptor);

@@ -180,6 +180,12 @@ namespace AlpacaIT.DynamicLighting
                 // cache the light properties.
                 pointLightsCache = new CachedLightData[pointLights.Length];
 
+                // iterate over all compatible mesh filters and build a temporary scene with them.
+                var meshFilters = Object.FindObjectsOfType<MeshFilter>();
+                var goodFilters = new bool[meshFilters.Length];
+                for (int i = 0; i < meshFilters.Length; i++)
+                    goodFilters[i] = TemporarySceneAdd(meshFilters[i]);
+
                 // assign the dynamic lights in the scene to the dynamic light manager.
                 dynamicLightManager.raycastedDynamicLights.Clear();
                 for (int i = 0; i < pointLights.Length; i++)
@@ -214,12 +220,6 @@ namespace AlpacaIT.DynamicLighting
                     if (requiresPhotonCube)
                         pointLightsCache[i].photonCube = PhotonCameraRender(pointLightsCache[i].position, light.lightRadius, requiresDistanceOnly);
                 }
-
-                // iterate over all compatible mesh filters and build a temporary scene with them.
-                var meshFilters = Object.FindObjectsOfType<MeshFilter>();
-                var goodFilters = new bool[meshFilters.Length];
-                for (int i = 0; i < meshFilters.Length; i++)
-                    goodFilters[i] = TemporarySceneAdd(meshFilters[i]);
 
                 // iterate over all compatible mesh filters and raytrace their lighting.
                 for (int i = 0; i < meshFilters.Length; i++)
