@@ -127,7 +127,7 @@ namespace AlpacaIT.DynamicLighting
 
             // we do not need photons beyond the light radius.
             photonCamera.farClipPlane = lightRadius * 2f;
-            photonCamera.cullingMask = ~0;//bounceLightingLayers;
+            photonCamera.cullingMask = raycastLayermask;
 
             // render the 6 sides of the cubemap:
             for (int face = 0; face < 6; face++)

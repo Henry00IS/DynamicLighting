@@ -44,9 +44,10 @@ namespace AlpacaIT.DynamicLighting
         {
             // we have to recreate simple meshes with a mesh collider.
             if (!meshFilter) return false;
+            var originalGameObject = meshFilter.gameObject;
 
             // the game object must be marked as static.
-            if (!meshFilter.gameObject.isStatic) return false;
+            if (!originalGameObject.isStatic) return false;
 
             // make sure the mesh filter has a mesh assigned.
             var mesh = meshFilter.sharedMesh;
@@ -62,6 +63,9 @@ namespace AlpacaIT.DynamicLighting
             // now we create a new game object that represents this object.
             var clone = ObjectFactory.CreateGameObject(temporaryScene.scene, HideFlags.None, originalTransform.name);
             var cloneTransform = clone.transform;
+
+            // the clone will use the same layer as the original for raytracing.
+            clone.layer = originalGameObject.layer;
 
             // place the clone at the same position, rotation and scale as the original.
             cloneTransform.position = originalTransform.position;
