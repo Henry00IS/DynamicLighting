@@ -59,13 +59,11 @@ namespace AlpacaIT.DynamicLighting
         /// workings of the lighting system. You should not touch this field unless you know what
         /// you are doing or to simply set it to 32 to make it a realtime light. The raytracer will
         /// ignore lights that are on channel 32 (i.e. it will not reset this channel to something
-        /// else). It can be useful to temporarily set the channel to 32 to adjust the light in an
-        /// already raytraced scene. As a realtime light, it will be easier to see what it will look
-        /// like. Then select any value between 0-31 and raytrace the scene again. This will then
-        /// assign a proper channel. This channel is assigned a number that no other overlapping
-        /// light uses so that each light has its own unique space in memory to store shadows in.
+        /// else). This will then assign a proper channel. This channel is assigned a number that no
+        /// other overlapping light uses so that each light has its own unique space in memory to
+        /// store shadows in.
         /// </summary>
-        [Tooltip("This is the channel that the light occupies. This value is automatically assigned to the light during ray tracing. Dynamic realtime lights must always use channel 32 (they can move around the scene without shadows). This value is a crucial part of the inner workings of the lighting system. You should not touch this field unless you know what you are doing or to simply set it to 32 to make it a realtime light. The raytracer will ignore lights that are on channel 32 (i.e. it will not reset this channel to something else).\n\nIt can be useful to temporarily set the channel to 32 to adjust the light in an already raytraced scene. As a realtime light, it will be easier to see what it will look like. Then select any value between 0-31 and raytrace the scene again. This will then assign a proper channel.\n\nThis channel is assigned a number that no other overlapping light uses so that each light has its own unique space in memory to store shadows in.")]
+        [Tooltip("This is the channel that the light occupies. This value is automatically assigned to the light during ray tracing. Dynamic realtime lights must always use channel 32 (they can move around the scene without shadows). This value is a crucial part of the inner workings of the lighting system. You should not touch this field unless you know what you are doing or to simply set it to 32 to make it a realtime light. The raytracer will ignore lights that are on channel 32 (i.e. it will not reset this channel to something else).\n\nThis channel is assigned a number that no other overlapping light uses so that each light has its own unique space in memory to store shadows in.")]
         [Range(0, 32)]
         public uint lightChannel = 0;
 
@@ -322,20 +320,20 @@ namespace AlpacaIT.DynamicLighting
             switch (lightType)
             {
                 case DynamicLightType.Spot:
-                    GizmosDrawArrow(true, true, false);
+                    GizmosDrawArrow(true, lightCookieTexture, false);
                     break;
 
                 case DynamicLightType.Discoball:
-                    GizmosDrawArrow(true, false, true);
+                    GizmosDrawArrow(true, true, true);
                     break;
 
                 case DynamicLightType.Interference:
-                    GizmosDrawArrow(false, true, true);
+                    GizmosDrawArrow(false, false, true);
                     break;
 
                 case DynamicLightType.Rotor:
                 case DynamicLightType.Disco:
-                    GizmosDrawArrow(false, false, true);
+                    GizmosDrawArrow(false, true, true);
                     break;
             }
         }
@@ -386,7 +384,7 @@ namespace AlpacaIT.DynamicLighting
             Gizmos.DrawLine(root, head);
 
             // only draw the orientation lines when the effect is twistable.
-            if (twistable) return;
+            if (!twistable) return;
 
             // green upwards line.
             {
