@@ -443,6 +443,63 @@ struct DynamicTriangle
     }
     
     // x x x
+    // x   x apply a simple 3x3 gaussian blur to the shadow bits.
+    // x x x
+    // note: requires 'uv -= bounds.xy' to be calculated up front.
+    float shadow_sample_gaussian3(uint2 uv)
+    {
+        const float weights[3][3] = {
+            {1, 2, 1},
+            {2, 4, 2},
+            {1, 2, 1}
+        };
+        
+        float map = 0.0;
+        
+        for (int i = -1; i <= 1; ++i) {
+            for (int j = -1; j <= 1; ++j) {
+                map += weights[i + 1][j + 1] * shadow_sample(uv + uint2(i, j));
+            }
+        }
+
+        return map / 16.0; // normalize by the sum of the weights.
+    }
+    
+    // x x x x x
+    // x x x x x apply a 5x5 Gaussian blur to the shadow bits.
+    // x x   x x
+    // x x x x x
+    // x x x x x
+    // note: requires 'uv -= bounds.xy' to be calculated up front.
+    float shadow_sample_gaussian5(uint2 uv)
+    {
+        const float weights[5][5] =
+        {
+            { 1,  4,  6,  4, 1 },
+            { 4, 16, 24, 16, 4 },
+            { 6, 24, 36, 24, 6 },
+            { 4, 16, 24, 16, 4 },
+            { 1,  4,  6,  4, 1 }
+        };
+        
+        float map = 0.0;
+        
+        for (int i = -2; i <= 2; ++i)
+        {
+            for (int j = -2; j <= 2; ++j)
+            {
+                map += weights[i + 2][j + 2] * shadow_sample(uv + uint2(i, j));
+            }
+        }
+        
+        return map / 256.0; // normalize by the sum of the weights.
+    }
+    
+    #ifndef DYNAMIC_LIGHTING_SHADOW_SAMPLER
+    #define DYNAMIC_LIGHTING_SHADOW_SAMPLER shadow_sample
+    #endif
+    
+    // x x x
     // x   x apply a simple 3x3 sampling with averaged results to the shadow bits.
     // x x x
     float shadow_sample3x3(uint2 uv)
@@ -452,17 +509,17 @@ struct DynamicTriangle
         // offset the lightmap triangle uv to the top-left corner to read near zero, zero.
         uv -= bounds.xy;
 
-        map  = shadow_sample(uint2(uv.x - 1u, uv.y - 1u));
-        map += shadow_sample(uint2(uv.x     , uv.y - 1u));
-        map += shadow_sample(uint2(uv.x + 1u, uv.y - 1u));
+        map  = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(uv.x - 1u, uv.y - 1u));
+        map += DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(uv.x     , uv.y - 1u));
+        map += DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(uv.x + 1u, uv.y - 1u));
 
-        map += shadow_sample(uint2(uv.x - 1u, uv.y     ));
-        map += shadow_sample(uv                         );
-        map += shadow_sample(uint2(uv.x + 1u, uv.y     ));
+        map += DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(uv.x - 1u, uv.y     ));
+        map += DYNAMIC_LIGHTING_SHADOW_SAMPLER(uv                         );
+        map += DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(uv.x + 1u, uv.y     ));
 
-        map += shadow_sample(uint2(uv.x - 1u, uv.y + 1u));
-        map += shadow_sample(uint2(uv.x     , uv.y + 1u));
-        map += shadow_sample(uint2(uv.x + 1u, uv.y + 1u));
+        map += DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(uv.x - 1u, uv.y + 1u));
+        map += DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(uv.x     , uv.y + 1u));
+        map += DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(uv.x + 1u, uv.y + 1u));
 
         return map / 9.0;
     }
@@ -492,22 +549,22 @@ struct DynamicTriangle
 
         // read all of the lightmap samples we need in advance.
         float4x4 map;
-        map[0][0] = shadow_sample(uint2(pos_top_left.x - 1, pos_top_left.y - 1));
-        map[0][1] = shadow_sample(uint2(pos_top_left.x    , pos_top_left.y - 1));
-        map[0][2] = shadow_sample(uint2(pos_top_left.x + 1, pos_top_left.y - 1));
-        map[0][3] = shadow_sample(uint2(pos_top_left.x + 2, pos_top_left.y - 1));
-        map[1][0] = shadow_sample(uint2(pos_top_left.x - 1, pos_top_left.y    ));
-        map[1][1] = shadow_sample(pos_top_left                                 );
-        map[1][2] = shadow_sample(uint2(pos_top_left.x + 1, pos_top_left.y    ));
-        map[1][3] = shadow_sample(uint2(pos_top_left.x + 2, pos_top_left.y    ));
-        map[2][0] = shadow_sample(uint2(pos_top_left.x - 1, pos_top_left.y + 1));
-        map[2][1] = shadow_sample(uint2(pos_top_left.x    , pos_top_left.y + 1));
-        map[2][2] = shadow_sample(uint2(pos_top_left.x + 1, pos_top_left.y + 1));
-        map[2][3] = shadow_sample(uint2(pos_top_left.x + 2, pos_top_left.y + 1));
-        map[3][0] = shadow_sample(uint2(pos_top_left.x - 1, pos_top_left.y + 2));
-        map[3][1] = shadow_sample(uint2(pos_top_left.x    , pos_top_left.y + 2));
-        map[3][2] = shadow_sample(uint2(pos_top_left.x + 1, pos_top_left.y + 2));
-        map[3][3] = shadow_sample(uint2(pos_top_left.x + 2, pos_top_left.y + 2));
+        map[0][0] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x - 1, pos_top_left.y - 1));
+        map[0][1] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x    , pos_top_left.y - 1));
+        map[0][2] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x + 1, pos_top_left.y - 1));
+        map[0][3] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x + 2, pos_top_left.y - 1));
+        map[1][0] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x - 1, pos_top_left.y    ));
+        map[1][1] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(pos_top_left                                 );
+        map[1][2] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x + 1, pos_top_left.y    ));
+        map[1][3] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x + 2, pos_top_left.y    ));
+        map[2][0] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x - 1, pos_top_left.y + 1));
+        map[2][1] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x    , pos_top_left.y + 1));
+        map[2][2] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x + 1, pos_top_left.y + 1));
+        map[2][3] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x + 2, pos_top_left.y + 1));
+        map[3][0] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x - 1, pos_top_left.y + 2));
+        map[3][1] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x    , pos_top_left.y + 2));
+        map[3][2] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x + 1, pos_top_left.y + 2));
+        map[3][3] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x + 2, pos_top_left.y + 2));
 
         // there are several common overlapping 3x3 samples (marked as X).
         //

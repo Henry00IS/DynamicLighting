@@ -36,6 +36,13 @@ Shader "Dynamic Lighting/Metallic"
             #pragma shader_feature METALLIC_TEXTURE_UNASSIGNED
 
             #include "UnityCG.cginc"
+
+            // the following compiler flags are available:
+            // 
+            // when targeting modern hardware, you can improve the shadow quality by uncommenting one of these lines:
+            // #define DYNAMIC_LIGHTING_SHADOW_SAMPLER shadow_sample_gaussian3
+            // #define DYNAMIC_LIGHTING_SHADOW_SAMPLER shadow_sample_gaussian5
+            //
             #include "DynamicLighting.cginc"
 
             struct appdata
