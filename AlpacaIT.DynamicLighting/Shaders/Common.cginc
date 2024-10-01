@@ -48,7 +48,24 @@ bool point_in_sphere(float3 pos, float3 center, float radius, float epsilon = 0.
 
 bool point_in_aabb(float3 pos, float3 min, float3 max)
 {
-    return all(pos >= min) && all(pos <= max);
+    return all(pos >= min && pos <= max);
+}
+
+bool ray_box_intersection(float3 rayOrigin, float3 rayDir, float3 boxMin, float3 boxMax, out float tMin, out float tMax, float maxDepth)
+{
+    float3 invDir = 1.0 / rayDir;
+    float3 t0 = (boxMin - rayOrigin) * invDir;
+    float3 t1 = (boxMax - rayOrigin) * invDir;
+    float3 tMinVec = min(t0, t1);
+    float3 tMaxVec = max(t0, t1);
+
+    tMin = max(0.0, max(tMinVec.x, max(tMinVec.y, tMinVec.z)));
+    tMax = min(tMaxVec.x, min(tMaxVec.y, tMaxVec.z));
+
+    // ensure that the intersection does not extend beyond the max depth.
+    tMax = min(tMax, maxDepth);
+
+    return tMax >= tMin;
 }
 
 // shoutouts to lordofduct (https://forum.unity.com/threads/how-do-i-find-the-closest-point-on-a-line.340058/)

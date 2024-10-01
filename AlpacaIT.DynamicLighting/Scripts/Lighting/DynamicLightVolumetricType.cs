@@ -12,5 +12,12 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>The light appears as a volumetric sphere of fog.</summary>
         [Tooltip("The light appears as a volumetric sphere of fog.")]
         Sphere = 1,
+
+        /// <summary>
+        /// The light appears as a volumetric box of fog. The size can be manipulated using the
+        /// scale of the game object and the volumetric radius.
+        /// </summary>
+        [Tooltip("The light appears as a volumetric box of fog. The size can be manipulated using the scale of the game object and the volumetric radius.")]
+        Box = 2,
     }
 }

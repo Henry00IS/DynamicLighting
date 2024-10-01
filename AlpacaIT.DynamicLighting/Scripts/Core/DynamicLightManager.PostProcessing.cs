@@ -55,11 +55,11 @@ namespace AlpacaIT.DynamicLighting
             if (shaderLight->volumetricIntensity == 0.0f) return;
 
             // nothing to do when the volumetric radius is zero.
-            var lightVolumetricRadius = light.lightVolumetricRadius;
-            if (lightVolumetricRadius == 0.0f) return;
+            var lightCurrentVolumetricRadius = light.currentVolumetricRadius;
+            if (lightCurrentVolumetricRadius == 0.0f) return;
 
             // if the volumetric light can not be seen by the camera we can skip it.
-            if (!MathEx.CheckSphereIntersectsFrustum(cameraFrustumPlanes, shaderLight->position, lightVolumetricRadius))
+            if (!MathEx.CheckSphereIntersectsFrustum(cameraFrustumPlanes, shaderLight->position, lightCurrentVolumetricRadius))
                 return;
 
             // copy volumetric light sources into the post processing system.
@@ -69,10 +69,22 @@ namespace AlpacaIT.DynamicLighting
                 *volumetricLight = *shaderLight;
 
                 // recycle the light radius to store the volumetric radius.
-                volumetricLight->radiusSqr = lightVolumetricRadius;
+                volumetricLight->radiusSqr = light.lightVolumetricRadius;
 
                 // recycle the general purpose floats to store other volumetric data.
                 volumetricLight->gpFloat1 = light.lightVolumetricThickness;
+
+                // recycle the channel to store the volumetric type.
+                volumetricLight->channel = (uint)light.lightVolumetricType;
+
+                // recycle general purpose floats and shimmer scale for the box scale.
+                if (light.lightVolumetricType == DynamicLightVolumetricType.Box)
+                {
+                    var lightScale = light.cache.transformScale;
+                    volumetricLight->gpFloat2 = lightScale.x;
+                    volumetricLight->gpFloat3 = lightScale.y;
+                    volumetricLight->shimmerScale = lightScale.z;
+                }
             }
         }
 

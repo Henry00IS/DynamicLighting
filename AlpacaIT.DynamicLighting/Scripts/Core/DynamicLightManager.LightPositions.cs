@@ -16,6 +16,10 @@ namespace AlpacaIT.DynamicLighting
         [HideInInspector]
         internal Vector3[] lightPositionsRaycastedLightPositions;
 
+        /// <summary>Contains an array of <see cref="Vector3"/> scales after <see cref="GetTransformPositionsJob"/>.</summary>
+        [HideInInspector]
+        internal Vector3[] lightPositionsRaycastedLightScales;
+
         /// <summary>Initialization of the DynamicLightManager.LightPositions partial class.</summary>
         private void LightPositionsInitialize()
         {
@@ -23,6 +27,7 @@ namespace AlpacaIT.DynamicLighting
 
             lightPositionsRaycastedLightTransforms = new TransformAccessArray(raycastedDynamicLightsCount);
             lightPositionsRaycastedLightPositions = new Vector3[raycastedDynamicLightsCount];
+            lightPositionsRaycastedLightScales = new Vector3[raycastedDynamicLightsCount];
 
             // iterate over all raycasted dynamic light sources:
             for (int i = 0; i < raycastedDynamicLightsCount; i++)
@@ -51,6 +56,7 @@ namespace AlpacaIT.DynamicLighting
                 lightPositionsRaycastedLightTransforms.Dispose();
 
             lightPositionsRaycastedLightPositions = null;
+            lightPositionsRaycastedLightScales = null;
         }
 
         /// <summary>Called before the lights are iterated for updates.</summary>
@@ -59,8 +65,11 @@ namespace AlpacaIT.DynamicLighting
             // fetch all of the light positions using the unity job system:
             fixed (Vector3* lightPositionsRaycastedLightPositionsPtr = lightPositionsRaycastedLightPositions)
             {
-                var job = new GetTransformPositionsJob(lightPositionsRaycastedLightPositionsPtr);
-                job.ScheduleReadOnly(lightPositionsRaycastedLightTransforms, 32).Complete();
+                fixed (Vector3* lightPositionsRaycastedLightScalesPtr = lightPositionsRaycastedLightScales)
+                {
+                    var job = new GetTransformPositionsJob(lightPositionsRaycastedLightPositionsPtr, lightPositionsRaycastedLightScalesPtr);
+                    job.ScheduleReadOnly(lightPositionsRaycastedLightTransforms, 32).Complete();
+                }
             }
         }
 

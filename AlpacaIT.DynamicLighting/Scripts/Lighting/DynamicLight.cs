@@ -271,21 +271,44 @@ namespace AlpacaIT.DynamicLighting
         }
 
         /// <summary>
+        /// The largest spherical radius that the volumetric light will occupy <see
+        /// cref="lightVolumetricRadius"/>. This value is internally used for culling off-camera lights.
+        /// </summary>
+        internal float currentVolumetricRadius
+        {
+            get
+            {
+                switch (lightVolumetricType)
+                {
+                    // calculate a radius that encompasses the box:
+                    case DynamicLightVolumetricType.Box:
+                        var size = lightVolumetricRadius * cache.transformScale;
+                        return Mathf.Sqrt((size.x * size.x) + (size.y * size.y) + (size.z * size.z));
+
+                    default:
+                        return lightVolumetricRadius;
+                }
+            }
+        }
+
+        /// <summary>
         /// The largest spherical radius that the light will occupy (either <see
-        /// cref="lightRadius"/> or <see cref="lightVolumetricRadius"/>. This value is internally
+        /// cref="lightRadius"/> or <see cref="lightVolumetricRadius"/>). This value is internally
         /// used for culling off-camera lights.
         /// </summary>
         internal float largestLightRadius
         {
             get
             {
+                var volumetricRadius = currentVolumetricRadius;
+
                 // always return the light radius if greater than the volumetric radius.
-                if (lightRadius > lightVolumetricRadius)
+                if (lightRadius > volumetricRadius)
                     return lightRadius;
 
                 // the volumetric radius is greater but must to be enabled to affect this light.
                 if (lightVolumetricType != DynamicLightVolumetricType.None)
-                    return lightVolumetricRadius;
+                    return volumetricRadius;
 
                 return lightRadius;
             }
@@ -314,32 +337,34 @@ namespace AlpacaIT.DynamicLighting
 
         private void OnDrawGizmos()
         {
+            var transformPosition = cache.transformPosition;
+
             switch (lightType)
             {
                 case DynamicLightType.Spot:
-                    Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingSpotLight.psd", true, lightColor);
+                    Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingSpotLight.psd", true, lightColor);
                     break;
 
                 case DynamicLightType.Disco:
                 case DynamicLightType.Discoball:
-                    Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingPointLightDisco.psd", true, lightColor);
-                    Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingTypeDisco.psd", true);
+                    Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingPointLightDisco.psd", true, lightColor);
+                    Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingTypeDisco.psd", true);
                     break;
 
                 case DynamicLightType.Wave:
                 case DynamicLightType.Interference:
                 case DynamicLightType.Shock:
-                    Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingPointLightWave.psd", true, lightColor);
-                    Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingTypeWave.psd", true);
+                    Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingPointLightWave.psd", true, lightColor);
+                    Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingTypeWave.psd", true);
                     break;
 
                 case DynamicLightType.Rotor:
-                    Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingPointLightRotor.psd", true, lightColor);
-                    Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingTypeRotor.psd", true);
+                    Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingPointLightRotor.psd", true, lightColor);
+                    Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingTypeRotor.psd", true);
                     break;
 
                 default:
-                    Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingPointLight.psd", true, lightColor);
+                    Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingPointLight.psd", true, lightColor);
                     break;
             }
 
@@ -348,49 +373,49 @@ namespace AlpacaIT.DynamicLighting
                 switch (lightType)
                 {
                     case DynamicLightType.Spot:
-                        Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingSpotLightRealtime.psd", true);
+                        Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingSpotLightRealtime.psd", true);
                         break;
 
                     default:
-                        Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingPointLightRealtime.psd", true);
+                        Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingPointLightRealtime.psd", true);
                         break;
                 }
             }
 
             if (lightShadows == DynamicLightShadowMode.RealtimeShadows)
             {
-                Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingRealtimeShadows.psd", true);
+                Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingRealtimeShadows.psd", true);
             }
 
             if (lightIllumination == DynamicLightIlluminationMode.SingleBounce)
             {
-                Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingBounce.psd", true);
+                Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingBounce.psd", true);
             }
 
             if (lightTransparency == DynamicLightTransparencyMode.Enabled)
             {
-                Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingTransparent.psd", true);
+                Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingTransparent.psd", true);
             }
 
             switch (lightShimmer)
             {
                 case DynamicLightShimmer.Water:
-                    Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingShimmerWater.psd", true);
+                    Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingShimmerWater.psd", true);
                     break;
 
                 case DynamicLightShimmer.Random:
-                    Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingShimmerFire.psd", true);
+                    Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingShimmerFire.psd", true);
                     break;
             }
 
             if (lightEffect != DynamicLightEffect.Steady)
             {
-                Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingEffects.psd", true, lightColor * currentIntensity);
+                Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingEffects.psd", true, lightColor * currentIntensity);
             }
 
             if (lightVolumetricType != DynamicLightVolumetricType.None)
             {
-                Gizmos.DrawIcon(transform.position, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingVolumetric.psd", true);
+                Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingVolumetric.psd", true);
             }
         }
 

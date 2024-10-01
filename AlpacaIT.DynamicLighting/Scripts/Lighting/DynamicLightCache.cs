@@ -39,5 +39,11 @@ namespace AlpacaIT.DynamicLighting
         /// during <see cref="DynamicLightManager.Update"/>.
         /// </summary>
         public Vector3 transformPosition;
+
+        /// <summary>
+        /// It is expensive to call <see cref="Transform.localScale"/> and this vector stores it
+        /// during <see cref="DynamicLightManager.Update"/>.
+        /// </summary>
+        public Vector3 transformScale;
     }
 }

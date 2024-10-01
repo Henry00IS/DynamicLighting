@@ -742,6 +742,7 @@ namespace AlpacaIT.DynamicLighting
 
                 // when a raycasted light position has been moved away from the origin:
                 lightCache.transformPosition = lightPositionsRaycastedLightPositions[i];
+                lightCache.transformScale = lightPositionsRaycastedLightScales[i];
                 if (lightCache.transformPosition.FastNotEquals(raycastedDynamicLight.origin))
                 {
                     if (!lightCache.movedFromOrigin)
@@ -970,7 +971,9 @@ namespace AlpacaIT.DynamicLighting
             for (int i = 0; i < sceneRealtimeLightsCount; i++)
             {
                 var sceneRealtimeLight = sceneRealtimeLights[i];
-                sceneRealtimeLight.cache.transformPosition = sceneRealtimeLight.transform.position;
+                var sceneRealtimeLightTransform = sceneRealtimeLight.transform;
+                sceneRealtimeLight.cache.transformPosition = sceneRealtimeLightTransform.position;
+                sceneRealtimeLight.cache.transformScale = sceneRealtimeLightTransform.localScale;
             }
         }
 
@@ -1100,15 +1103,13 @@ namespace AlpacaIT.DynamicLighting
                     break;
             }
 
-            switch (light.lightVolumetricType)
+            if (light.lightVolumetricType != DynamicLightVolumetricType.None)
             {
-                case DynamicLightVolumetricType.Sphere:
-                    // does not require a channel bit as the post-processing shader knows implicitly.
-                    // -> the volumetric intensity is set by the effects update step.
-                    // -> the volumetric radius is set by the partial class DynamicLightManager.PostProcessing.
-                    // -> the volumetric thickness is set by the partial class DynamicLightManager.PostProcessing.
-                    shaderLight->volumetricVisibility = light.lightVolumetricVisibility <= 0f ? 1.0f / 0.00001f : 1.0f / light.lightVolumetricVisibility;
-                    break;
+                // does not require a channel bit as the post-processing shader knows implicitly.
+                // -> the volumetric intensity is set by the effects update step.
+                // -> the volumetric radius is set by the partial class DynamicLightManager.PostProcessing.
+                // -> the volumetric thickness is set by the partial class DynamicLightManager.PostProcessing.
+                shaderLight->volumetricVisibility = light.lightVolumetricVisibility <= 0f ? 1.0f / 0.00001f : 1.0f / light.lightVolumetricVisibility;
             }
         }
 
@@ -1164,11 +1165,9 @@ namespace AlpacaIT.DynamicLighting
 
             shaderLight->intensity = light.lightIntensity * lightCache.intensity;
 
-            switch (light.lightVolumetricType)
+            if (light.lightVolumetricType != DynamicLightVolumetricType.None)
             {
-                case DynamicLightVolumetricType.Sphere:
-                    shaderLight->volumetricIntensity = light.lightVolumetricIntensity * lightCache.intensity;
-                    break;
+                shaderLight->volumetricIntensity = light.lightVolumetricIntensity * lightCache.intensity;
             }
         }
 
