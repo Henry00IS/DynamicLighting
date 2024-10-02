@@ -77,13 +77,31 @@ namespace AlpacaIT.DynamicLighting
                 // recycle the channel to store the volumetric type.
                 volumetricLight->channel = (uint)light.lightVolumetricType;
 
-                // recycle general purpose floats and shimmer scale for the box scale.
-                if (light.lightVolumetricType == DynamicLightVolumetricType.Box)
+                switch (light.lightVolumetricType)
                 {
-                    var lightScale = light.cache.transformScale;
-                    volumetricLight->gpFloat2 = lightScale.x;
-                    volumetricLight->gpFloat3 = lightScale.y;
-                    volumetricLight->shimmerScale = lightScale.z;
+                    // recycle general purpose floats and shimmer scale for the box scale.
+                    case DynamicLightVolumetricType.Box:
+                        var lightScale = light.cache.transformScale;
+                        volumetricLight->gpFloat2 = lightScale.x;
+                        volumetricLight->gpFloat3 = lightScale.y;
+                        volumetricLight->shimmerScale = lightScale.z;
+                        break;
+
+                    // recycle general purpose floats for the cone angle.
+                    case DynamicLightVolumetricType.ConeZ:
+                        // fixme: this is silly guesswork:
+                        var mul1 = Mathf.Lerp(1.0f, 1.3f, light.lightOuterCutoff / 90f);
+                        volumetricLight->gpFloat2 = Mathf.Cos((Mathf.PI * 0.5f) + light.lightOuterCutoff * Mathf.Deg2Rad) * mul1;
+                        break;
+
+                    case DynamicLightVolumetricType.ConeY:
+                        // fixme: this is silly guesswork:
+                        var mul2 = Mathf.Lerp(1.0f, 1.3f, light.lightOuterCutoff / 90f);
+                        volumetricLight->gpFloat2 = Mathf.Cos((Mathf.PI * 0.5f) + light.lightOuterCutoff * Mathf.Deg2Rad) * mul2;
+
+                        // when using cone_y the up vector will be calculated.
+                        volumetricLight->forward = volumetricLight->up;
+                        break;
                 }
             }
         }

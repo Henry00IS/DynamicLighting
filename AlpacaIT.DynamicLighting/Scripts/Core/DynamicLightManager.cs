@@ -1017,6 +1017,10 @@ namespace AlpacaIT.DynamicLighting
             shaderLight->radiusSqr = lightRadius * lightRadius;
             shaderLight->falloff = lightRadius * lightFalloff * lightFalloff;
 
+            // reset to impossible values to detect assignment later below.
+            shaderLight->forward.x = -200f;
+            shaderLight->up.x = -200f;
+
             Quaternion lightRotation;
             switch (light.lightType)
             {
@@ -1110,6 +1114,19 @@ namespace AlpacaIT.DynamicLighting
                 // -> the volumetric radius is set by the partial class DynamicLightManager.PostProcessing.
                 // -> the volumetric thickness is set by the partial class DynamicLightManager.PostProcessing.
                 shaderLight->volumetricVisibility = light.lightVolumetricVisibility <= 0f ? 1.0f / 0.00001f : 1.0f / light.lightVolumetricVisibility;
+
+                // calculate the forward vector if it has not been calculated yet.
+                if (light.lightVolumetricType == DynamicLightVolumetricType.ConeZ && shaderLight->forward.x == -200f)
+                {
+                    lightRotation = light.transform.rotation;
+                    shaderLight->forward = lightRotation * Vector3.forward;
+                }
+                // calculate the up vector if it has not been calculated yet.
+                else if (light.lightVolumetricType == DynamicLightVolumetricType.ConeY && shaderLight->up.x == -200f)
+                {
+                    lightRotation = light.transform.rotation;
+                    shaderLight->up = lightRotation * Vector3.up;
+                }
             }
         }
 

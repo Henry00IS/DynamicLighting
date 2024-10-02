@@ -423,7 +423,7 @@ namespace AlpacaIT.DynamicLighting
         {
             Gizmos.color = lightColor;
 
-            Gizmos.DrawWireSphere(transform.position, largestLightRadius);
+            Gizmos.DrawWireSphere(cache.transformPosition, largestLightRadius);
 
             switch (lightType)
             {
@@ -462,10 +462,11 @@ namespace AlpacaIT.DynamicLighting
         private void GizmosDrawArrow(bool forward, bool twistable, bool bidirectional)
         {
             var raytraceLayers = DynamicLightManager.Instance.raytraceLayers;
-            var root = transform.position;
-            var f = transform.forward;
-            var u = transform.up;
-            var r = transform.right;
+            var root = cache.transformPosition;
+            var trans = transform;
+            var f = trans.forward;
+            var u = trans.up;
+            var r = trans.right;
 
             // when not facing forwards we swap the up and forward directions.
             if (!forward)

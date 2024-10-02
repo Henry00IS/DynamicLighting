@@ -19,5 +19,21 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         [Tooltip("The light appears as a volumetric box of fog. The size can be manipulated using the scale of the game object and the volumetric radius.")]
         Box = 2,
+
+        /// <summary>
+        /// The light appears as a volumetric cone of fog. The rotation can be manipulated using the
+        /// rotation of the game object. The cone angle is controlled by 'Light Outer Cutoff' and
+        /// the effect is best used with the 'Spot' light type.
+        /// </summary>
+        [Tooltip("The light appears as a volumetric cone of fog. The rotation can be manipulated using the rotation of the game object. The cone angle is controlled by 'Light Outer Cutoff' and the effect is best used with the 'Spot' light type.")]
+        ConeZ = 3,
+
+        /// <summary>
+        /// The light appears as a volumetric cone of fog. The rotation can be manipulated using the
+        /// rotation of the game object. The cone angle is controlled by 'Light Outer Cutoff' and
+        /// the effect is best used with the 'Interference', 'Rotor' and 'Disco' light types.
+        /// </summary>
+        [Tooltip("The light appears as a volumetric cone of fog. The rotation can be manipulated using the rotation of the game object. The cone angle is controlled by 'Light Outer Cutoff' and the effect is best used with the 'Interference', 'Rotor' and 'Disco' light types.")]
+        ConeY = 4,
     }
 }

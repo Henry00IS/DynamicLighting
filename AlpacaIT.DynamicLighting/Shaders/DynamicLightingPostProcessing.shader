@@ -61,9 +61,12 @@
 			// macros to name the recycled variables.
 			#define light_volumetricRadius radiusSqr
 			#define light_volumetricThickness gpFloat1
+			#define light_volumetricScale float3(light.gpFloat2, light.gpFloat3, light.shimmerScale)
+			#define light_volumetricSpotAngle light.gpFloat2
 			#define volumetric_type_sphere 1
 			#define volumetric_type_box 2
-			#define light_volumetricScale float3(light.gpFloat2, light.gpFloat3, light.shimmerScale)
+			#define volumetric_type_cone_y 3
+			#define volumetric_type_cone_z 4
 
 			float4 frag (v2f i) : SV_Target
 			{
@@ -87,9 +90,12 @@
 					float fog_radius = light.light_volumetricRadius;
 					uint volumetric_type = light.channel;
 
+					float t;
+
 					switch (volumetric_type)
 					{
 						case volumetric_type_sphere:
+						{
 							// closest point to the fog center on line between camera and fragment.
 							float3 fog_closest_point = nearest_point_on_finite_line(_WorldSpaceCameraPos, worldspace, fog_center);
 					
@@ -100,32 +106,13 @@
 								float fog_closest_point_distance_to_interior_sphere = fog_radius - distance(fog_closest_point, fog_center);
 			
 								// t is the volumetric non-linear color interpolant from 1.0 (center) to 0.0 (edge) of the sphere.
-								float t = fog_closest_point_distance_to_interior_sphere / fog_radius;
-
-								// apply smoothstep for a gradual fog transition near the edges.
-								t = smoothstep(0.0, 1.0, t);
-								
-								// apply the thickness to the fog that appears as a solid color.
-								t = saturate(t * light.light_volumetricThickness);
-						
-								// the distance from the camera to the world is used to make nearby geometry inside the fog visible.
-								float camera_distance_from_world = distance(_WorldSpaceCameraPos, worldspace) * light.volumetricVisibility;
-						
-								// we only subtract from t so that naturally fading fog takes precedence.
-								t = min(t, camera_distance_from_world);
-			
-								// let the user tweak the fog intensity with a multiplier.
-								t *= light.volumetricIntensity;
-			
-								// remember the most opaque fog that we have encountered.
-								fog_final_t = max(fog_final_t, t);
-			
-								// blend between the current color and the fog color.
-								fog_final = color_screen(fog_final, fog_color * t);
+								t = fog_closest_point_distance_to_interior_sphere / fog_radius;
 							}
-							break;
+						}
+						break;
 
 						case volumetric_type_box:
+						{
 							// define box bounds (min and max corners).
 							float3 boxMin = light.position - light.light_volumetricRadius * light_volumetricScale;
 							float3 boxMax = light.position + light.light_volumetricRadius * light_volumetricScale;
@@ -143,30 +130,53 @@
 							float ray_length_in_box = tMax - tMin;
 									
 							// calculate the fog intensity based on the distance traveled inside the box.
-							float t = ray_length_in_box / length(boxMax - boxMin); // normalize by box size.
+							t = ray_length_in_box / length(boxMax - boxMin); // normalize by box size.
+						}
+						break;
 
-							// apply smoothstep for a gradual fog transition near the edges.
-							t = smoothstep(0.0, 1.0, t);
+						case volumetric_type_cone_y:
+						case volumetric_type_cone_z:
+						{
+							// compute the ray direction (from camera to the current fragment).
+							float3 rayDir = normalize(worldspace - _WorldSpaceCameraPos);
 
-							// apply the thickness to the fog that appears as a solid color.
-							t = saturate(t * light.light_volumetricThickness);
-								
-							// the distance from the camera to the world is used to make nearby geometry inside the fog visible.
-							float camera_distance_from_world = distance(_WorldSpaceCameraPos, worldspace) * light.volumetricVisibility;
-								
-							// we only subtract from t so that naturally fading fog takes precedence.
-							t = min(t, camera_distance_from_world);
+							// get the distance to the current fragment in world space.
+							float tMin, tMax;
+							float maxDepth = length(worldspace - _WorldSpaceCameraPos);
 
-							// let the user tweak the fog intensity with a multiplier.
-							t *= light.volumetricIntensity;
-							
-							// remember the most opaque fog that we have encountered.
-							fog_final_t = max(fog_final_t, t);
+							// Perform ray-cone intersection test
+							if (ray_cone_intersection(_WorldSpaceCameraPos, rayDir, light.position, light.forward, light_volumetricSpotAngle, light.light_volumetricRadius, tMin, tMax, maxDepth))
+							{
+								// compute the length of the ray segment inside the cone.
+								float ray_length_in_cone = tMax - tMin;
 
-							// blend between the current color and the fog color.
-							fog_final = color_screen(fog_final, fog_color * t);
-							break;
+								// calculate the fog intensity based on the distance traveled inside the cone.
+								t = ray_length_in_cone / light.light_volumetricRadius;
+							}
+						}
+						break;
 					}
+
+					// apply smoothstep for a gradual fog transition near the edges.
+					t = smoothstep(0.0, 1.0, t);
+								
+					// apply the thickness to the fog that appears as a solid color.
+					t = saturate(t * light.light_volumetricThickness);
+						
+					// the distance from the camera to the world is used to make nearby geometry inside the fog visible.
+					float camera_distance_from_world = distance(_WorldSpaceCameraPos, worldspace) * light.volumetricVisibility;
+						
+					// we only subtract from t so that naturally fading fog takes precedence.
+					t = min(t, camera_distance_from_world);
+			
+					// let the user tweak the fog intensity with a multiplier.
+					t *= light.volumetricIntensity;
+			
+					// remember the most opaque fog that we have encountered.
+					fog_final_t = max(fog_final_t, t);
+			
+					// blend between the current color and the fog color.
+					fog_final = color_screen(fog_final, fog_color * t);
 				}
 				
 				// special blend that allows for fully opaque fog.
