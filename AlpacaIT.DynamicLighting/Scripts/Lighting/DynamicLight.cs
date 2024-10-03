@@ -285,6 +285,18 @@ namespace AlpacaIT.DynamicLighting
                         var size = lightVolumetricRadius * cache.transformScale;
                         return Mathf.Sqrt((size.x * size.x) + (size.y * size.y) + (size.z * size.z));
 
+                    case DynamicLightVolumetricType.ConeZ:
+                    case DynamicLightVolumetricType.ConeY:
+                        {
+                            // try to calculate a radius encompassing the cone:
+                            float angle = Mathf.Clamp(lightOuterCutoff, 0f, 75f);
+                            if (lightOuterCutoff > 90f)
+                                angle = (1.0f - Mathf.InverseLerp(115f, 180f, lightOuterCutoff)) * 75f;
+
+                            // calculate the maximal distance from the tip to the base edge.
+                            return lightVolumetricRadius / Mathf.Cos(angle * Mathf.Deg2Rad);
+                        }
+
                     default:
                         return lightVolumetricRadius;
                 }

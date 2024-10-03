@@ -90,7 +90,7 @@
 					float fog_radius = light.light_volumetricRadius;
 					uint volumetric_type = light.channel;
 
-					float t;
+					float t = 0.0;
 
 					switch (volumetric_type)
 					{

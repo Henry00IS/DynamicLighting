@@ -3,11 +3,11 @@
     "name": "Henry de Jongh",
     "url": "https://github.com/Henry00IS"
   },
-  "description": "The Dynamic Lighting System for Unity.",
+  "description": "Modernized Lighting System of Unreal Gold / Tournament (1996-1999) for Unity.\n\nThis lighting technique precomputes unique shadows for each light source, allowing dynamic adjustments such as color changes, flickering, or even water refraction.\n\nIf you found this package useful, please consider making a donation or supporting me on Patreon or giving my repository a star on GitHub. Your donations are a tremendous encouragement for the continued development and support of this package.\n\nPatreon:\nhttps://patreon.com/henrydejongh\n\nKo-fi:\nhttps://ko-fi.com/henry00\n\nPayPal:\nhttps://paypal.me/henrydejongh\n\nDiscord:\nhttps://discord.gg/sKEvrBwHtq\n\nGet in touch, I would love to see what you are working on! -Henry",
   "displayName": "Dynamic Lighting",
-  "documentationUrl": "https://github.com/Henry00IS/",
-  "changelogUrl": "https://github.com/Henry00IS/",
-  "licensesUrl": "https://github.com/Henry00IS/",
+  "documentationUrl": "https://github.com/Henry00IS/DynamicLighting",
+  "changelogUrl": "https://github.com/Henry00IS/DynamicLighting/commits/master",
+  "licensesUrl": "https://github.com/Henry00IS/DynamicLighting/blob/master/LICENSE.md",
   "name": "de.alpacait.dynamiclighting",
   "keywords": [
     "level design",
@@ -18,7 +18,7 @@
     "shadows"
   ],
   "unity": "2018.3",
-  "version": "1.198.0",
+  "version": "1.199.0",
   "dependencies": {
     "com.unity.mathematics": "1.1.0"
   }
