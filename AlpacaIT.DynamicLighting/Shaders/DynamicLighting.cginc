@@ -257,7 +257,7 @@ struct DynamicLight
         float stablerng = rand(world);
 
         // use a sine wave to change the brightness of the stable random blocks.
-        return lerp(1.0 - abs(sin(stablerng * _Time.w + _Time.x)), 1.0, modifier);
+        return 1.0 - abs(sin(stablerng * _Time.w + _Time.x)) * (1.0 - modifier);
     }
 
     #define GENERATE_FUNCTION_NAME calculate_watershimmer_bilinear

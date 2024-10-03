@@ -1,7 +1,8 @@
 // calculates a look-at orientation matrix.
+// warning: 'forward' and 'up' must be normalized.
 float3x3 look_at_matrix(float3 forward, float3 up)
 {
-    float3 right = normalize(cross(forward, up));
+    float3 right = cross(forward, up);
     return float3x3(
         right.x, up.x, forward.x,
         right.y, up.y, forward.y,
@@ -70,22 +71,22 @@ bool ray_box_intersection(float3 rayOrigin, float3 rayDir, float3 boxMin, float3
 
 bool ray_cone_intersection(float3 rayOrigin, float3 rayDir, float3 coneTip, float3 coneDir, float coneAngle, float coneDistance, out float tMin, out float tMax, float maxDepth)
 {
-    // Normalize directions
-    float3 d = normalize(rayDir);
-    float3 s = normalize(coneDir);
+    // precompute frequently used values.
     float3 w = rayOrigin - coneTip;
 
     float cosTheta = cos(coneAngle);
-    float m = cosTheta * cosTheta;
+    float cosTheta2 = cosTheta * cosTheta;
+    float sinTheta2 = 1.0 - cosTheta2;
+    float invCosTheta2 = 1.0 / cosTheta2;
 
-    float d_dot_s = dot(d, s);
-    float w_dot_s = dot(w, s);
-    float d_dot_w = dot(d, w);
+    float d_dot_s = dot(rayDir, coneDir);
+    float w_dot_s = dot(w, coneDir);
+    float d_dot_w = dot(rayDir, w);
     float w_dot_w = dot(w, w);
 
-    float A = d_dot_s * d_dot_s - m;
-    float B = 2.0 * (w_dot_s * d_dot_s - m * d_dot_w);
-    float C = w_dot_s * w_dot_s - m * w_dot_w;
+    float A = d_dot_s * d_dot_s - cosTheta2;
+    float B = 2.0 * (d_dot_s * w_dot_s - cosTheta2 * d_dot_w);
+    float C = w_dot_s * w_dot_s - cosTheta2 * w_dot_w;
 
     float discriminant = B * B - 4.0 * A * C;
 
@@ -95,125 +96,88 @@ bool ray_cone_intersection(float3 rayOrigin, float3 rayDir, float3 coneTip, floa
     int numHits = 0;
     float tValues[2];
 
-    // Step 1: Check if the ray origin is inside the cone
-    // To do this, we check the distance from the ray origin to the cone axis and compare it to the radius of the cone at the point where rayOrigin projects onto the cone's axis.
-    float coneRadiusAtOrigin = tan(coneAngle) * w_dot_s;
-    float distanceFromAxisSquared = dot(w, w) - w_dot_s * w_dot_s;
+    // check if the ray origin is inside the cone.
+    float k = sinTheta2 * invCosTheta2;
+    float coneRadius2 = w_dot_s * w_dot_s * k;
+    float distance2 = w_dot_w - w_dot_s * w_dot_s;
 
-    bool isInsideCone = (w_dot_s >= 0.0 && w_dot_s <= coneDistance) && (distanceFromAxisSquared <= coneRadiusAtOrigin * coneRadiusAtOrigin);
+    bool isInsideCone = (w_dot_s >= 0.0 && w_dot_s <= coneDistance) && (distance2 <= coneRadius2);
 
-    // Step 2: If the ray is inside the cone, set tMin = 0.0, but still compute tMax
     if (isInsideCone)
     {
-        tMin = 0.0; // The ray starts inside the cone, so we consider the ray "already intersecting".
+        tMin = 0.0;
     }
 
-    // Step 3: Compute potential intersections with the cone's body
+    // compute potential intersections with the cone's body.
     if (discriminant >= 0.0)
     {
         float sqrtDiscriminant = sqrt(discriminant);
-        float inv2A = 0.5 / A; // Avoid division by zero if A is zero
+        float invA = 0.5 / A;
 
-        float t0 = (-B - sqrtDiscriminant) * inv2A;
-        float t1 = (-B + sqrtDiscriminant) * inv2A;
+        float t0 = (-B - sqrtDiscriminant) * invA;
+        float t1 = (-B + sqrtDiscriminant) * invA;
 
-        // Check t0
-        if (t0 >= 0.0)
-        {
-            float3 hitPoint0 = rayOrigin + t0 * d;
-            float h0 = dot(hitPoint0 - coneTip, s);
+        // simplify hit height calculations.
+        float h0 = w_dot_s + t0 * d_dot_s;
+        float h1 = w_dot_s + t1 * d_dot_s;
 
-            if (h0 >= 0.0 && h0 <= coneDistance)
-            {
-                tValues[numHits++] = t0;
-            }
-        }
+        // check t0.
+        if (t0 >= 0.0 && h0 >= 0.0 && h0 <= coneDistance)
+            tValues[numHits++] = t0;
 
-        // Check t1
-        if (t1 >= 0.0)
-        {
-            float3 hitPoint1 = rayOrigin + t1 * d;
-            float h1 = dot(hitPoint1 - coneTip, s);
-
-            if (h1 >= 0.0 && h1 <= coneDistance)
-            {
-                tValues[numHits++] = t1;
-            }
-        }
+        // check t1.
+        if (t1 >= 0.0 && h1 >= 0.0 && h1 <= coneDistance)
+            tValues[numHits++] = t1;
     }
 
-    // Step 4: Add ray-plane intersection test for the cone cap
-    float3 coneCapCenter = coneTip + coneDir * coneDistance; // Cap is at coneDistance from tip along the direction
-    float capRadius = coneDistance * tan(coneAngle);         // Radius of the cap is determined by cone angle and distance
-
-    float denom = dot(d, s); // The denominator in ray-plane intersection
-    if (abs(denom) > 0.0001) // Ensure the ray isn't parallel to the cap's plane
+    // ray-plane intersection test for the cone cap.
+    float denom = dot(rayDir, coneDir);
+    if (abs(denom) > 0.0001)
     {
-        float tCap = dot(coneCapCenter - rayOrigin, s) / denom;
-        if (tCap >= 0.0) // Only consider hits in front of the ray
+        float tCap = (coneDistance - w_dot_s) / denom;
+        if (tCap >= 0.0)
         {
-            float3 hitPointCap = rayOrigin + tCap * d;
-            float3 capToHit = hitPointCap - coneCapCenter;
-            if (dot(capToHit, capToHit) <= capRadius * capRadius)
-            {
-                tValues[numHits++] = tCap; // Valid hit on the cap
-            }
+            float3 hitPoint = w + tCap * rayDir;
+            float hitPointDist2 = dot(hitPoint, hitPoint) - (w_dot_s + tCap * d_dot_s) * (w_dot_s + tCap * d_dot_s);
+            float capRadius2 = coneDistance * coneDistance * k;
+            if (hitPointDist2 <= capRadius2)
+                tValues[numHits++] = tCap;
         }
     }
 
-    // Step 5: If there are no hits, return false
     if (numHits == 0)
-    {
-        return isInsideCone; // If ray started inside the cone, we consider it intersecting, otherwise return false.
-    }
+        return isInsideCone;
 
-    // Step 6: Sort tMin and tMax based on intersection points
+    // sort tMin and tMax.
     if (numHits == 1)
     {
         if (isInsideCone)
-        {
-            tMax = tValues[0]; // The ray started inside, so tMin is 0, and tMax is the first valid intersection
-        }
+            tMax = tValues[0];
         else
-        {
-            tMin = tMax = tValues[0]; // Single intersection case
-        }
-        
-        // ensure that the intersection does not extend beyond the max depth.
+            tMin = tMax = tValues[0];
         tMax = min(tMax, maxDepth);
-        
         return true;
     }
-    else if (numHits == 2)
+    else
     {
         tMin = min(tValues[0], tValues[1]);
         tMax = max(tValues[0], tValues[1]);
-        
-        // If the ray starts inside, override tMin to be 0
         if (isInsideCone)
-        {
             tMin = 0.0;
-        }
-        
-        // ensure that the intersection does not extend beyond the max depth.
         tMax = min(tMax, maxDepth);
-        
         return true;
     }
-
-    return false;
 }
 
 // shoutouts to lordofduct (https://forum.unity.com/threads/how-do-i-find-the-closest-point-on-a-line.340058/)
 float3 nearest_point_on_finite_line(float3 start, float3 end, float3 pnt)
 {
-    float3 linex = end - start;
-    float len = length(linex);
-    linex = normalize(linex);
+    float3 lineDir = end - start;
+    float lenSq = dot(lineDir, lineDir);
     float3 v = pnt - start;
-    float d = dot(v, linex);
-    d = clamp(d, 0.0, len);
-    return start + linex * d;
+    float d = dot(v, lineDir);
+    d = saturate(d / lenSq);
+    return start + lineDir * d;
 }
 
 // looks at each channel's color information and multiplies the inverse of the blend and
