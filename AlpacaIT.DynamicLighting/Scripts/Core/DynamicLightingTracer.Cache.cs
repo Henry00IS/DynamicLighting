@@ -31,14 +31,12 @@ namespace AlpacaIT.DynamicLighting
         {
             public int x;
             public int y;
-            public Vector3 world;
             public uint lightChannel;
 
-            public RaycastCommandMeta(int x, int y, Vector3 world, uint lightChannel)
+            public RaycastCommandMeta(int x, int y, uint lightChannel)
             {
                 this.x = x;
                 this.y = y;
-                this.world = world;
                 this.lightChannel = lightChannel;
             }
         }

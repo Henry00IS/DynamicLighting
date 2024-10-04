@@ -300,7 +300,7 @@ namespace AlpacaIT.DynamicLighting
 #endif
             if (!meshBuilder.hasLightmapCoordinates)
             {
-                Debug.LogWarning("Raytracer skipping " + meshFilter.name + " because it does not have uv1 lightmap coordinates!");
+                Debug.LogWarning("Raytracer skipping " + meshFilter.name + " because it does not have uv1 lightmap coordinates!", meshFilter);
                 return;
             }
             else
@@ -726,7 +726,7 @@ namespace AlpacaIT.DynamicLighting
                             localTracesCounter++;
                             raycastProcessor.Add(
                                 raycastCommand,
-                                new RaycastCommandMeta(x, y, world, pointLight.lightChannel)
+                                new RaycastCommandMeta(x, y, pointLight.lightChannel)
                             );
                         }
                     }

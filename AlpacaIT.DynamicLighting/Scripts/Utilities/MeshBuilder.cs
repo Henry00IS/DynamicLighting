@@ -101,7 +101,7 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         /// <param name="triangleIndex">The index of the triangle in the mesh.</param>
         /// <returns>The 3 vertex UV1 coordinates associated with the triangle.</returns>
-        public (Vector3 a, Vector3 b, Vector3 c) GetTriangleUv1(int triangleIndex)
+        public (Vector2 a, Vector2 b, Vector2 c) GetTriangleUv1(int triangleIndex)
         {
             triangleIndex *= 3;
             var v1 = meshUv1[meshTriangles[triangleIndex]];
