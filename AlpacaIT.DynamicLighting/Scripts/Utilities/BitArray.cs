@@ -34,7 +34,7 @@ namespace AlpacaIT.DynamicLighting
     /// Manages a compact array of bit values, which are represented as Booleans, where true
     /// indicates that the bit is on (1) and false indicates the bit is off (0).
     /// </summary>
-    public class BitArray : IReadOnlyCollection<bool>, ICloneable
+    internal class BitArray : IReadOnlyCollection<bool>, ICloneable
     {
         /// <summary>The internal array of 32-bit elements that store the bits.</summary>
         private readonly uint[] _Data;

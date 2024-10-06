@@ -1,5 +1,4 @@
 using AlpacaIT.DynamicLighting.Internal;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using Unity.Mathematics;
@@ -315,11 +314,11 @@ namespace AlpacaIT.DynamicLighting
             tracingTime.Begin();
             var dynamic_triangles = new DynamicTrianglesBuilder(meshBuilder, lightmapSize);
             var pixels_lightmap = new uint[lightmapSize * lightmapSize];
-            var pixels_visited = new uint[lightmapSize * lightmapSize];
+            var pixels_visited = new bool[lightmapSize * lightmapSize];
             var pixels_lightmap_gc = GCHandle.Alloc(pixels_lightmap, GCHandleType.Pinned);
             var pixels_visited_gc = GCHandle.Alloc(pixels_visited, GCHandleType.Pinned);
             var pixels_lightmap_ptr = (uint*)pixels_lightmap_gc.AddrOfPinnedObject();
-            var pixels_visited_ptr = (uint*)pixels_visited_gc.AddrOfPinnedObject();
+            var pixels_visited_ptr = (bool*)pixels_visited_gc.AddrOfPinnedObject();
 
             // prepare to raycast the entire mesh using multi-threading.
             raycastProcessor.pixelsLightmap = pixels_lightmap_ptr;
@@ -413,136 +412,8 @@ namespace AlpacaIT.DynamicLighting
 
             seamTime.Begin();
             {
-                for (int y = 0; y < lightmapSize; y++)
-                {
-                    int yPtr = y * lightmapSize;
-
-                    for (int x = 0; x < lightmapSize; x++)
-                    {
-                        int xyPtr = yPtr + x;
-
-                        // if we find an unvisited pixel it will appear as a black seam in the scene.
-                        uint visited = pixels_visited_ptr[xyPtr];
-                        if (visited == 0)
-                        {
-                            uint res = 0;
-
-                            // fetch 5x5 "visited" pixels (where p22 is the center).
-
-                            // bool p00 = GetPixel(ref pixels_visited, x - 2, y - 2) == 1;
-                            // bool p10 = GetPixel(ref pixels_visited, x - 1, y - 2) == 1;
-                            bool p20 = GetPixel(pixels_visited_ptr, x, y - 2) == 1;
-                            // bool p30 = GetPixel(ref pixels_visited, x + 1, y - 2) == 1;
-                            // bool p40 = GetPixel(ref pixels_visited, x + 2, y - 2) == 1;
-
-                            // bool p01 = GetPixel(ref pixels_visited, x - 2, y - 1) == 1;
-                            // bool p11 = GetPixel(ref pixels_visited, x - 1, y - 1) == 1;
-                            bool p21 = GetPixel(pixels_visited_ptr, x, y - 1) == 1;
-                            // bool p31 = GetPixel(ref pixels_visited, x + 1, y - 1) == 1;
-                            // bool p41 = GetPixel(ref pixels_visited, x + 2, y - 1) == 1;
-
-                            bool p02 = GetPixel(pixels_visited_ptr, x - 2, y) == 1;
-                            bool p12 = GetPixel(pixels_visited_ptr, x - 1, y) == 1;
-                            bool p32 = GetPixel(pixels_visited_ptr, x + 1, y) == 1;
-                            bool p42 = GetPixel(pixels_visited_ptr, x + 2, y) == 1;
-
-                            // bool p03 = GetPixel(ref pixels_visited, x - 2, y + 1) == 1;
-                            // bool p13 = GetPixel(ref pixels_visited, x - 1, y + 1) == 1;
-                            bool p23 = GetPixel(pixels_visited_ptr, x, y + 1) == 1;
-                            // bool p33 = GetPixel(ref pixels_visited, x + 1, y + 1) == 1;
-                            // bool p43 = GetPixel(ref pixels_visited, x + 2, y + 1) == 1;
-
-                            // bool p04 = GetPixel(ref pixels_visited, x - 2, y + 2) == 1;
-                            // bool p14 = GetPixel(ref pixels_visited, x - 1, y + 2) == 1;
-                            bool p24 = GetPixel(pixels_visited_ptr, x, y + 2) == 1;
-                            // bool p34 = GetPixel(ref pixels_visited, x + 1, y + 2) == 1;
-                            // bool p44 = GetPixel(ref pixels_visited, x + 2, y + 2) == 1;
-
-                            // fetch 5x5 "lightmap" pixels (where p22 is the center).
-
-                            // uint l00 = GetPixel(ref pixels_lightmap, x - 2, y - 2);
-                            // uint l10 = GetPixel(ref pixels_lightmap, x - 1, y - 2);
-                            uint l20 = GetPixel(pixels_lightmap_ptr, x, y - 2);
-                            // uint l30 = GetPixel(ref pixels_lightmap, x + 1, y - 2);
-                            // uint l40 = GetPixel(ref pixels_lightmap, x + 2, y - 2);
-
-                            // uint l01 = GetPixel(ref pixels_lightmap, x - 2, y - 1);
-                            // uint l11 = GetPixel(ref pixels_lightmap, x - 1, y - 1);
-                            uint l21 = GetPixel(pixels_lightmap_ptr, x, y - 1);
-                            // uint l31 = GetPixel(ref pixels_lightmap, x + 1, y - 1);
-                            // uint l41 = GetPixel(ref pixels_lightmap, x + 2, y - 1);
-
-                            uint l02 = GetPixel(pixels_lightmap_ptr, x - 2, y);
-                            uint l12 = GetPixel(pixels_lightmap_ptr, x - 1, y);
-                            uint l32 = GetPixel(pixels_lightmap_ptr, x + 1, y);
-                            uint l42 = GetPixel(pixels_lightmap_ptr, x + 2, y);
-
-                            // uint l03 = GetPixel(ref pixels_lightmap, x - 2, y + 1);
-                            // uint l13 = GetPixel(ref pixels_lightmap, x - 1, y + 1);
-                            uint l23 = GetPixel(pixels_lightmap_ptr, x, y + 1);
-                            // uint l33 = GetPixel(ref pixels_lightmap, x + 1, y + 1);
-                            // uint l43 = GetPixel(ref pixels_lightmap, x + 2, y + 1);
-
-                            // uint l04 = GetPixel(ref pixels_lightmap, x - 2, y + 2);
-                            // uint l14 = GetPixel(ref pixels_lightmap, x - 1, y + 2);
-                            uint l24 = GetPixel(pixels_lightmap_ptr, x, y + 2);
-                            // uint l34 = GetPixel(ref pixels_lightmap, x + 1, y + 2);
-                            // uint l44 = GetPixel(ref pixels_lightmap, x + 2, y + 2);
-
-                            // x x x x x
-                            // x x x x x
-                            // x x C x x
-                            // x x x x x
-                            // x x x x x
-
-                            // p00 p10 p20 p30 p40
-                            // p01 p11 p21 p31 p41
-                            // p02 p12 p22 p32 p42
-                            // p03 p13 p23 p33 p43
-                            // p04 p14 p24 p34 p44
-
-                            //
-                            //     x
-                            //   x C x
-                            //     x
-                            //
-
-                            // left 1x
-                            if (p12)
-                                res |= l12;
-                            // right 1x
-                            if (p32)
-                                res |= l32;
-                            // up 1x
-                            if (p21)
-                                res |= l21;
-                            // down 1x
-                            if (p23)
-                                res |= l23;
-
-                            //     x
-                            //
-                            // x   C   x
-                            //
-                            //     x
-
-                            // left 2x
-                            if (!p12 && p02)
-                                res |= l02;
-                            // right 2x
-                            if (!p32 && p42)
-                                res |= l42;
-                            // up 2x
-                            if (!p21 && p20)
-                                res |= l20;
-                            // down 2x
-                            if (!p23 && p24)
-                                res |= l24;
-
-                            pixels_lightmap_ptr[xyPtr] = res;
-                        }
-                    }
-                }
+                SeamsPaddingStep seamsPaddingStep = new SeamsPaddingStep(pixels_lightmap_ptr, pixels_visited_ptr, lightmapSize);
+                seamsPaddingStep.Execute();
             }
             seamTime.Stop();
 
@@ -572,15 +443,7 @@ namespace AlpacaIT.DynamicLighting
                 dynamicLightManager.raycastedMeshRenderers.Add(lightmap);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private unsafe uint GetPixel(uint* pixels, int x, int y)
-        {
-            int offset = y * lightmapSize + x;
-            if ((uint)offset >= (uint)(lightmapSize * lightmapSize)) return 0;
-            return pixels[offset];
-        }
-
-        private unsafe void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, uint* pixels_visited, uint* pixels_lightmap, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        private unsafe void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, bool* pixels_visited, uint* pixels_lightmap, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // calculate the triangle normal (this may fail when degenerate or very small).
             var triangleNormal3 = math.normalizesafe(math.cross(v2 - v1, v3 - v1));
@@ -732,7 +595,7 @@ namespace AlpacaIT.DynamicLighting
                     }
 
                     // write this pixel into the visited map.
-                    pixels_visited[y * lightmapSize + x] = 1;
+                    pixels_visited[y * lightmapSize + x] = true;
                 }
             }
 
