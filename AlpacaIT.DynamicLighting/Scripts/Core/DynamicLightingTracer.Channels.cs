@@ -10,6 +10,24 @@ namespace AlpacaIT.DynamicLighting
     internal partial class DynamicLightingTracer
     {
         /// <summary>
+        /// Keeps track of the next light channel to be assigned when searching for available channels.
+        /// <para>
+        /// This variable helps to ensure that half of all available channels (0 to 15) are used
+        /// sequentially before any channel is reused. The original issue is that the system would
+        /// eagerly recycle the same channel (starting from 0) as soon as it became available, even
+        /// if other channels were still unused. This could lead to nearby lights on the same mesh
+        /// being assigned the same channel, increasing the risk of light leaking on the lightmap texture.
+        /// </para>
+        /// <para>
+        /// By keeping track of the last assigned channel, <see cref="channelsNextChannel"/> ensures
+        /// that the system works through most channels in a cyclic manner (0 to 15) before wrapping
+        /// around to 0. This reduces the chances of lights that are spatially close to one another
+        /// being assigned the same channel, which helps mitigate potential light leakage issues.
+        /// </para>
+        /// </summary>
+        private uint channelsNextChannel = 0;
+
+        /// <summary>
         /// Assigns light channels to all of the <see cref="DynamicLight"/> instances in the scene.
         /// <para>Requires the <see cref="pointLights"/> array to be initialized.</para>
         /// </summary>
@@ -64,11 +82,24 @@ namespace AlpacaIT.DynamicLighting
                     channels[light.lightChannel] = true;
             }
 
-            // find a free channel.
-            for (channel = 0; channel < channels.Length; channel++)
+            // sequentially find a free channel starting from the next channel.
+            for (int i = 0; i < channels.Length; i++)
+            {
+                channel = (channelsNextChannel + (uint)i) % 16;
+                if (!channels[channel])
+                {
+                    // update the next channel variable for the next assignment.
+                    channelsNextChannel = (channel + 1) % 16;
+                    return true;
+                }
+            }
+
+            // we ran out of sequential channels so recycle a free channel.
+            for (channel = 16; channel < channels.Length; channel++)
                 if (!channels[channel])
                     return true;
 
+            channel = 255;
             return false;
         }
     }

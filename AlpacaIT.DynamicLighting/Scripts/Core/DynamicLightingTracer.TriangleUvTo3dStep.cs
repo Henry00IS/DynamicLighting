@@ -9,7 +9,7 @@ namespace AlpacaIT.DynamicLighting
     internal partial class DynamicLightingTracer
     {
         /// <summary>
-        /// Uses the Unity job system to to calculate the world position for every UV position on a triangle.
+        /// Uses the Unity job system to calculate the world position for every UV position on a triangle.
         /// </summary>
         public unsafe class TriangleUvTo3dStep
         {
