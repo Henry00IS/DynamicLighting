@@ -282,6 +282,30 @@ namespace AlpacaIT.DynamicLighting
             return self.x != other.x || self.y != other.y || self.z != other.z;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe bool ApproximatelyEquals(this Vector3 self, Vector3 other, float epsilon = 0.00001f)
+        {
+            *(uint*)&self.x &= 0x7FFFFFFFu;
+            *(uint*)&other.x &= 0x7FFFFFFFu;
+            float diffX = self.x - other.x;
+            *(uint*)&diffX &= 0x7FFFFFFFu;
+            if (diffX >= epsilon) return false;
+
+            *(uint*)&self.y &= 0x7FFFFFFFu;
+            *(uint*)&other.y &= 0x7FFFFFFFu;
+            float diffY = self.y - other.y;
+            *(uint*)&diffY &= 0x7FFFFFFFu;
+            if (diffY >= epsilon) return false;
+
+            *(uint*)&self.z &= 0x7FFFFFFFu;
+            *(uint*)&other.z &= 0x7FFFFFFFu;
+            float diffZ = self.z - other.z;
+            *(uint*)&diffZ &= 0x7FFFFFFFu;
+            if (diffZ >= epsilon) return false;
+
+            return true;
+        }
+
         /// <summary>
         /// Calculates a framerate independent fixed timestep.
         /// </summary>

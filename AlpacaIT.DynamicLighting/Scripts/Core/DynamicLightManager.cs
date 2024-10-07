@@ -743,7 +743,7 @@ namespace AlpacaIT.DynamicLighting
                 // when a raycasted light position has been moved away from the origin:
                 lightCache.transformPosition = lightPositionsRaycastedLightPositions[i];
                 lightCache.transformScale = lightPositionsRaycastedLightScales[i];
-                if (lightCache.transformPosition.FastNotEquals(raycastedDynamicLight.origin))
+                if (!lightCache.transformPosition.ApproximatelyEquals(raycastedDynamicLight.origin))
                 {
                     if (!lightCache.movedFromOrigin)
                     {
