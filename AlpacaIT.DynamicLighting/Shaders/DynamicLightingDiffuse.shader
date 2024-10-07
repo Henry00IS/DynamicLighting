@@ -116,7 +116,7 @@ Shader "Dynamic Lighting/Diffuse"
                 // float attenuation; the attenuation of the point light with maximum radius.
                 // float map; the computed shadow of this fragment with effects.
                 // bool is_bounce_available; whether bounce texture data is available on this triangle.
-                // float3 bounce; the computed bounce texture color of this fragment.
+                // float bounce; the computed grayscale bounce texture color of this fragment.
                 //
                 // it may also early out and continue the loop to the next light.
                 //

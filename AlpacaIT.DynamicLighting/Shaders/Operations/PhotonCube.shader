@@ -25,8 +25,6 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
             {
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
-                float2 uv0 : TEXCOORD0;
-                float4 color : COLOR;
             };
 
             struct v2f
@@ -34,21 +32,13 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
                 float4 vertex : SV_POSITION;
                 float3 world : TEXCOORD0;
                 float3 normal : TEXCOORD1;
-                float2 uv0 : TEXCOORD2;
-                float4 color : COLOR;
             };
-
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
-            float4 _Color;
 
             v2f vert (appdata v)
             {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.normal = UnityObjectToWorldNormal(v.normal);
-                o.uv0 = TRANSFORM_TEX(v.uv0, _MainTex);
-                o.color = v.color;
                 o.world = mul(unity_ObjectToWorld, v.vertex).xyz;
                 return o;
             }
@@ -73,13 +63,10 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
 
                 // store the distance in the red channel and a small normal offset for raycasting on the cpu.
                 result.r = light_distance;
-                // store the normal as 3 bytes in the green channel (1 byte unused).
-                result.g = pack_normalized_float4_into_float(float4(i.normal, 0));
-                // store the main texture multiplied with material color and vertex color as 3 bytes in the blue channel (1 byte unused).
-                result.b = pack_saturated_float4_into_float(float4(tex2D(_MainTex, i.uv0).rgb * _Color.rgb * i.color, 0));
-
-                // unused:
-                result.a = 1.0;
+                // store the normal in the green, blue and alpha channels.
+                result.g = i.normal.x;
+                result.b = i.normal.y;
+                result.a = i.normal.z;
 
                 return result;
             }
@@ -108,7 +95,6 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
                 float2 uv0 : TEXCOORD0;
-                float4 color : COLOR;
             };
 
             struct v2f
@@ -117,12 +103,10 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
                 float3 world : TEXCOORD0;
                 float3 normal : TEXCOORD1;
                 float2 uv0 : TEXCOORD2;
-                float4 color : COLOR;
             };
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
-            float4 _Color;
 
             v2f vert (appdata v)
             {
@@ -130,7 +114,6 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.normal = UnityObjectToWorldNormal(v.normal);
                 o.uv0 = TRANSFORM_TEX(v.uv0, _MainTex);
-                o.color = v.color;
                 o.world = mul(unity_ObjectToWorld, v.vertex).xyz;
                 return o;
             }
@@ -157,13 +140,10 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
 
                 // store the distance in the red channel and a small normal offset for raycasting on the cpu.
                 result.r = light_distance;
-                // store the normal as 3 bytes in the green channel (1 byte unused).
-                result.g = pack_normalized_float4_into_float(float4(i.normal, 0));
-                // store the main texture multiplied with material color and vertex color as 3 bytes in the blue channel (1 byte unused).
-                result.b = pack_saturated_float4_into_float(float4(col.rgb * _Color.rgb * i.color, 0));
-
-                // unused:
-                result.a = 1.0;
+                // store the normal in the green, blue and alpha channels.
+                result.g = i.normal.x;
+                result.b = i.normal.y;
+                result.a = i.normal.z;
 
                 // discard fragments for transparent textures so that light can shine through it.
                 if (col.a > 0.5)
@@ -203,7 +183,6 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
                 float2 uv0 : TEXCOORD0;
-                float4 color : COLOR;
             };
 
             struct v2f
@@ -212,12 +191,10 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
                 float3 world : TEXCOORD0;
                 float3 normal : TEXCOORD1;
                 float2 uv0 : TEXCOORD2;
-                float4 color : COLOR;
             };
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
-            float4 _Color;
 
             v2f vert (appdata v)
             {
@@ -225,7 +202,6 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.normal = UnityObjectToWorldNormal(v.normal);
                 o.uv0 = TRANSFORM_TEX(v.uv0, _MainTex);
-                o.color = v.color;
                 o.world = mul(unity_ObjectToWorld, v.vertex).xyz;
                 return o;
             }
@@ -252,13 +228,10 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
 
                 // store the distance in the red channel and a small normal offset for raycasting on the cpu.
                 result.r = light_distance;
-                // store the normal as 3 bytes in the green channel (1 byte unused).
-                result.g = pack_normalized_float4_into_float(float4(i.normal, 0));
-                // store the main texture multiplied with material color and vertex color as 3 bytes in the blue channel (1 byte unused).
-                result.b = pack_saturated_float4_into_float(float4(col.rgb * _Color.rgb * i.color, 0));
-
-                // unused:
-                result.a = 1.0;
+                // store the normal in the green, blue and alpha channels.
+                result.g = i.normal.x;
+                result.b = i.normal.y;
+                result.a = i.normal.z;
 
                 // discard fragments for transparent textures so that light can shine through it.
                 if (col.a > 0.5)

@@ -9,7 +9,7 @@ namespace AlpacaIT.DynamicLighting
 
     internal static class GaussianBlur
     {
-        public static unsafe void ApplyGaussianBlur(Color* destination, Color[] source, int size, int kernelSize = 21, float spread = 5.0f)
+        public static unsafe void ApplyGaussianBlur(float* destination, float[] source, int size, int kernelSize = 21, float spread = 5.0f)
         {
             float[] gaussianWeights = GenerateGaussianWeights(kernelSize, spread);
 
@@ -18,7 +18,7 @@ namespace AlpacaIT.DynamicLighting
 
             var source_gc = GCHandle.Alloc(source, GCHandleType.Pinned);
             var source_ptr = source_gc.AddrOfPinnedObject();
-            Buffer.MemoryCopy(destination, (void*)source_ptr, size * size * sizeof(Color), size * size * sizeof(Color));
+            Buffer.MemoryCopy(destination, (void*)source_ptr, size * size * sizeof(float), size * size * sizeof(float));
             source_gc.Free();
 
             // Apply the vertical blur pass
@@ -48,23 +48,23 @@ namespace AlpacaIT.DynamicLighting
             return weights;
         }
 
-        private static unsafe void HorizontalBlur(Color[] source, Color* destination, float[] weights, int width, int height)
+        private static unsafe void HorizontalBlur(float[] source, float* destination, float[] weights, int width, int height)
         {
             int halfKernel = weights.Length / 2;
-            Color[] sourcePixels = source;
-            Color* destinationPixels = destination;
+            float[] sourcePixels = source;
+            float* destinationPixels = destination;
 
             for (int y = 0; y < height; y++)
             {
                 for (int x = 0; x < width; x++)
                 {
-                    Color colorSum = Color.black;
+                    float colorSum = 0.0f;
                     float weightSum = 0.0f;
 
                     for (int k = -halfKernel; k <= halfKernel; k++)
                     {
                         int sampleX = Mathf.Clamp(x + k, 0, width - 1);
-                        Color sample = sourcePixels[y * width + sampleX];
+                        float sample = sourcePixels[y * width + sampleX];
                         float weight = weights[k + halfKernel];
                         colorSum += sample * weight;
                         weightSum += weight;
@@ -75,23 +75,23 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
-        private static unsafe void VerticalBlur(Color[] source, Color* destination, float[] weights, int width, int height)
+        private static unsafe void VerticalBlur(float[] source, float* destination, float[] weights, int width, int height)
         {
             int halfKernel = weights.Length / 2;
-            Color[] sourcePixels = source;
-            Color* destinationPixels = destination;
+            float[] sourcePixels = source;
+            float* destinationPixels = destination;
 
             for (int x = 0; x < width; x++)
             {
                 for (int y = 0; y < height; y++)
                 {
-                    Color colorSum = Color.black;
+                    float colorSum = 0.0f;
                     float weightSum = 0.0f;
 
                     for (int k = -halfKernel; k <= halfKernel; k++)
                     {
                         int sampleY = Mathf.Clamp(y + k, 0, height - 1);
-                        Color sample = sourcePixels[sampleY * width + x];
+                        float sample = sourcePixels[sampleY * width + x];
                         float weight = weights[k + halfKernel];
                         colorSum += sample * weight;
                         weightSum += weight;

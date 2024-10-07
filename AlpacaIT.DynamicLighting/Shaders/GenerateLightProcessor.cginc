@@ -55,7 +55,7 @@ if (light.is_shadow_available())
 // if this light is realtime we will skip this step.
 float map = 1.0;
 #if DYNAMIC_LIGHTING_BOUNCE
-float3 bounce = 0.0;
+float bounce = 0.0;
 #endif
 if (lightmap_resolution > 0 && light.is_dynamic())
 {

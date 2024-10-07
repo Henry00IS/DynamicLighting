@@ -144,6 +144,34 @@ namespace AlpacaIT.DynamicLighting
         public Texture lightCookieTexture;
 
         /// <summary>
+        /// The intensity of the bounce lighting when using 'Single Bounce' illumination. This is
+        /// useful for brightening up areas where the bounce lighting appears too dim.
+        /// <para>
+        /// Note that any adjustments to this setting require raytracing the scene again for the
+        /// changes to take effect.
+        /// </para>
+        /// </summary>
+        [Header("Raytracing Settings:")]
+        [Tooltip("The intensity of the bounce lighting when using 'Single Bounce' illumination. This is useful for brightening up areas where the bounce lighting appears too dim.\n\nNote that any adjustments to this setting require raytracing the scene again for the changes to take effect.")]
+        [Min(0f)]
+        public float lightBounceIntensity = 1f;
+
+        /// <summary>
+        /// The number of light samples taken from the scene when using 'Single Bounce'
+        /// illumination. Increasing the number of samples helps reduce graininess or noise,
+        /// resulting in smoother and more accurate lighting. However, higher sample counts may
+        /// increase rendering times. A sample count of 128 delivers high quality results, providing
+        /// smooth and accurate lighting with minimal graininess.
+        /// <para>
+        /// Note that any adjustments to this setting require raytracing the scene again for the
+        /// changes to take effect.
+        /// </para>
+        /// </summary>
+        [Tooltip("The number of light samples taken from the scene when using 'Single Bounce' illumination. Increasing the number of samples helps reduce graininess or noise, resulting in smoother and more accurate lighting. However, higher sample counts may increase rendering times. A sample count of 128 delivers high quality results, providing smooth and accurate lighting with minimal graininess.\n\nNote that any adjustments to this setting require raytracing the scene again for the changes to take effect.")]
+        [Min(2f)]
+        public int lightBounceSamples = 32;
+
+        /// <summary>
         /// The shimmer effects overlay the world with random blocks that project water caustics or
         /// fire wavering.
         /// </summary>

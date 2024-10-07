@@ -180,13 +180,16 @@ Shader "Dynamic Lighting/Metallic"
             {
                 // this generates the light with shadows and effects calculation declaring:
                 // 
-                // required: DynamicLight light; the current dynamic light source.
+                // DynamicLight light; the current dynamic light source.
+                // DynamicTriangle dynamic_triangle; the current triangle data.
                 // float3 light_direction; normalized direction between the light source and the fragment.
                 // float light_distanceSqr; the square distance between the light source and the fragment.
                 // float3 light_position_minus_world; the light position minus the world position.
                 // float NdotL; dot product with the normal and light direction (diffusion).
-                // float map; the computed shadow of this fragment with effects.
                 // float attenuation; the attenuation of the point light with maximum radius.
+                // float map; the computed shadow of this fragment with effects.
+                // bool is_bounce_available; whether bounce texture data is available on this triangle.
+                // float bounce; the computed grayscale bounce texture color of this fragment.
                 //
                 // it may also early out and continue the loop to the next light.
                 //

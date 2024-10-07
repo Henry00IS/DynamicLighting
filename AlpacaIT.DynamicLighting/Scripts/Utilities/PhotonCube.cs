@@ -13,77 +13,20 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>One side of a <see cref="PhotonCube"/> containing pixel data.</summary>
         private class PhotonCubeFace
         {
-            /// <summary>The distances to each pixel on the cubemap face.</summary>
-            public readonly float[] distances;
-
-            /// <summary>The world-space normals of each pixel on the cubemap face.</summary>
-            public readonly float3[] normals;
-
-            /// <summary>The diffuse colors of each pixel on the cubemap face.</summary>
-            public readonly float3[] diffuse;
+            /// <summary>
+            /// The distances to each pixel and world-space normals of each pixel on the cubemap face.
+            /// <para><see cref="float4.x"/> contains the distance.</para>
+            /// <para><see cref="float4.yzw"/> contains the world-space normal.</para>
+            /// </summary>
+            public readonly float4[] colors;
 
             /// <summary>The width and height of each face of the photon cube in pixels.</summary>
             public readonly int size;
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private float byte_to_normalized_float(uint value)
+            public PhotonCubeFace(float4[] colors, int size)
             {
-                return -1.0f + value * (1.0f / 255.0f) * 2.0f;
-            }
-
-            private unsafe float4 unpack_normalized_float4_from_float(float value)
-            {
-                uint bytes = *(uint*)&value;
-
-                float4 result = new float4(
-                    byte_to_normalized_float((bytes >> 24) & 0xFF),
-                    byte_to_normalized_float((bytes >> 16) & 0xFF),
-                    byte_to_normalized_float((bytes >> 8) & 0xFF),
-                    byte_to_normalized_float(bytes & 0xFF)
-                );
-
-                return result;
-            }
-
-            private unsafe float4 unpack_saturated_float4_from_float(float value)
-            {
-                uint bytes = *(uint*)&value;
-
-                // extract the bytes and convert them to float [0.0, 255.0].
-                var result = new float4(
-                    (bytes >> 24) & 0xFF,
-                    (bytes >> 16) & 0xFF,
-                    (bytes >> 8) & 0xFF,
-                    bytes & 0xFF
-                );
-
-                // normalize to [0.0, 1.0].
-                result *= 1.0f / 255.0f;
-
-                return result;
-            }
-
-            public PhotonCubeFace(Color[] colors, int size, bool distanceOnly)
-            {
+                this.colors = colors;
                 this.size = size;
-
-                distances = new float[colors.Length];
-                if (!distanceOnly)
-                {
-                    normals = new float3[colors.Length];
-                    diffuse = new float3[colors.Length];
-                }
-
-                // unpack the shader data.
-                for (int i = 0; i < colors.Length; i++)
-                {
-                    distances[i] = colors[i].r;
-                    if (!distanceOnly)
-                    {
-                        normals[i] = unpack_normalized_float4_from_float(colors[i].g).xyz;
-                        diffuse[i] = unpack_saturated_float4_from_float(colors[i].b).xyz;
-                    }
-                }
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -99,17 +42,12 @@ namespace AlpacaIT.DynamicLighting
 
             public float SampleDistance(float2 position)
             {
-                return distances[Index(position)];
+                return colors[Index(position)].x;
             }
 
             public float3 SampleNormal(float2 position)
             {
-                return normals[Index(position)];
-            }
-
-            public float3 SampleDiffuse(float2 position)
-            {
-                return diffuse[Index(position)];
+                return colors[Index(position)].yzw;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -138,8 +76,7 @@ namespace AlpacaIT.DynamicLighting
         /// The cubemap <see cref="RenderTexture"/> with a <see cref="RenderTexture.volumeDepth"/>
         /// of 6 faces.
         /// </param>
-        /// <param name="distanceOnly">Whether to store the distance only to reduce RAM usage.</param>
-        public PhotonCube(RenderTexture cubemapRenderTexture, bool distanceOnly)
+        public PhotonCube(RenderTexture cubemapRenderTexture)
         {
             // validate the arguments to prevent any errors.
             if (cubemapRenderTexture == null) throw new System.ArgumentNullException(nameof(cubemapRenderTexture));
@@ -167,7 +104,9 @@ namespace AlpacaIT.DynamicLighting
                 RenderTexture.active = rt;
                 readableTexture.ReadPixels(new Rect(0, 0, size, size), 0, 0);
                 readableTexture.Apply();
-                faces[face] = new PhotonCubeFace(readableTexture.GetPixels(), size, distanceOnly);
+                float4[] pixels = new float4[size * size];
+                readableTexture.GetPixelData<float4>(0).CopyTo(pixels);
+                faces[face] = new PhotonCubeFace(pixels, size);
                 RenderTexture.active = null;
             }
             Object.DestroyImmediate(readableTexture);
@@ -255,39 +194,13 @@ namespace AlpacaIT.DynamicLighting
         public float SampleDistance(float3 direction)
         {
             var uv = GetFaceUvByDirection(direction, out var face);
-            var distance = faces[face].SampleDistance(uv);
-            return distance < 0.5f ? 0.0f : distance; // account for skybox.
-        }
-
-        /// <summary>Gets the distance to the closest fragment in the given direction.</summary>
-        /// <param name="direction">The direction to sample the cubemap in.</param>
-        /// <returns>The distance to the fragment.</returns>
-        public float SampleDistanceRaw(float3 direction)
-        {
-            var uv = GetFaceUvByDirection(direction, out var face);
             return faces[face].SampleDistance(uv);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float SampleDistanceFast(int photonCubeFace, int photonCubeFaceIndex)
         {
-            var distance = faces[photonCubeFace].distances[photonCubeFaceIndex];
-            return distance < 0.5f ? 0.0f : distance; // account for skybox.
-        }
-
-        /// <summary>Gets the diffuse color of the closest fragment in the given direction.</summary>
-        /// <param name="direction">The direction to sample the cubemap in.</param>
-        /// <returns>The color of the fragment.</returns>
-        public float3 SampleDiffuse(float3 direction)
-        {
-            var uv = GetFaceUvByDirection(direction, out var face);
-            return faces[face].SampleDiffuse(uv);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public float3 SampleDiffuseFast(int photonCubeFace, int photonCubeFaceIndex)
-        {
-            return faces[photonCubeFace].diffuse[photonCubeFaceIndex];
+            return faces[photonCubeFace].colors[photonCubeFaceIndex].x;
         }
 
         /// <summary>Gets an approximate normal of the closest fragment in the given direction.</summary>
@@ -302,7 +215,7 @@ namespace AlpacaIT.DynamicLighting
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float3 SampleNormalFast(int photonCubeFace, int photonCubeFaceIndex)
         {
-            return faces[photonCubeFace].normals[photonCubeFaceIndex];
+            return faces[photonCubeFace].colors[photonCubeFaceIndex].yzw;
         }
 
         /// <summary>
@@ -388,7 +301,7 @@ namespace AlpacaIT.DynamicLighting
 
             // negative!
             UMath.Negate(&lightDirection);
-            float shadow_mapping_distance = SampleDistanceRaw(lightDirection);
+            float shadow_mapping_distance = SampleDistance(lightDirection);
 
             // when the fragment is occluded we can early out here.
             if (light_distance - autobias > shadow_mapping_distance)

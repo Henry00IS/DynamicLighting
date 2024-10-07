@@ -611,15 +611,29 @@ struct DynamicTriangle
 #if DYNAMIC_LIGHTING_BOUNCE
     // fetches a bounce pixel at the specified uv coordinates from the bounce texture data.
     // note: requires 'uv -= bounds.xy' to be calculated up front.
-    float3 bounce_sample(uint2 uv)
+    float bounce_sample(uint2 uv)
     {
         uint index = uv.y * bounds.z + uv.x;
-        float4 color = unpack_saturated_float4_from_uint(dynamic_triangles[activeLightBounceDataOffset + index]);
-        return color.rgb;
+    
+        // the bounce texture data is compressed with 4 pixels in one uint.
+        
+        uint uintIndex = index / 4; // determine the index of the uint in the buffer.
+        uint byteIndex = index % 4; // find the byte position within the uint.
+        
+        uint value = dynamic_triangles[activeLightBounceDataOffset + uintIndex];
+        
+        uint shift = (3 - byteIndex) * 8;    // calculate the shift amount for the correct byte.
+        uint byte = (value >> shift) & 0xFF; // extract the desired byte.
+        
+        float pixelValue = byte / 255.0; // convert the byte to a float in [0, 1].
+    
+        // decompress the color that has more details in the lower range.
+        const float gamma = 2.2;
+        return pow(pixelValue, gamma);
     }
     
     // fetches a bilinearly filtered bounce pixel at the specified uv coordinates from the bounce texture data.
-    float3 bounce_sample_bilinear(float2 uv)
+    float bounce_sample_bilinear(float2 uv)
     {
         // huge shoutout to neu_graphic for their software bilinear filter shader.
         // https://www.shadertoy.com/view/4sBSRK
@@ -632,10 +646,10 @@ struct DynamicTriangle
         // offset the lightmap triangle uv to the top-left corner to read near zero, zero.
         pos_top_left -= bounds.xy;
         
-        float3 tl = bounce_sample(pos_top_left);
-        float3 tr = bounce_sample(pos_top_left + uint2(1, 0));
-        float3 bl = bounce_sample(pos_top_left + uint2(0, 1));
-        float3 br = bounce_sample(pos_top_left + uint2(1, 1));
+        float tl = bounce_sample(pos_top_left);
+        float tr = bounce_sample(pos_top_left + uint2(1, 0));
+        float bl = bounce_sample(pos_top_left + uint2(0, 1));
+        float br = bounce_sample(pos_top_left + uint2(1, 1));
         
         return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y);
     }

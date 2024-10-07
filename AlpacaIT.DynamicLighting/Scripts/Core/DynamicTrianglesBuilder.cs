@@ -22,7 +22,7 @@ namespace AlpacaIT.DynamicLighting
             public BitArray2 shadowOcclusionBits;
 
             /// <summary>The collection of bounce texture data.</summary>
-            public Color[] bounceTexture;
+            public float[] bounceTexture;
 
             /// <summary>Creates a new light with the specified dynamic light index.</summary>
             /// <param name="dynamicLightIndex">The dynamic light source index.</param>
@@ -162,7 +162,7 @@ namespace AlpacaIT.DynamicLighting
         /// <param name="triangleIndex">The triangle index in the mesh.</param>
         /// <param name="lightIndex">The triangle light index.</param>
         /// <returns>The bounce texture data.</returns>
-        public Color[] GetBounceTexture(int triangleIndex, int lightIndex)
+        public float[] GetBounceTexture(int triangleIndex, int lightIndex)
         {
             return triangles[triangleIndex].lights[lightIndex].bounceTexture;
         }
@@ -170,8 +170,8 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Sets the bounce texture data for the specified light index in a triangle.</summary>
         /// <param name="triangleIndex">The triangle index in the mesh.</param>
         /// <param name="lightIndex">The triangle light index.</param>
-        /// <param name="shadowBits">The bounce texture data.</param>
-        public void SetBounceTexture(int triangleIndex, int lightIndex, Color[] bounceTexture)
+        /// <param name="bounceTexture">The bounce texture data.</param>
+        public void SetBounceTexture(int triangleIndex, int lightIndex, float[] bounceTexture)
         {
             triangles[triangleIndex].lights[lightIndex].bounceTexture = bounceTexture;
         }
@@ -326,12 +326,46 @@ namespace AlpacaIT.DynamicLighting
                         var bounceTexture = GetBounceTexture(triangleIndex, lightIndex);
                         if (bounceTexture != null)
                         {
-                            // convert colors to uint RGBA bytes of 0-255.
-                            var bounceTexture32 = new uint[bounceTexture.Length];
-                            for (int i = 0; i < bounceTexture32.Length; i++)
+                            // we are storing one pixel (as 0-255 byte) per byte thus compressing 4
+                            // pixels into one uint on the graphics card.
+
+                            // calculate the number of uints needed to store all pixels.
+                            int numPixels = bounceTexture.Length;
+                            int numUInts = (numPixels + 3) / 4; // ceiling division to handle any remaining pixels.
+
+                            var bounceTexture32 = new uint[numUInts];
+
+                            // loop over each uint in the output array:
+                            for (int i = 0; i < numUInts; i++)
                             {
-                                var color = bounceTexture[i];
-                                bounceTexture32[i] = pack_saturated_float4_into_uint(new float4(color.r, color.g, color.b, color.a));
+                                uint packed = 0;
+
+                                // loop over each of the four possible pixels in the current uint:
+                                for (int j = 0; j < 4; j++)
+                                {
+                                    int pixelIndex = i * 4 + j;
+
+                                    // check if the pixel index is within bounds:
+                                    if (pixelIndex < numPixels)
+                                    {
+                                        // get the grayscale value and clamp it between 0 and 1.
+                                        float color = bounceTexture[pixelIndex];
+                                        color = Mathf.Clamp01(color);
+
+                                        // compress the color to have more details in the lower range.
+                                        const float gamma = 2.2f;
+                                        var compressedColor = Mathf.Pow(color, 1.0f / gamma);
+
+                                        // convert the float to a byte (0-255).
+                                        byte byteValue = (byte)(compressedColor * 255f);
+
+                                        // shift the byte into the correct position and pack it into the uint.
+                                        packed |= ((uint)byteValue) << ((3 - j) * 8);
+                                    }
+                                }
+
+                                // store the packed uint in the output array.
+                                bounceTexture32[i] = packed;
                             }
 
                             buffer.AddRange(bounceTexture32);
