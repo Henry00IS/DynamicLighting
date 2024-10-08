@@ -954,7 +954,7 @@ namespace AlpacaIT.DynamicLighting
                         var meshName = meshFilter ? $" ({meshFilter.name})" : "";
 
                         // inform the user about the reason for the visual change.
-                        Debug.LogWarning($"Temporarily disabled Dynamic Lighting for {lightmap.renderer.name}{meshName}.\nA change in the mesh was detected, which is expected when editing level geometry. Please raytrace your scene again once you have finished editing. If you're curious about the reason for this action, hit play now to see for yourself.");
+                        Debug.LogWarning($"Temporarily disabled Dynamic Lighting for {meshRenderer.name}{meshName}.\nA change in the mesh was detected, which is expected when editing level geometry. Please raytrace your scene again once you have finished editing. If you're curious about the reason for this action, hit play now to see for yourself.", meshRenderer);
                     }
                 }
             }
