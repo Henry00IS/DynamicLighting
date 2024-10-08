@@ -18,7 +18,7 @@
     "shadows"
   ],
   "unity": "2018.3",
-  "version": "1.206.0",
+  "version": "1.206.1",
   "dependencies": {
     "com.unity.mathematics": "1.1.0"
   }
