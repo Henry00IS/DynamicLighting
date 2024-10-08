@@ -1,4 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
+using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -8,7 +10,7 @@ namespace AlpacaIT.DynamicLighting
     /// <summary>
     /// Cubemap containing photon data of direct illumination used for a technique similar to photon mapping.
     /// </summary>
-    internal class PhotonCube
+    internal unsafe class PhotonCube
     {
         /// <summary>One side of a <see cref="PhotonCube"/> containing pixel data.</summary>
         private class PhotonCubeFace
@@ -18,14 +20,23 @@ namespace AlpacaIT.DynamicLighting
             /// <para><see cref="float4.x"/> contains the distance.</para>
             /// <para><see cref="float4.yzw"/> contains the world-space normal.</para>
             /// </summary>
-            public readonly float4[] colors;
+            public readonly NativeArray<float4> colors;
+
+            /// <summary>
+            /// The distances to each pixel and world-space normals of each pixel on the cubemap face.
+            /// <para><see cref="float4.x"/> contains the distance.</para>
+            /// <para><see cref="float4.yzw"/> contains the world-space normal.</para>
+            /// </summary>
+            public readonly float4* colorsPtr;
 
             /// <summary>The width and height of each face of the photon cube in pixels.</summary>
             public readonly int size;
 
-            public PhotonCubeFace(float4[] colors, int size)
+            public PhotonCubeFace(NativeArray<float4> colors, Allocator allocator, int size)
             {
-                this.colors = colors;
+                this.colors = new NativeArray<float4>(size * size, allocator, NativeArrayOptions.UninitializedMemory);
+                this.colors.CopyFrom(colors);
+                this.colorsPtr = (float4*)NativeArrayUnsafeUtility.GetUnsafeBufferPointerWithoutChecks(this.colors);
                 this.size = size;
             }
 
@@ -42,12 +53,12 @@ namespace AlpacaIT.DynamicLighting
 
             public float SampleDistance(float2 position)
             {
-                return colors[Index(position)].x;
+                return colorsPtr[Index(position)].x;
             }
 
             public float3 SampleNormal(float2 position)
             {
-                return colors[Index(position)].yzw;
+                return colorsPtr[Index(position)].yzw;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -59,6 +70,12 @@ namespace AlpacaIT.DynamicLighting
                 x = math.max(0, math.min(x, size - 1));
                 y = math.max(0, math.min(y, size - 1));
                 return y * size + x;
+            }
+
+            public void Dispose()
+            {
+                if (colors.IsCreated)
+                    colors.Dispose();
             }
         }
 
@@ -104,13 +121,19 @@ namespace AlpacaIT.DynamicLighting
                 RenderTexture.active = rt;
                 readableTexture.ReadPixels(new Rect(0, 0, size, size), 0, 0);
                 readableTexture.Apply();
-                float4[] pixels = new float4[size * size];
-                readableTexture.GetPixelData<float4>(0).CopyTo(pixels);
-                faces[face] = new PhotonCubeFace(pixels, size);
+                var pixels = readableTexture.GetPixelData<float4>(0);
+                faces[face] = new PhotonCubeFace(pixels, Allocator.Temp, size);
+                pixels.Dispose(); // does nothing.
                 RenderTexture.active = null;
             }
             Object.DestroyImmediate(readableTexture);
             RenderTexture.ReleaseTemporary(rt);
+        }
+
+        public void Dispose()
+        {
+            for (int i = 0; i < faces.Length; i++)
+                faces[i].Dispose();
         }
 
         /// <summary>
@@ -200,7 +223,7 @@ namespace AlpacaIT.DynamicLighting
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float SampleDistanceFast(int photonCubeFace, int photonCubeFaceIndex)
         {
-            return faces[photonCubeFace].colors[photonCubeFaceIndex].x;
+            return faces[photonCubeFace].colorsPtr[photonCubeFaceIndex].x;
         }
 
         /// <summary>Gets an approximate normal of the closest fragment in the given direction.</summary>
@@ -215,7 +238,7 @@ namespace AlpacaIT.DynamicLighting
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float3 SampleNormalFast(int photonCubeFace, int photonCubeFaceIndex)
         {
-            return faces[photonCubeFace].colors[photonCubeFaceIndex].yzw;
+            return faces[photonCubeFace].colorsPtr[photonCubeFaceIndex].yzw;
         }
 
         /// <summary>

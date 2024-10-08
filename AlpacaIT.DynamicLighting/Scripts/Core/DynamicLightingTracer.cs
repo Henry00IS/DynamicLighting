@@ -280,6 +280,17 @@ namespace AlpacaIT.DynamicLighting
 
                 // -> partial class DynamicLightManager.TemporaryScene cleanup.
                 TemporarySceneCleanup();
+
+                // dispose of all photon cubes as they use native memory.
+                if (pointLightsCache != null)
+                {
+                    for (int i = 0; i < pointLightsCache.Length; i++)
+                    {
+                        var pointLightCache = pointLightsCache[i];
+                        if (pointLightCache.photonCube != null)
+                            pointLightCache.photonCube.Dispose();
+                    }
+                }
             }
         }
 
@@ -610,11 +621,10 @@ namespace AlpacaIT.DynamicLighting
             return Slerp(direction, randomDir, spreadRadius);
         }
 
-        private static float3 Slerp(float3 a, float3 b, float t)
+        private static unsafe float3 Slerp(float3 a, float3 b, float t)
         {
             float dot = math.dot(a, b);
-            dot = math.clamp(dot, -1.0f, 1.0f);
-
+            dot = Mathf.Clamp(dot, -1.0f, 1.0f);
             float theta = math.acos(dot) * t;
             float3 relativeVec = math.normalize(b - a * dot);
             return a * math.cos(theta) + relativeVec * math.sin(theta);
@@ -623,39 +633,32 @@ namespace AlpacaIT.DynamicLighting
         private unsafe class BounceTriangleRaycastMissHandler : RaycastHandler
         {
             /// <summary>
-            /// For writing to <see cref="pixels_bounce_ptr"/>:
+            /// For writing to <see cref="pixelsBouncePtr"/>:
             /// <code>y * lightmapSize + x</code>
             /// </summary>
             private int xyPtr;
-            private int x;
-            private int y;
-            private int lightmapSize;
-            private float* pixels_bounce_ptr;
+            private float* pixelsBouncePtr;
             private float3 surfaceNormal;
-            private float lightRadius;
             private float lightBounceIntensity;
 
             private float accumulator;
 
             public float3[] photonNormals;
             public float3[] directions;
-            public float[] distances;
 
-            public void Setup(float* pixels_bounce_ptr, int xyPtr, float3 surfaceNormal, float lightRadius, int lightBounceSamples, float lightBounceIntensity)
+            public void Setup(float* pixelsBouncePtr, int xyPtr, float3 surfaceNormal, int lightBounceSamples, float lightBounceIntensity)
             {
                 accumulator = 0f;
 
-                this.pixels_bounce_ptr = pixels_bounce_ptr;
+                this.pixelsBouncePtr = pixelsBouncePtr;
                 this.xyPtr = xyPtr;
                 this.surfaceNormal = surfaceNormal;
-                this.lightRadius = lightRadius;
                 this.lightBounceIntensity = lightBounceIntensity;
 
                 if (photonNormals == null || photonNormals.Length != lightBounceSamples)
                 {
                     photonNormals = new float3[lightBounceSamples];
                     directions = new float3[lightBounceSamples];
-                    distances = new float[lightBounceSamples];
                 }
             }
 
@@ -666,12 +669,11 @@ namespace AlpacaIT.DynamicLighting
                 var n_s = surfaceNormal;
                 var n_p = photonNormals[i];
                 var d = directions[i];
-                var dist = distances[i];
 
                 float dot_ns_d = math.max(math.dot(n_s, d), 0f);
                 float dot_np_minus_d = math.max(math.dot(n_p, -d), 0f);
 
-                float attenuation = lightBounceIntensity;//math.max(1f - dist / lightRadius, 0f);
+                float attenuation = lightBounceIntensity;
 
                 float E_out = dot_ns_d * dot_np_minus_d * attenuation;
 
@@ -685,7 +687,7 @@ namespace AlpacaIT.DynamicLighting
             public override void OnHandlerFinished()
             {
                 var average = accumulator / raycastsExpected;
-                pixels_bounce_ptr[xyPtr] = average;
+                pixelsBouncePtr[xyPtr] = average;
             }
         }
 
@@ -754,7 +756,7 @@ namespace AlpacaIT.DynamicLighting
                     var worldWithNormalOffset3 = *(float3*)&worldWithNormalOffset;
 
                     var raycastHandler = bounceRaycastHandlerPool.GetInstance();
-                    raycastHandler.Setup(pixels_bounce_ptr, y * lightmapSize + x, triangleNormal, lightRadius, lightBounceSamples, lightBounceIntensity);
+                    raycastHandler.Setup(pixels_bounce_ptr, y * lightmapSize + x, triangleNormal, lightBounceSamples, lightBounceIntensity);
 
                     // calculate the unnormalized direction between the light source and the fragment.
                     float3 lightDirectionNegative = math.normalize(world - lightPosition);
@@ -781,7 +783,6 @@ namespace AlpacaIT.DynamicLighting
 
                         raycastHandler.photonNormals[i] = photonNormal;
                         raycastHandler.directions[i] = photonToWorldDirection;
-                        raycastHandler.distances[i] = photonToWorldDistance;
 
                         callbackRaycastProcessor.Add(raycastCommand, raycastHandler);
                     }
