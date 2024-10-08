@@ -13,7 +13,9 @@ To raytrace the scene, game objects must be marked as static.
 | High Quality Shadows | Volumetric Fog |
 :---: | :---:
 | ![Higher shadow quality than Unreal](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/demo-shadow-detail.png) | ![Volumetric fog surrounding light sources](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/demo-volumetric-fog.png) |
-| **Metallic PBR Workflow** | **Supports Progressive Lightmapper** |
+| **Bounce Lighting** | **Transparency** |
+| ![Bounce lighting demo in Sponza](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/demo-bounce-2.png) | ![Transparent texture raytracing demo with a works on my machine funny texture](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/demo-transparency.png) |
+| **Metallic PBR** | **Mixable with Progressive Lightmapper** |
 | ![Metallic PBR workflow support](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/demo-rendering-pbr.png) | ![Progressive Lightmapper using Dynamic Lighting](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/demo-mixed-lighting.gif) |
 
 #### Cons
