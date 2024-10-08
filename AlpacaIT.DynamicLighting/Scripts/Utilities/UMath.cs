@@ -22,11 +22,31 @@ namespace AlpacaIT.DynamicLighting
             *(uint*)&value->z &= 0x7FFFFFFFu;
         }
 
+        /// <summary>Applies the componentwise absolute value of a Vector3 vector.</summary>
+        /// <param name="value">Input value.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Abs(Vector3* value)
+        {
+            *(uint*)&value->x &= 0x7FFFFFFFu;
+            *(uint*)&value->y &= 0x7FFFFFFFu;
+            *(uint*)&value->z &= 0x7FFFFFFFu;
+        }
+
         /// <summary>Applies the result of a componentwise multiplication operation on a float2 vector and a float value.</summary>
         /// <param name="lhs">Left hand side float2 to use to compute componentwise multiplication.</param>
         /// <param name="rhs">Right hand side float to use to compute componentwise multiplication.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Scale(float2* lhs, float rhs)
+        {
+            lhs->x *= rhs;
+            lhs->y *= rhs;
+        }
+
+        /// <summary>Applies the result of a componentwise multiplication operation on a Vector2 vector and a float value.</summary>
+        /// <param name="lhs">Left hand side Vector2 to use to compute componentwise multiplication.</param>
+        /// <param name="rhs">Right hand side float to use to compute componentwise multiplication.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Scale(Vector2* lhs, float rhs)
         {
             lhs->x *= rhs;
             lhs->y *= rhs;
@@ -64,6 +84,16 @@ namespace AlpacaIT.DynamicLighting
             lhs->y += rhs;
         }
 
+        /// <summary>Applies the result of a componentwise addition operation on a Vector2 vector and a float value.</summary>
+        /// <param name="lhs">Left hand side Vector2 to use to compute componentwise addition.</param>
+        /// <param name="rhs">Right hand side float to use to compute componentwise addition.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Add(Vector2* lhs, float rhs)
+        {
+            lhs->x += rhs;
+            lhs->y += rhs;
+        }
+
         /// <summary>Applies the result of a componentwise addition operation on two float3 vectors.</summary>
         /// <param name="lhs">Left hand side float3 to use to compute componentwise addition.</param>
         /// <param name="rhs">Right hand side float3 to use to compute componentwise addition.</param>
@@ -90,6 +120,16 @@ namespace AlpacaIT.DynamicLighting
         /// <param name="val">Value to use when computing the componentwise unary minus.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Negate(float3* val)
+        {
+            val->x = -val->x;
+            val->y = -val->y;
+            val->z = -val->z;
+        }
+
+        /// <summary>Applies the result of a componentwise unary minus operation on a Vector3 vector.</summary>
+        /// <param name="val">Value to use when computing the componentwise unary minus.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Negate(Vector3* val)
         {
             val->x = -val->x;
             val->y = -val->y;

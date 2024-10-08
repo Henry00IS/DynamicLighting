@@ -581,7 +581,7 @@ namespace AlpacaIT.DynamicLighting
                         // when using alpha transparency we already did all the work on the graphics card.
                         if (pointLight.lightTransparency == DynamicLightTransparencyMode.Enabled)
                         {
-                            if (pointLightCache.photonCube.SampleShadow(lightDirection, lightDistanceToWorld, triangleNormal3))
+                            if (pointLightCache.photonCube.SampleShadow(lightDirection, lightDistanceToWorld, triangleNormal))
                             {
                                 pixels_lightmap[y * lightmapSize + x] |= (uint)1 << ((int)pointLight.lightChannel);
                             }
@@ -614,20 +614,11 @@ namespace AlpacaIT.DynamicLighting
             triangleUvTo3dStep.Dispose();
         }
 
-        public static float3 AddRandomSpread(float3 direction, float spreadRadius)
+        private Vector3 AddRandomSpread(Vector3 direction, float t)
         {
-            float3 randomDir = UnityEngine.Random.onUnitSphere;
+            Vector3 randomDir = UnityEngine.Random.onUnitSphere;
 
-            return Slerp(direction, randomDir, spreadRadius);
-        }
-
-        private static unsafe float3 Slerp(float3 a, float3 b, float t)
-        {
-            float dot = math.dot(a, b);
-            dot = Mathf.Clamp(dot, -1.0f, 1.0f);
-            float theta = math.acos(dot) * t;
-            float3 relativeVec = math.normalize(b - a * dot);
-            return a * math.cos(theta) + relativeVec * math.sin(theta);
+            return Vector3.Slerp(direction, randomDir, t);
         }
 
         private unsafe class BounceTriangleRaycastMissHandler : RaycastHandler
@@ -638,27 +629,27 @@ namespace AlpacaIT.DynamicLighting
             /// </summary>
             private int xyPtr;
             private float* pixelsBouncePtr;
-            private float3 surfaceNormal;
+            private Vector3 surfaceNormal;
             private float lightBounceIntensity;
 
             private float accumulator;
 
-            public float3[] photonNormals;
-            public float3[] directions;
+            public Vector3[] photonNormals;
+            public Vector3[] directions;
 
-            public void Setup(float* pixelsBouncePtr, int xyPtr, float3 surfaceNormal, int lightBounceSamples, float lightBounceIntensity)
+            public void Setup(float* pixelsBouncePtr, int xyPtr, Vector3 surfaceNormal, int lightBounceSamples, float lightBounceIntensity)
             {
-                accumulator = 0f;
-
-                this.pixelsBouncePtr = pixelsBouncePtr;
                 this.xyPtr = xyPtr;
+                this.pixelsBouncePtr = pixelsBouncePtr;
                 this.surfaceNormal = surfaceNormal;
                 this.lightBounceIntensity = lightBounceIntensity;
 
+                accumulator = 0f;
+
                 if (photonNormals == null || photonNormals.Length != lightBounceSamples)
                 {
-                    photonNormals = new float3[lightBounceSamples];
-                    directions = new float3[lightBounceSamples];
+                    photonNormals = new Vector3[lightBounceSamples];
+                    directions = new Vector3[lightBounceSamples];
                 }
             }
 
@@ -670,11 +661,10 @@ namespace AlpacaIT.DynamicLighting
                 var n_p = photonNormals[i];
                 var d = directions[i];
 
-                float dot_ns_d = math.max(math.dot(n_s, d), 0f);
-                float dot_np_minus_d = math.max(math.dot(n_p, -d), 0f);
+                float dot_ns_d = Mathf.Max(Vector3.Dot(n_s, d), 0f);
+                float dot_np_minus_d = Mathf.Max(Vector3.Dot(n_p, -d), 0f);
 
                 float attenuation = lightBounceIntensity;
-
                 float E_out = dot_ns_d * dot_np_minus_d * attenuation;
 
                 accumulator += E_out;
@@ -733,10 +723,13 @@ namespace AlpacaIT.DynamicLighting
             var pointLightCache = pointLightsCache[light_index];
             var photonCube = pointLightCache.photonCube;
             var lightPosition = pointLightCache.position;
-            var lightPosition3 = *(float3*)&lightPosition;
             var lightRadius = pointLight.lightRadius;
             var lightBounceSamples = pointLight.lightBounceSamples;
             var lightBounceIntensity = pointLight.lightBounceIntensity;
+
+            // pre-computing part of this calculation:
+            // var spreadRadius = 0.1f + i / (float)(lightBounceSamples - 1) * 0.9f;
+            float spreadRadiusInverseSamples = 0.9f / (lightBounceSamples - 1);
 
             int ptr = 0;
             for (int y = minY; y <= maxY; y++)
@@ -753,32 +746,31 @@ namespace AlpacaIT.DynamicLighting
                         continue;
 
                     var worldWithNormalOffset = world + triangleNormalOffset;
-                    var worldWithNormalOffset3 = *(float3*)&worldWithNormalOffset;
 
                     var raycastHandler = bounceRaycastHandlerPool.GetInstance();
                     raycastHandler.Setup(pixels_bounce_ptr, y * lightmapSize + x, triangleNormal, lightBounceSamples, lightBounceIntensity);
 
                     // calculate the unnormalized direction between the light source and the fragment.
-                    float3 lightDirectionNegative = math.normalize(world - lightPosition);
+                    Vector3 lightDirectionNegative = Vector3.Normalize(world - lightPosition);
 
                     for (int i = 0; i < lightBounceSamples; i++)
                     {
                         // sample around 0.1 but gradually take in the wider scene.
-                        var spreadRadius = 0.1f + i / (float)(lightBounceSamples - 1) * 0.9f;
+                        var spreadRadius = 0.1f + i * spreadRadiusInverseSamples;
 
                         // sample around the active working direction.
-                        float3 rng = AddRandomSpread(lightDirectionNegative, spreadRadius);
+                        var randomSampleDirection = AddRandomSpread(lightDirectionNegative, spreadRadius);
 
-                        photonCube.FastSamplePrerequisite(rng, out var photonCubeFace, out var photonCubeFaceIndex);
-                        var photonWorld = photonCube.SampleWorldFast(rng, lightPosition3, photonCubeFace, photonCubeFaceIndex);
+                        photonCube.FastSamplePrerequisite(randomSampleDirection, out var photonCubeFace, out var photonCubeFaceIndex);
+                        var photonWorld = photonCube.SampleWorldFast(randomSampleDirection, lightPosition, photonCubeFace, photonCubeFaceIndex);
                         var photonNormal = photonCube.SampleNormalFast(photonCubeFace, photonCubeFaceIndex);
 
-                        var photonWorldMinusWorldWithNormalOffset = photonWorld - worldWithNormalOffset3;
-                        var photonToWorldDirection = math.normalize(photonWorldMinusWorldWithNormalOffset);
-                        var photonToWorldDistance = Vector3.Magnitude(*(Vector3*)&photonWorldMinusWorldWithNormalOffset);
+                        var photonWorldMinusWorldWithNormalOffset = photonWorld - worldWithNormalOffset;
+                        var photonToWorldDirection = Vector3.Normalize(photonWorldMinusWorldWithNormalOffset);
+                        var photonToWorldDistance = Vector3.Magnitude(photonWorldMinusWorldWithNormalOffset);
 
                         raycastCommand.from = worldWithNormalOffset;
-                        raycastCommand.direction = *(Vector3*)&photonToWorldDirection;
+                        raycastCommand.direction = photonToWorldDirection;
                         raycastCommand.distance = photonToWorldDistance;
 
                         raycastHandler.photonNormals[i] = photonNormal;
