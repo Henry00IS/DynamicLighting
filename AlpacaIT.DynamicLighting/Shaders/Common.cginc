@@ -189,6 +189,17 @@ float4 color_screen(float4 self, float4 blend)
     return 1.0 - (1.0 - self) * (1.0 - blend);
 }
 
+uint float8(float f)
+{
+    f = clamp(f, -1.0, 1.0);
+    return (f + 1.0) * 127.0;
+}
+
+uint minivector3(float3 v)
+{
+    return (float8(v.z) << 16) | (float8(v.y) << 8) | float8(v.x);
+}
+
 // special thanks to https://learnopengl.com/PBR/Lighting
 
 // normal distribution function: approximates the amount the surface's

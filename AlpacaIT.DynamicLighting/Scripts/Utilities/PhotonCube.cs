@@ -19,7 +19,10 @@ namespace AlpacaIT.DynamicLighting
             public float distance;
 
             /// <summary>The world-space normal of the pixel.</summary>
-            public Vector3 normal;
+            public MiniVector3 normal;
+
+            /// <summary>These are 8 unused bits of padding.</summary>
+            public byte _padding_unused;
         }
 
         /// <summary>One side of a <see cref="PhotonCube"/> containing pixel data.</summary>
@@ -110,16 +113,16 @@ namespace AlpacaIT.DynamicLighting
             size = cubemapRenderTexture.width;
 
 #if UNITY_2021_3_OR_NEWER && !UNITY_2021_3_0 && !UNITY_2021_3_1 && !UNITY_2021_3_2 && !UNITY_2021_3_3 && !UNITY_2021_3_4 && !UNITY_2021_3_5 && !UNITY_2021_3_6 && !UNITY_2021_3_7 && !UNITY_2021_3_8 && !UNITY_2021_3_9 && !UNITY_2021_3_10 && !UNITY_2021_3_11 && !UNITY_2021_3_12 && !UNITY_2021_3_13 && !UNITY_2021_3_14 && !UNITY_2021_3_15 && !UNITY_2021_3_16 && !UNITY_2021_3_17 && !UNITY_2021_3_18 && !UNITY_2021_3_19 && !UNITY_2021_3_20 && !UNITY_2021_3_21 && !UNITY_2021_3_22 && !UNITY_2021_3_23 && !UNITY_2021_3_24 && !UNITY_2021_3_25 && !UNITY_2021_3_26 && !UNITY_2021_3_27
-            var photonCameraRenderTextureDescriptor = new RenderTextureDescriptor(size, size, RenderTextureFormat.ARGBFloat, 16, 0, RenderTextureReadWrite.Linear);
+            var photonCameraRenderTextureDescriptor = new RenderTextureDescriptor(size, size, RenderTextureFormat.RGFloat, 16, 0, RenderTextureReadWrite.Linear);
 #else
-            var photonCameraRenderTextureDescriptor = new RenderTextureDescriptor(size, size, RenderTextureFormat.ARGBFloat, 16, 0);
+            var photonCameraRenderTextureDescriptor = new RenderTextureDescriptor(size, size, RenderTextureFormat.RGFloat, 16, 0);
 #endif
             photonCameraRenderTextureDescriptor.autoGenerateMips = false;
 
             // extract the 6 sides of the cubemap:
             var rt = RenderTexture.GetTemporary(photonCameraRenderTextureDescriptor);
             rt.filterMode = FilterMode.Point;
-            var readableTexture = new Texture2D(size, size, TextureFormat.RGBAFloat, false, true);
+            var readableTexture = new Texture2D(size, size, TextureFormat.RGFloat, false, true);
             readableTexture.filterMode = FilterMode.Point;
             for (int face = 0; face < 6; face++)
             {
