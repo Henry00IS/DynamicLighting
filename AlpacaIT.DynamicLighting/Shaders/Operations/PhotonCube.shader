@@ -16,7 +16,6 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #pragma multi_compile_fog
             
             #include "UnityCG.cginc"
             #include "../Common.cginc"
@@ -83,7 +82,6 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #pragma multi_compile_fog
             
             #include "UnityCG.cginc"
             #include "../Common.cginc"
@@ -105,6 +103,7 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
+            float4 _MainTex_TexelSize;
 
             v2f vert (appdata v)
             {
@@ -119,9 +118,7 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
             float2 frag (v2f i) : SV_Target
             {
                 float2 result;
-
-                fixed4 col = tex2D(_MainTex, i.uv0);
-
+                
                 // calculate the unnormalized direction between the light source and the fragment.
                 float3 light_direction = _WorldSpaceCameraPos - i.world;
 
@@ -142,7 +139,8 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
                 result.g = asfloat(minivector3(i.normal));
 
                 // discard fragments for transparent textures so that light can shine through it.
-                if (col.a > 0.5)
+                float textureAlpha = texture_alpha_sample_gaussian5(_MainTex, _MainTex_TexelSize, i.uv0);
+                if (textureAlpha > 0.5)
                 {
                     return result;
                 }
@@ -169,7 +167,6 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #pragma multi_compile_fog
             
             #include "UnityCG.cginc"
             #include "../Common.cginc"
@@ -191,6 +188,7 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
+            float4 _MainTex_TexelSize;
 
             v2f vert (appdata v)
             {
@@ -205,8 +203,6 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
             float2 frag (v2f i) : SV_Target
             {
                 float2 result;
-
-                fixed4 col = tex2D(_MainTex, i.uv0);
 
                 // calculate the unnormalized direction between the light source and the fragment.
                 float3 light_direction = _WorldSpaceCameraPos - i.world;
@@ -228,7 +224,8 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
                 result.g = asfloat(minivector3(i.normal));
 
                 // discard fragments for transparent textures so that light can shine through it.
-                if (col.a > 0.5)
+                float textureAlpha = texture_alpha_sample_gaussian5(_MainTex, _MainTex_TexelSize, i.uv0);
+                if (textureAlpha > 0.5)
                 {
                     return result;
                 }

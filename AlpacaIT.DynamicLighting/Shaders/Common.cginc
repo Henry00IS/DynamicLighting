@@ -200,6 +200,30 @@ uint minivector3(float3 v)
     return (float8(v.z) << 16) | (float8(v.y) << 8) | float8(v.x);
 }
 
+float texture_alpha_sample_gaussian5(sampler2D tex, float2 texelsize, float2 uv)
+{
+    const float weights[5][5] =
+    {
+        { 1,  4,  6,  4, 1 },
+        { 4, 16, 24, 16, 4 },
+        { 6, 24, 36, 24, 6 },
+        { 4, 16, 24, 16, 4 },
+        { 1,  4,  6,  4, 1 }
+    };
+        
+    float map = 0.0;
+        
+    for (int i = -2; i <= 2; ++i)
+    {
+        for (int j = -2; j <= 2; ++j)
+        {
+            map += weights[i + 2][j + 2] * tex2D(tex, uv + float2(i, j) * texelsize).a;
+        }
+    }
+        
+    return map / 256.0; // normalize by the sum of the weights.
+}
+
 // special thanks to https://learnopengl.com/PBR/Lighting
 
 // normal distribution function: approximates the amount the surface's
