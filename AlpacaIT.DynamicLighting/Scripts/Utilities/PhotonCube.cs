@@ -12,14 +12,14 @@ namespace AlpacaIT.DynamicLighting
     /// </summary>
     internal unsafe class PhotonCube
     {
-        /// <summary>Represents a pixel on a <see cref="PhotonCubeFace"/>.</summary>
-        public struct PhotonCubePixel
+        /// <summary>Represents a pixel on a <see cref="PhotonCubeFace"/> as returned by the shader.</summary>
+        public struct ShaderPhotonCubePixel // 8 bytes
         {
             /// <summary>The distance to the pixel.</summary>
             public float distance;
 
             /// <summary>The world-space normal of the pixel.</summary>
-            public MiniVector3 normal;
+            public NormalFloat8Vector3 normal;
 
             /// <summary>These are 8 unused bits of padding.</summary>
             public byte _padding_unused;
@@ -28,25 +28,59 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>One side of a <see cref="PhotonCube"/> containing pixel data.</summary>
         private class PhotonCubeFace
         {
-            /// <summary>
-            /// The distances to each pixel and world-space normals of each pixel on the cubemap face.
-            /// </summary>
-            public readonly NativeArray<PhotonCubePixel> colors;
+            /// <summary>The compressed distances to each pixel on the cubemap face.</summary>
+            public readonly NativeArray<ScaledAbsFloat16> distances;
 
-            /// <summary>
-            /// The distances to each pixel and world-space normals of each pixel on the cubemap face.
-            /// </summary>
-            public readonly PhotonCubePixel* colorsPtr;
+            /// <summary>The compressed distances to each pixel on the cubemap face.</summary>
+            public readonly ScaledAbsFloat16* distancesPtr;
+
+            /// <summary>The compressed world-space normals of each pixel on the cubemap face.</summary>
+            public readonly NativeArray<NormalFloat8Vector3> normals;
+
+            /// <summary>The compressed world-space normals of each pixel on the cubemap face.</summary>
+            public readonly NormalFloat8Vector3* normalsPtr;
 
             /// <summary>The width and height of each face of the photon cube in pixels.</summary>
             public readonly int size;
 
-            public PhotonCubeFace(NativeArray<PhotonCubePixel> colors, Allocator allocator, int size)
+            /// <summary>The maximum radius of the light.</summary>
+            public readonly float lightRadius;
+
+            /// <summary>Whether the world-space normals should be stored.</summary>
+            private readonly bool storeNormals;
+
+            public PhotonCubeFace(NativeArray<ShaderPhotonCubePixel> shaderColors, Allocator allocator, int size, float lightRadius, bool storeNormals)
             {
-                this.colors = new NativeArray<PhotonCubePixel>(size * size, allocator, NativeArrayOptions.UninitializedMemory);
-                this.colors.CopyFrom(colors);
-                this.colorsPtr = (PhotonCubePixel*)NativeArrayUnsafeUtility.GetUnsafeBufferPointerWithoutChecks(this.colors);
                 this.size = size;
+                this.lightRadius = lightRadius;
+                this.storeNormals = storeNormals;
+
+                var shaderColorsPtr = (ShaderPhotonCubePixel*)NativeArrayUnsafeUtility.GetUnsafeBufferPointerWithoutChecks(shaderColors);
+                var colorsArraySize = size * size;
+
+                distances = new NativeArray<ScaledAbsFloat16>(colorsArraySize, allocator, NativeArrayOptions.UninitializedMemory);
+                distancesPtr = (ScaledAbsFloat16*)NativeArrayUnsafeUtility.GetUnsafeBufferPointerWithoutChecks(distances);
+
+                if (storeNormals)
+                {
+                    normals = new NativeArray<NormalFloat8Vector3>(colorsArraySize, allocator, NativeArrayOptions.UninitializedMemory);
+                    normalsPtr = (NormalFloat8Vector3*)NativeArrayUnsafeUtility.GetUnsafeBufferPointerWithoutChecks(normals);
+
+                    // compress the shader data.
+                    for (int i = 0; i < colorsArraySize; i++)
+                    {
+                        distancesPtr[i] = new ScaledAbsFloat16(shaderColorsPtr[i].distance, lightRadius);
+                        normalsPtr[i] = shaderColorsPtr[i].normal;
+                    }
+                }
+                else
+                {
+                    // compress the shader data.
+                    for (int i = 0; i < colorsArraySize; i++)
+                    {
+                        distancesPtr[i] = new ScaledAbsFloat16(shaderColorsPtr[i].distance, lightRadius);
+                    }
+                }
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -62,12 +96,12 @@ namespace AlpacaIT.DynamicLighting
 
             public float SampleDistance(Vector2 position)
             {
-                return colorsPtr[Index(position)].distance;
+                return distancesPtr[Index(position)].ToFloat(lightRadius);
             }
 
             public Vector3 SampleNormal(Vector2 position)
             {
-                return colorsPtr[Index(position)].normal;
+                return normalsPtr[Index(position)];
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -83,8 +117,11 @@ namespace AlpacaIT.DynamicLighting
 
             public void Dispose()
             {
-                if (colors.IsCreated)
-                    colors.Dispose();
+                if (distances.IsCreated)
+                    distances.Dispose();
+
+                if (storeNormals && normals.IsCreated)
+                    normals.Dispose();
             }
         }
 
@@ -94,6 +131,12 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>The width and height of each face of the photon cube in pixels.</summary>
         private readonly int size;
 
+        /// <summary>The maximum radius of the light.</summary>
+        private readonly float lightRadius;
+
+        /// <summary>Whether the normals should be stored.</summary>
+        private readonly bool storeNormals;
+
         /// <summary>
         /// Creates a new <see cref="PhotonCube"/> instance that copies the data from a cubemap <see
         /// cref="RenderTexture"/> into memory.
@@ -102,12 +145,17 @@ namespace AlpacaIT.DynamicLighting
         /// The cubemap <see cref="RenderTexture"/> with a <see cref="RenderTexture.volumeDepth"/>
         /// of 6 faces.
         /// </param>
-        public PhotonCube(RenderTexture cubemapRenderTexture)
+        /// <param name="lightRadius">The maximum radius of the light.</param>
+        /// <param name="storeNormals">Whether the world-space normals should be stored.</param>
+        public PhotonCube(RenderTexture cubemapRenderTexture, float lightRadius, bool storeNormals)
         {
             // validate the arguments to prevent any errors.
             if (cubemapRenderTexture == null) throw new System.ArgumentNullException(nameof(cubemapRenderTexture));
             if (cubemapRenderTexture.dimension != TextureDimension.Cube) throw new System.ArgumentException("The render texture must have the dimension set to cube.", nameof(cubemapRenderTexture));
             if (cubemapRenderTexture.volumeDepth != 6) throw new System.ArgumentException("The render texture for photon cubes must have 6 faces.", nameof(cubemapRenderTexture));
+
+            this.lightRadius = lightRadius;
+            this.storeNormals = storeNormals;
 
             // remember the size of the cubemap texture in pixels.
             size = cubemapRenderTexture.width;
@@ -130,8 +178,8 @@ namespace AlpacaIT.DynamicLighting
                 RenderTexture.active = rt;
                 readableTexture.ReadPixels(new Rect(0, 0, size, size), 0, 0);
                 readableTexture.Apply();
-                var pixels = readableTexture.GetPixelData<PhotonCubePixel>(0);
-                faces[face] = new PhotonCubeFace(pixels, Allocator.Temp, size);
+                var pixels = readableTexture.GetPixelData<ShaderPhotonCubePixel>(0);
+                faces[face] = new PhotonCubeFace(pixels, Allocator.Temp, size, lightRadius, storeNormals);
                 pixels.Dispose(); // does nothing.
                 RenderTexture.active = null;
             }
@@ -234,7 +282,7 @@ namespace AlpacaIT.DynamicLighting
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float SampleDistanceFast(int photonCubeFace, int photonCubeFaceIndex)
         {
-            return faces[photonCubeFace].colorsPtr[photonCubeFaceIndex].distance;
+            return faces[photonCubeFace].distancesPtr[photonCubeFaceIndex].ToFloat(lightRadius);
         }
 
         /// <summary>Gets an approximate normal of the closest fragment in the given direction.</summary>
@@ -249,7 +297,7 @@ namespace AlpacaIT.DynamicLighting
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Vector3 SampleNormalFast(int photonCubeFace, int photonCubeFaceIndex)
         {
-            return faces[photonCubeFace].colorsPtr[photonCubeFaceIndex].normal;
+            return faces[photonCubeFace].normalsPtr[photonCubeFaceIndex];
         }
 
         /// <summary>

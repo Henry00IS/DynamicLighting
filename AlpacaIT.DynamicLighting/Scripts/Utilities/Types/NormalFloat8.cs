@@ -30,7 +30,7 @@ namespace AlpacaIT.DynamicLighting
     /// <para><b>0.0f, -0.0f</b> = 0.0f.</para>
     /// <para><b>1.0f, PositiveInfinity</b> = 1.0f.</para>
     /// </summary>
-    internal struct float8
+    internal struct NormalFloat8
     {
         /// <summary>
         /// The internal 8-bit byte (0-254).
@@ -38,13 +38,13 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         public readonly byte byteValue;
 
-        /// <summary>Represents the smallest possible value of <see cref="float8"/>.</summary>
+        /// <summary>Represents the smallest possible value of <see cref="NormalFloat8"/>.</summary>
         public const float MinValue = -1.0f;
-        /// <summary>Represents the largest possible value of <see cref="float8"/>.</summary>
+        /// <summary>Represents the largest possible value of <see cref="NormalFloat8"/>.</summary>
         public const float MaxValue = 1.0f;
 
         /// <summary>
-        /// Represents the smallest positive <see cref="float8"/> value that is greater than zero.
+        /// Represents the smallest positive <see cref="NormalFloat8"/> value that is greater than zero.
         /// </summary>
         public const float Epsilon = 0.007874012f;
 
@@ -54,29 +54,29 @@ namespace AlpacaIT.DynamicLighting
         private const float InvScale = 254.0f / 2.0f;
 
         /// <summary>
-        /// Creates a new <see cref="float8"/> from the given <see cref="float"/> (an implicit
+        /// Creates a new <see cref="NormalFloat8"/> from the given <see cref="float"/> (an implicit
         /// conversion is available).
         /// </summary>
         /// <param name="f">The single-precision floating point value to be converted.</param>
-        public float8(float f)
+        public NormalFloat8(float f)
         {
             if (f < -1f) f = -1f;
             if (f > 1f) f = 1f;
             byteValue = (byte)((f + 1.0f) * InvScale);
         }
 
-        /// <summary>Implicit operator that converts a <see cref="float8"/> to <see cref="float"/>.</summary>
-        /// <param name="f8">The <see cref="float8"/> to be converted.</param>
-        public static implicit operator float(float8 f8)
+        /// <summary>Implicit operator that converts a <see cref="NormalFloat8"/> to <see cref="float"/>.</summary>
+        /// <param name="f8">The <see cref="NormalFloat8"/> to be converted.</param>
+        public static implicit operator float(NormalFloat8 f8)
         {
             return f8.byteValue * Scale - 1.0f;
         }
 
-        /// <summary>Implicit operator that converts a <see cref="float"/> to <see cref="float8"/>.</summary>
+        /// <summary>Implicit operator that converts a <see cref="float"/> to <see cref="NormalFloat8"/>.</summary>
         /// <param name="f8">The <see cref="float"/> to be converted.</param>
-        public static implicit operator float8(float f)
+        public static implicit operator NormalFloat8(float f)
         {
-            return new float8(f);
+            return new NormalFloat8(f);
         }
 
         /// <summary>
