@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using Unity.Mathematics;
 using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
@@ -124,12 +123,22 @@ namespace AlpacaIT.DynamicLighting
         /// <returns>True when the light source has been associated with the triangle else false.</returns>
         public bool TriangleHasRaycastedLight(int triangleIndex, int raycastedLightIndex)
         {
-            return triangles[triangleIndex].lights.FindIndex(a => a.dynamicLightIndex == raycastedLightIndex) != -1;
+            var lights = triangles[triangleIndex].lights;
+            var lightsCount = lights.Count;
+            for (int i = 0; i < lightsCount; i++)
+                if (lights[i].dynamicLightIndex == raycastedLightIndex)
+                    return true;
+            return false;
         }
 
         public int TriangleGetRaycastedLightIndex(int triangleIndex, int raycastedLightIndex)
         {
-            return triangles[triangleIndex].lights.FindIndex(a => a.dynamicLightIndex == raycastedLightIndex);
+            var lights = triangles[triangleIndex].lights;
+            var lightsCount = lights.Count;
+            for (int i = 0; i < lightsCount; i++)
+                if (lights[i].dynamicLightIndex == raycastedLightIndex)
+                    return i;
+            return -1;
         }
 
         /// <summary>Gets the list of raycasted light indices associated with a triangle.</summary>
@@ -183,24 +192,6 @@ namespace AlpacaIT.DynamicLighting
         public void SetBounceTexture(int triangleIndex, int lightIndex, float[] bounceTexture)
         {
             triangles[triangleIndex].lights[lightIndex].bounceTexture = bounceTexture;
-        }
-
-        // packs a float into a byte so that 0.0 is 0 and +1.0 is 255.
-        private uint saturated_float_to_byte(float value)
-        {
-            return (uint)(value * 255f);
-        }
-
-        private uint pack_saturated_float4_into_uint(float4 value)
-        {
-            // todo: this is probably slow compared to Mathf.Clamp01.
-            value = math.saturate(value);
-            uint x8 = saturated_float_to_byte(value.x);
-            uint y8 = saturated_float_to_byte(value.y);
-            uint z8 = saturated_float_to_byte(value.z);
-            uint w8 = saturated_float_to_byte(value.w);
-            uint combined = (x8 << 24) | (y8 << 16) | (z8 << 8) | w8;
-            return combined;
         }
 
         /// <summary>

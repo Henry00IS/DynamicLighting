@@ -1,6 +1,4 @@
-﻿using UnityEngine;
-
-namespace AlpacaIT.DynamicLighting
+﻿namespace AlpacaIT.DynamicLighting
 {
     /// <summary>Base class for a <see cref="RaycastProcessor"/> handler.</summary>
     internal abstract class RaycastHandler
@@ -37,10 +35,6 @@ namespace AlpacaIT.DynamicLighting
 
         /// <summary>Gets called when the raycast did not hit anything.</summary>
         public abstract void OnRaycastMiss();
-
-        /// <summary>Gets called when the raycast hit something.</summary>
-        /// <param name="hit">The information about the raycast hit.</param>
-        public abstract unsafe void OnRaycastHit(RaycastHit* hit);
 
         /// <summary>Gets called when the raycast handler finished.</summary>
         public abstract void OnHandlerFinished();

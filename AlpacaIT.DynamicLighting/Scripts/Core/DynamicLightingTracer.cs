@@ -692,10 +692,6 @@ namespace AlpacaIT.DynamicLighting
                 accumulator += E_out;
             }
 
-            public override unsafe void OnRaycastHit(RaycastHit* hit)
-            {
-            }
-
             public override void OnHandlerFinished()
             {
                 var average = accumulator / raycastsExpected;
@@ -710,19 +706,22 @@ namespace AlpacaIT.DynamicLighting
             // triangles facing away from the light source which is very important as bounce
             // lighting can go anywhere within the light radius.
 
-            // prepare to only process the current light source if it exists on the current triangle.
-            if (!dynamic_triangles.TriangleHasRaycastedLight(triangle_index, light_index))
-                return;
-
             // calculate the triangle normal (this may fail when degenerate or very small).
-            var triangleNormal = (Vector3)math.normalizesafe(math.cross(v2 - v1, v3 - v1));
-            var triangleNormalValid = !triangleNormal.Equals(Vector3.zero);
+            var triangleNormal3 = math.normalizesafe(math.cross(v2 - v1, v3 - v1));
+            var triangleNormalPtr = (Vector3*)&triangleNormal3;
+            var triangleNormal = *triangleNormalPtr;
+            var triangleNormalValid = UMath.IsNonZero(triangleNormalPtr);
 
             // skip degenerate triangles.
             if (!triangleNormalValid) return;
 
             // do some initial uv to 3d work here and also determine whether we can early out.
             if (!MathEx.UvTo3dFastPrerequisite(t1, t2, t3, out float triangleSurfaceArea))
+                return;
+
+            // prepare to only process the current light source if it exists on the current triangle.
+            // this early-out is more expensive than the work above and delaying it here is faster.
+            if (!dynamic_triangles.TriangleHasRaycastedLight(triangle_index, light_index))
                 return;
 
             // calculate the bounding box of the polygon in UV space.
@@ -749,6 +748,10 @@ namespace AlpacaIT.DynamicLighting
             var worldPtr = &world;
             Vector3 lightDirectionNegative;
             var lightDirectionNegativePtr = &lightDirectionNegative;
+            Vector3 photonWorldMinusWorldWithNormalOffset;
+            var photonWorldMinusWorldWithNormalOffsetPtr = &photonWorldMinusWorldWithNormalOffset;
+            Vector3 worldPlusTriangleNormalOffset;
+            var worldPlusTriangleNormalOffsetPtr = &worldPlusTriangleNormalOffset;
 
             var pointLight = pointLights[light_index];
             var pointLightCache = pointLightsCache[light_index];
@@ -785,8 +788,8 @@ namespace AlpacaIT.DynamicLighting
                         continue;
 
                     // [unsafe] world + triangleNormalOffset
-                    var worldPlusTriangleNormalOffset = world;
-                    UMath.Add(&worldPlusTriangleNormalOffset, triangleNormalOffsetPtr);
+                    worldPlusTriangleNormalOffset = world;
+                    UMath.Add(worldPlusTriangleNormalOffsetPtr, triangleNormalOffsetPtr);
 
                     var raycastHandler = bounceRaycastHandlerPool.GetInstance();
                     raycastHandler.Setup(pixels_bounce_ptr, yPtr + x, triangleNormal, lightBounceSamples, lightBounceIntensity);
@@ -810,15 +813,18 @@ namespace AlpacaIT.DynamicLighting
                         var photonWorld = photonCube.SampleWorldFast(randomSampleDirection, lightPosition, photonCubeFace, photonCubeFaceIndex);
                         var photonNormal = photonCube.SampleNormalFast(photonCubeFace, photonCubeFaceIndex);
 
-                        var photonWorldMinusWorldWithNormalOffset = photonWorld - worldPlusTriangleNormalOffset;
-                        var photonToWorldDirection = Vector3.Normalize(photonWorldMinusWorldWithNormalOffset);
+                        // [unsafe] photonWorldMinusWorldWithNormalOffset = photonWorld - worldPlusTriangleNormalOffset;
+                        photonWorldMinusWorldWithNormalOffset = photonWorld;
+                        UMath.Subtract(photonWorldMinusWorldWithNormalOffsetPtr, worldPlusTriangleNormalOffsetPtr);
                         var photonToWorldDistance = Vector3.Magnitude(photonWorldMinusWorldWithNormalOffset);
+                        // [unsafe] photonToWorldDirection = Vector3.Normalize(photonWorldMinusWorldWithNormalOffset);
+                        UMath.Normalize(photonWorldMinusWorldWithNormalOffsetPtr);
 
-                        raycastCommand.direction = photonToWorldDirection;
+                        raycastCommand.direction = photonWorldMinusWorldWithNormalOffset; // is photonToWorldDirection here.
                         raycastCommand.distance = photonToWorldDistance;
 
                         raycastHandler.photonNormals[i] = photonNormal;
-                        raycastHandler.directions[i] = photonToWorldDirection;
+                        raycastHandler.directions[i] = photonWorldMinusWorldWithNormalOffset; // is photonToWorldDirection here.
 
                         callbackRaycastProcessor.Add(raycastCommand, raycastHandler);
                     }

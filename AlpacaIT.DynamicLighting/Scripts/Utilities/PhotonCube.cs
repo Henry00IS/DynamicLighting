@@ -1,7 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
-using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -89,8 +88,9 @@ namespace AlpacaIT.DynamicLighting
                 position.x = 1.0f - position.x;
                 var x = (int)(position.x * size);
                 var y = (int)(position.y * size);
-                x = math.max(0, math.min(x, size - 1));
-                y = math.max(0, math.min(y, size - 1));
+                var sizeMinusOne = size - 1;
+                if (x < 0) x = 0; else if (x > sizeMinusOne) x = sizeMinusOne;
+                if (y < 0) y = 0; else if (y > sizeMinusOne) y = sizeMinusOne;
                 return y * size + x;
             }
 
@@ -110,8 +110,9 @@ namespace AlpacaIT.DynamicLighting
                 position.x = 1.0f - position.x;
                 var x = (int)(position.x * size);
                 var y = (int)(position.y * size);
-                x = math.max(0, math.min(x, size - 1));
-                y = math.max(0, math.min(y, size - 1));
+                var sizeMinusOne = size - 1;
+                if (x < 0) x = 0; else if (x > sizeMinusOne) x = sizeMinusOne;
+                if (y < 0) y = 0; else if (y > sizeMinusOne) y = sizeMinusOne;
                 return y * size + x;
             }
 
@@ -297,7 +298,13 @@ namespace AlpacaIT.DynamicLighting
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Vector3 SampleNormalFast(int photonCubeFace, int photonCubeFaceIndex)
         {
-            return faces[photonCubeFace].normalsPtr[photonCubeFaceIndex];
+            // unpack normalfloat8vector3 manually for a big performance gain:
+            Vector3 normal; _ = &normal;
+            var bla = &faces[photonCubeFace].normalsPtr[photonCubeFaceIndex];
+            normal.x = bla->x.byteValue * (2.0f / 254.0f) - 1.0f;
+            normal.y = bla->y.byteValue * (2.0f / 254.0f) - 1.0f;
+            normal.z = bla->z.byteValue * (2.0f / 254.0f) - 1.0f;
+            return normal;
         }
 
         /// <summary>

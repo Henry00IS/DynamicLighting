@@ -243,5 +243,18 @@ namespace AlpacaIT.DynamicLighting
         {
             return x->x != 0.0f || x->y != 0.0f || x->z != 0.0f;
         }
+
+        /// <summary>Applies the result of a cross-product operation on two Vector3 vectors.</summary>
+        /// <param name="lhs">Left hand side Vector3 to use to compute and store the cross-product.</param>
+        /// <param name="rhs">Right hand side Vector3 to use to compute the cross-product.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Cross(Vector3* lhs, Vector3* rhs)
+        {
+            float a = lhs->z * rhs->x - lhs->x * rhs->z;
+            float b = lhs->x * rhs->y - lhs->y * rhs->x;
+            lhs->x = lhs->y * rhs->z - lhs->z * rhs->y;
+            lhs->y = a;
+            lhs->z = b;
+        }
     }
 }

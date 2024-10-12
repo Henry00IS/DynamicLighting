@@ -146,10 +146,6 @@ namespace AlpacaIT.DynamicLighting
                 {
                     handler.OnRaycastMiss();
                 }
-                else
-                {
-                    handler.OnRaycastHit(hit);
-                }
 
                 handler.OnRaycastProcessed();
             }
