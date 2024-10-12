@@ -739,13 +739,24 @@ namespace AlpacaIT.DynamicLighting
             var uvWorldPositions = triangleUvTo3dStep.worldPositionsPtr;
 
             // calculate some values in advance.
-            var triangleNormalOffset = triangleNormal * 0.001f;
+            // [unsafe] triangleNormal * 0.001f
+            var triangleNormalOffset = triangleNormal;
+            var triangleNormalOffsetPtr = &triangleNormalOffset;
+            UMath.Scale(triangleNormalOffsetPtr, 0.001f);
+
+            // optimize for the IL by preparing memory and pointers outside of the loop.
+            Vector3 world;
+            var worldPtr = &world;
+            Vector3 lightDirectionNegative;
+            var lightDirectionNegativePtr = &lightDirectionNegative;
 
             var pointLight = pointLights[light_index];
             var pointLightCache = pointLightsCache[light_index];
             var photonCube = pointLightCache.photonCube;
             var lightPosition = pointLightCache.position;
+            var lightPositionPtr = &lightPosition;
             var lightRadius = pointLight.lightRadius;
+            var lightRadiusSqr = lightRadius * lightRadius;
             var lightBounceSamples = pointLight.lightBounceSamples;
             var lightBounceIntensity = pointLight.lightBounceIntensity;
 
@@ -756,24 +767,36 @@ namespace AlpacaIT.DynamicLighting
             int ptr = 0;
             for (int y = minY; y <= maxY; y++)
             {
+                int yPtr = y * lightmapSize;
+
                 for (int x = minX; x <= maxX; x++)
                 {
                     // fetch the world position for the current uv coordinate.
-                    var world = uvWorldPositions[ptr++];
-                    if (world.Equals(Vector3.zero)) continue;
+                    world = uvWorldPositions[ptr++];
+                    if (UMath.IsZero(worldPtr)) continue;
+
+                    // [unsafe] lightDirectionNegative = world - lightPosition;
+                    lightDirectionNegative = world;
+                    UMath.Subtract(lightDirectionNegativePtr, lightPositionPtr);
 
                     // early out by distance.
-                    var lightDistanceToWorld = Vector3.Distance(lightPosition, world);
-                    if (lightDistanceToWorld > lightRadius)
+                    var lightDistanceToWorldSqr = UMath.Dot(lightDirectionNegativePtr, lightDirectionNegativePtr);
+                    if (lightDistanceToWorldSqr > lightRadiusSqr)
                         continue;
 
-                    var worldWithNormalOffset = world + triangleNormalOffset;
+                    // [unsafe] world + triangleNormalOffset
+                    var worldPlusTriangleNormalOffset = world;
+                    UMath.Add(&worldPlusTriangleNormalOffset, triangleNormalOffsetPtr);
 
                     var raycastHandler = bounceRaycastHandlerPool.GetInstance();
-                    raycastHandler.Setup(pixels_bounce_ptr, y * lightmapSize + x, triangleNormal, lightBounceSamples, lightBounceIntensity);
+                    raycastHandler.Setup(pixels_bounce_ptr, yPtr + x, triangleNormal, lightBounceSamples, lightBounceIntensity);
 
-                    // calculate the unnormalized direction between the light source and the fragment.
-                    Vector3 lightDirectionNegative = Vector3.Normalize(world - lightPosition);
+                    // calculate the normalized direction between the light source and the fragment.
+                    // [unsafe] lightDirectionNegative = lightDirectionNegative.normalized
+                    UMath.Normalize(lightDirectionNegativePtr);
+
+                    // do as much work as we can outside of the loop below.
+                    raycastCommand.from = worldPlusTriangleNormalOffset;
 
                     for (int i = 0; i < lightBounceSamples; i++)
                     {
@@ -787,11 +810,10 @@ namespace AlpacaIT.DynamicLighting
                         var photonWorld = photonCube.SampleWorldFast(randomSampleDirection, lightPosition, photonCubeFace, photonCubeFaceIndex);
                         var photonNormal = photonCube.SampleNormalFast(photonCubeFace, photonCubeFaceIndex);
 
-                        var photonWorldMinusWorldWithNormalOffset = photonWorld - worldWithNormalOffset;
+                        var photonWorldMinusWorldWithNormalOffset = photonWorld - worldPlusTriangleNormalOffset;
                         var photonToWorldDirection = Vector3.Normalize(photonWorldMinusWorldWithNormalOffset);
                         var photonToWorldDistance = Vector3.Magnitude(photonWorldMinusWorldWithNormalOffset);
 
-                        raycastCommand.from = worldWithNormalOffset;
                         raycastCommand.direction = photonToWorldDirection;
                         raycastCommand.distance = photonToWorldDistance;
 
