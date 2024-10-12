@@ -59,7 +59,6 @@ namespace AlpacaIT.DynamicLighting
 
             /// <summary>Contains the pixels of the lightmap.</summary>
             public uint* pixelsLightmap;
-            public int lightmapSize;
 
             // unsafe speedup code:
 
@@ -141,7 +140,6 @@ namespace AlpacaIT.DynamicLighting
             private void ProcessResults()
             {
                 uint* p = pixelsLightmap;
-                int pixelsLightmapSize = lightmapSize;
 
                 for (int i = 0; i < count; i++)
                 {
@@ -154,7 +152,7 @@ namespace AlpacaIT.DynamicLighting
                     if (hit->colliderInstanceID == 0)
 #endif
                     {
-                        p[meta.y * pixelsLightmapSize + meta.x] |= (uint)1 << ((int)meta.lightChannel);
+                        p[meta.xyPtr] |= (uint)1 << meta.lightChannel;
                     }
                 }
             }

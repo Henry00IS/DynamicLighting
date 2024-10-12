@@ -29,14 +29,12 @@ namespace AlpacaIT.DynamicLighting
 
         private struct RaycastCommandMeta
         {
-            public int x;
-            public int y;
-            public uint lightChannel;
+            public int xyPtr;
+            public int lightChannel;
 
-            public RaycastCommandMeta(int x, int y, uint lightChannel)
+            public RaycastCommandMeta(int xyPtr, int lightChannel)
             {
-                this.x = x;
-                this.y = y;
+                this.xyPtr = xyPtr;
                 this.lightChannel = lightChannel;
             }
         }

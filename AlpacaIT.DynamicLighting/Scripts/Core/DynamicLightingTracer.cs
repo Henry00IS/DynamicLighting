@@ -341,7 +341,6 @@ namespace AlpacaIT.DynamicLighting
 
             // prepare to raycast the entire mesh using multi-threading.
             raycastProcessor.pixelsLightmap = pixels_lightmap_ptr;
-            raycastProcessor.lightmapSize = lightmapSize;
 
             // iterate over all triangles in the mesh.
             for (int i = 0; i < meshBuilder.triangleCount; i++)
@@ -553,68 +552,81 @@ namespace AlpacaIT.DynamicLighting
             var worldPtr = &world;
             var localTracesCounter = 0;
 
-            int ptr = 0;
-            for (int y = minY; y <= maxY; y++)
+            // we can do less work than the constructor and recycle this memory.
+            RaycastCommandMeta raycastCommandMeta; _ = &raycastCommandMeta;
+
+            // iterate over the lights potentially affecting this triangle.
+            for (int i = 0; i < triangleLightIndicesCount; i++)
             {
-                for (int x = minX; x <= maxX; x++)
+                var lightIndex = triangleLightIndices[i];
+                var pointLight = pointLights[lightIndex];
+                var pointLightCache = pointLightsCache[lightIndex];
+                var lightPosition = pointLightCache.position;
+                var lightPhotonCube = pointLightCache.photonCube;
+                var lightRadius = pointLight.lightRadius;
+                var lightRadiusSqr = lightRadius * lightRadius;
+                var lightTransparency = pointLight.lightTransparency;
+                var lightChannel = (int)pointLight.lightChannel;
+                raycastCommandMeta.lightChannel = lightChannel;
+
+                int ptr = 0;
+                for (int y = minY; y <= maxY; y++)
                 {
-                    // fetch the world position for the current uv coordinate.
-                    world = uvWorldPositions[ptr++];
-                    if (UMath.IsZero(worldPtr)) continue;
+                    int yPtr = y * lightmapSize;
 
-                    // [unsafe] world + triangleNormalOffset
-                    var worldPlusTriangleNormalOffset = world;
-                    UMath.Add(&worldPlusTriangleNormalOffset, triangleNormalOffsetPtr);
-
-                    // iterate over the lights potentially affecting this triangle.
-                    for (int i = 0; i < triangleLightIndicesCount; i++)
+                    for (int x = minX; x <= maxX; x++)
                     {
-                        var lightIndex = triangleLightIndices[i];
-                        var pointLight = pointLights[lightIndex];
-                        var pointLightCache = pointLightsCache[lightIndex];
-                        var lightPosition = pointLightCache.position;
-                        var lightRadius = pointLight.lightRadius;
-                        var lightDistanceToWorld = Vector3.Distance(lightPosition, world);
+                        // fetch the world position for the current uv coordinate.
+                        world = uvWorldPositions[ptr++];
+                        if (UMath.IsZero(worldPtr)) continue;
+
+                        // [unsafe] lightDirection = lightPosition - world;
+                        lightDirection = lightPosition;
+                        UMath.Subtract(lightDirectionPtr, worldPtr);
 
                         // early out by distance.
-                        if (lightDistanceToWorld > lightRadius)
+                        var lightDistanceToWorldSqr = UMath.Dot(lightDirectionPtr, lightDirectionPtr);
+                        if (lightDistanceToWorldSqr > lightRadiusSqr)
                             continue;
 
                         // early out by normal.
-                        // [unsafe] lightDirection = (lightPosition - world).normalized
-                        lightDirection = lightPosition;
-                        UMath.Subtract(lightDirectionPtr, worldPtr);
+                        // [unsafe] lightDirection = lightDirection.normalized
                         UMath.Normalize(lightDirectionPtr);
                         if (UMath.Dot(triangleNormalPtr, lightDirectionPtr) < -0.1f)
                             continue;
 
+                        int xyPtr = yPtr + x;
+                        var lightDistanceToWorld = Mathf.Sqrt(lightDistanceToWorldSqr);
+
                         // when using alpha transparency we already did all the work on the graphics card.
-                        if (pointLight.lightTransparency == DynamicLightTransparencyMode.Enabled)
+                        if (lightTransparency == DynamicLightTransparencyMode.Enabled)
                         {
-                            if (pointLightCache.photonCube.SampleShadow(lightDirection, lightDistanceToWorld, triangleNormal))
+                            if (lightPhotonCube.SampleShadow(lightDirection, lightDistanceToWorld, triangleNormal))
                             {
-                                pixels_lightmap[y * lightmapSize + x] |= (uint)1 << ((int)pointLight.lightChannel);
+                                pixels_lightmap[xyPtr] |= (uint)1 << lightChannel;
                             }
                         }
                         else
                         {
                             // prepare to trace from the world to the light position.
 
+                            // [unsafe] world + triangleNormalOffset
+                            var worldPlusTriangleNormalOffset = world;
+                            UMath.Add(&worldPlusTriangleNormalOffset, triangleNormalOffsetPtr);
+
                             // create a raycast command as fast as possible.
                             raycastCommand.from = worldPlusTriangleNormalOffset;
                             raycastCommand.direction = lightDirection;
                             raycastCommand.distance = lightDistanceToWorld;
+                            raycastCommandMeta.xyPtr = xyPtr;
 
                             localTracesCounter++;
-                            raycastProcessor.Add(
-                                raycastCommand,
-                                new RaycastCommandMeta(x, y, pointLight.lightChannel)
-                            );
+                            raycastProcessor.Add(raycastCommand, raycastCommandMeta);
                         }
-                    }
 
-                    // write this pixel into the visited map.
-                    pixels_visited[y * lightmapSize + x] = true;
+                        // write this pixel into the visited map.
+                        pixels_visited[xyPtr] = true;
+                    }
                 }
             }
 
