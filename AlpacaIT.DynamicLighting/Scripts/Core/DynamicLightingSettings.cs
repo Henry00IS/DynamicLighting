@@ -41,6 +41,11 @@ namespace AlpacaIT.DynamicLighting
         [FormerlySerializedAs("_pixelDensityPerSquareMeter")]
         private int pixelDensityPerSquareMeter;
 
+        /// <inheritdoc cref="DynamicLightManager.bounceLightingCompression"/>
+        [SerializeField]
+        [Tooltip("The compression level for bounce lighting data. Choosing a higher compression can reduce VRAM usage, but may result in reduced visual quality. For best results, adjust based on your VRAM availability and visual preferences.")]
+        private DynamicBounceLightingCompressionMode bounceLightingCompression;
+
         /// <summary>
         /// Creates a new instance of the <see cref="DynamicLightingSettings"/> with default values.
         /// </summary>
@@ -57,6 +62,7 @@ namespace AlpacaIT.DynamicLighting
             raytraceLayers = ~0;
             realtimeShadowLayers = ~(4 | 16 | 32);
             pixelDensityPerSquareMeter = 128;
+            bounceLightingCompression = DynamicBounceLightingCompressionMode.EightBitsPerPixel;
 
             TryApply();
         }
@@ -73,6 +79,7 @@ namespace AlpacaIT.DynamicLighting
             dynamicLightManager.raytraceLayers = raytraceLayers;
             dynamicLightManager.realtimeShadowLayers = realtimeShadowLayers;
             dynamicLightManager.pixelDensityPerSquareMeter = pixelDensityPerSquareMeter;
+            dynamicLightManager.bounceLightingCompression = bounceLightingCompression;
         }
 
         /// <summary>
@@ -91,6 +98,7 @@ namespace AlpacaIT.DynamicLighting
                 raytraceLayers = dynamicLightManager.raytraceLayers;
                 realtimeShadowLayers = dynamicLightManager.realtimeShadowLayers;
                 pixelDensityPerSquareMeter = dynamicLightManager.pixelDensityPerSquareMeter;
+                bounceLightingCompression = dynamicLightManager.bounceLightingCompression;
                 return true;
             }
             return false;

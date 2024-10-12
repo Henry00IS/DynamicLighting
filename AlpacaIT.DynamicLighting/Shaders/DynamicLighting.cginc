@@ -611,25 +611,30 @@ struct DynamicTriangle
 #if DYNAMIC_LIGHTING_BOUNCE
     // fetches a bounce pixel at the specified uv coordinates from the bounce texture data.
     // note: requires 'uv -= bounds.xy' to be calculated up front.
-    float bounce_sample(uint2 uv)
+    float bounce_sample(float2 uv)
     {
         uint index = uv.y * bounds.z + uv.x;
-    
+#if DYNAMIC_LIGHTING_BOUNCE_6BPP
+        // the bounce texture data is compressed with 5 pixels in one uint.
+        uint uintIndex = index / 5; // determine the index of the uint in the buffer.
+        uint byteIndex = index % 5; // find the byte position within the uint.
+#else
         // the bounce texture data is compressed with 4 pixels in one uint.
-        
         uint uintIndex = index / 4; // determine the index of the uint in the buffer.
         uint byteIndex = index % 4; // find the byte position within the uint.
-        
+#endif
         uint value = dynamic_triangles[activeLightBounceDataOffset + uintIndex];
-        
+#if DYNAMIC_LIGHTING_BOUNCE_6BPP
+        uint shift = (3 - byteIndex) * 6;    // calculate the shift amount for the correct byte.
+        uint byte = (value >> shift) & 0x3F; // extract the desired byte.
+        float pixelValue = byte / 63.0;      // convert the byte to a float in [0, 1].
+#else
         uint shift = (3 - byteIndex) * 8;    // calculate the shift amount for the correct byte.
         uint byte = (value >> shift) & 0xFF; // extract the desired byte.
-        
-        float pixelValue = byte / 255.0; // convert the byte to a float in [0, 1].
-    
-        // decompress the color that has more details in the lower range.
-        const float gamma = 2.2;
-        return pow(pixelValue, gamma);
+        float pixelValue = byte / 255.0;     // convert the byte to a float in [0, 1].
+#endif
+        // restore linear color by squaring to recover detail in darker shades.
+        return pixelValue * pixelValue;
     }
     
     // fetches a bilinearly filtered bounce pixel at the specified uv coordinates from the bounce texture data.

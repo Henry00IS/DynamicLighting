@@ -64,6 +64,13 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         private GlobalKeyword shadersGlobalKeywordBounce;
 
+        /// <summary>
+        /// Stores the <see cref="GlobalKeyword"/> of "DYNAMIC_LIGHTING_BOUNCE_6BPP". Bounce
+        /// lighting can be compressed by 20% using only 6-bits per pixel. This flag is used to
+        /// switch to that decompression mode in the shader.
+        /// </summary>
+        private GlobalKeyword shadersGlobalKeywordBounce6Bpp;
+
         /// <summary>Global <see cref="Shader.PropertyToID"/> for buffer "dynamic_lights".</summary>
         private int shadersGlobalPropertyIdDynamicLights;
 
@@ -111,6 +118,13 @@ namespace AlpacaIT.DynamicLighting
         {
             get => Shader.IsKeywordEnabled(shadersGlobalKeywordBounce);
             set => ShadersSetGlobalKeyword(ref shadersGlobalKeywordBounce, value);
+        }
+
+        /// <summary>Gets or sets whether global shader keyword "DYNAMIC_LIGHTING_BOUNCE_6BPP" is enabled.</summary>
+        private bool shadersKeywordBounce6BppEnabled
+        {
+            get => Shader.IsKeywordEnabled(shadersGlobalKeywordBounce6Bpp);
+            set => ShadersSetGlobalKeyword(ref shadersGlobalKeywordBounce6Bpp, value);
         }
 
         /// <summary>Sets the global shader buffer property "dynamic_lights".</summary>
@@ -165,6 +179,7 @@ namespace AlpacaIT.DynamicLighting
             shadersGlobalKeywordShadowSoft = GlobalKeyword.Create("DYNAMIC_LIGHTING_SHADOW_SOFT");
             shadersGlobalKeywordBvh = GlobalKeyword.Create("DYNAMIC_LIGHTING_BVH");
             shadersGlobalKeywordBounce = GlobalKeyword.Create("DYNAMIC_LIGHTING_BOUNCE");
+            shadersGlobalKeywordBounce6Bpp = GlobalKeyword.Create("DYNAMIC_LIGHTING_BOUNCE_6BPP");
 
             shadersGlobalPropertyIdDynamicLights = Shader.PropertyToID("dynamic_lights");
             shadersGlobalPropertyIdDynamicLightsCount = Shader.PropertyToID("dynamic_lights_count");
@@ -182,6 +197,9 @@ namespace AlpacaIT.DynamicLighting
 
             // enable the bounce lighting code when used in the scene during raytracing.
             shadersKeywordBounceEnabled = activateBounceLightingInCurrentScene;
+
+            // enable the bounce lighting compression mode used in the scene during raytracing.
+            shadersKeywordBounce6BppEnabled = bounceLightingCompressionInCurrentScene == DynamicBounceLightingCompressionMode.SixBitsPerPixel;
         }
 
         /// <summary>Enables or disables a <see cref="GlobalKeyword"/>.</summary>

@@ -12,6 +12,13 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>The maximum size of the lightmap to be baked (defaults to 2048x2048).</summary>
         public int maximumLightmapSize { get; set; } = 2048;
 
+        /// <summary>
+        /// The compression level for bounce lighting data. Choosing a higher compression can reduce
+        /// VRAM usage, but may result in reduced visual quality. For best results, adjust based on
+        /// your VRAM availability and visual preferences.
+        /// </summary>
+        public DynamicBounceLightingCompressionMode bounceLightingCompression = DynamicBounceLightingCompressionMode.EightBitsPerPixel;
+
         /// <summary>Called when this tracer instance has been cancelled.</summary>
 #pragma warning disable CS0067
 
@@ -169,6 +176,7 @@ namespace AlpacaIT.DynamicLighting
                 // try to remember the version used.
                 dynamicLightManager.version = 3;
                 dynamicLightManager.activateBounceLightingInCurrentScene = false;
+                dynamicLightManager.bounceLightingCompressionInCurrentScene = bounceLightingCompression;
 
                 // find all light sources and calculate the bounding volume hierarchy.
                 CreateDynamicLightsBvh();
@@ -323,7 +331,7 @@ namespace AlpacaIT.DynamicLighting
             }
 
             tracingTime.Begin();
-            var dynamic_triangles = new DynamicTrianglesBuilder(meshBuilder, lightmapSize);
+            var dynamic_triangles = new DynamicTrianglesBuilder(meshBuilder, lightmapSize, bounceLightingCompression);
             var pixels_lightmap = new uint[lightmapSize * lightmapSize];
             var pixels_visited = new bool[lightmapSize * lightmapSize];
             var pixels_lightmap_gc = GCHandle.Alloc(pixels_lightmap, GCHandleType.Pinned);
