@@ -33,7 +33,7 @@ struct DynamicLight
     uint   shadowCubemapIndex;
     // -- 16 byte boundary --
     float  falloff;
-    float3 reserved;
+    float3 bounceColor;
     // -- 16 byte boundary --
     
     // the first 5 bits are unused (used to be channel index).

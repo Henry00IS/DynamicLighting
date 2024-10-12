@@ -10,11 +10,21 @@ namespace AlpacaIT.DynamicLighting
     public class DynamicLight : MonoBehaviour
     {
         /// <summary>
-        /// The color of the light. It would be best to keep this number within the RGB range (i.e.
-        /// not HDR with super bright colors) so that both current and future shader math
-        /// calculations are correct.
+        /// The color of the light emitted by this point light source. The selected color affects
+        /// how the light interacts with objects in the scene, influencing the overall mood and
+        /// tone. Use warm colors like yellows and oranges for a cozy or natural feel, or cool
+        /// colors like blues and greens for a calm or eerie atmosphere. Experimenting with
+        /// different colors can enhance the realism or stylization of your scene.
+        /// <para>
+        /// When using bounce lighting with a custom bounce lighting color, you can set this color
+        /// to black to only render the bounce lighting.
+        /// </para>
+        /// <para>
+        /// It would be best to keep this number within the RGB range (i.e. not HDR with super
+        /// bright colors) so that both current and future shader math calculations are correct.
+        /// </para>
         /// </summary>
-        [Tooltip("The color of the light. It would be best to keep this number within the RGB range (i.e. not HDR with super bright colors) so that both current and future shader math calculations are correct.")]
+        [Tooltip("The color of the light emitted by this point light source. The selected color affects how the light interacts with objects in the scene, influencing the overall mood and tone. Use warm colors like yellows and oranges for a cozy or natural feel, or cool colors like blues and greens for a calm or eerie atmosphere. Experimenting with different colors can enhance the realism or stylization of your scene.\n\nWhen using bounce lighting with a custom bounce lighting color, you can set this color to black to only render the bounce lighting.")]
         [ColorUsage(showAlpha: false)]
         public Color lightColor = Color.white;
 
@@ -144,6 +154,17 @@ namespace AlpacaIT.DynamicLighting
         public Texture lightCookieTexture;
 
         /// <summary>
+        /// The color of the bounce lighting. Use the alpha component to blend between the current
+        /// light color and this color. Bounce lighting is grayscale by design, and separating it
+        /// from the main light color allows for greater creative control, to help the usually dark
+        /// bounce lighting better match the environment.
+        /// </summary>
+        [Header("Bounce Lighting:")]
+        [Tooltip("The color of the bounce lighting. Use the alpha component to blend between the current light color and this color. Bounce lighting is grayscale by design, but separating it from the main light color allows for greater creative control, to help the usually dark bounce lighting better match the environment.")]
+        [ColorUsage(showAlpha: true)]
+        public Color lightBounceColor = new Color(1.0f, 1.0f, 1.0f, 0.0f);
+
+        /// <summary>
         /// The intensity of the bounce lighting when using 'Single Bounce' illumination. This is
         /// useful for brightening up areas where the bounce lighting appears too dim.
         /// <para>
@@ -151,7 +172,6 @@ namespace AlpacaIT.DynamicLighting
         /// changes to take effect.
         /// </para>
         /// </summary>
-        [Header("Raytracing Settings:")]
         [Tooltip("The intensity of the bounce lighting when using 'Single Bounce' illumination. This is useful for brightening up areas where the bounce lighting appears too dim.\n\nNote that any adjustments to this setting require raytracing the scene again for the changes to take effect.")]
         [Min(0f)]
         public float lightBounceIntensity = 1f;

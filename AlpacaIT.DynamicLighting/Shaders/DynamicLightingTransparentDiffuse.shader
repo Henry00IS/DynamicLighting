@@ -130,7 +130,7 @@ Shader "Dynamic Lighting/Transparent"
                 
                 // add this light to the final color of the fragment.
 #if DYNAMIC_LIGHTING_BOUNCE
-                light_final += (light.color * attenuation * NdotL * map) + (light.color * attenuation * bounce);
+                light_final += (light.color * attenuation * NdotL * map) + (light.bounceColor * attenuation * bounce);
 #else
                 light_final += (light.color * attenuation * NdotL * map);
 #endif

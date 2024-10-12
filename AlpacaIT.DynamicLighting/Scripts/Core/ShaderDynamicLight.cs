@@ -82,8 +82,8 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         public float falloff;
 
-        /// <summary>Unused field for struct alignment.</summary>
-        public Vector3 reserved;
+        /// <summary>The Red, Green, Blue color of the bounce lighting in that order.</summary>
+        public Vector3 bounceColor;
 
         // -- 16 byte boundary --
     };
