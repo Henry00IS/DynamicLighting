@@ -165,6 +165,17 @@ namespace AlpacaIT.DynamicLighting
         public Color lightBounceColor = new Color(1.0f, 1.0f, 1.0f, 0.0f);
 
         /// <summary>
+        /// Adjusts the visibility of bounce lighting by modifying its transparency. At 0, the
+        /// bounce lighting will be fully transparent, while at 1, it will be fully visible. This
+        /// setting does not affect the raytracing or compression process like <see
+        /// cref="lightBounceIntensity"/> does, as it only changes the final rendered transparency
+        /// of the bounce light.
+        /// </summary>
+        [Tooltip("Adjusts the visibility of bounce lighting by modifying its transparency. At 0, the bounce lighting will be fully transparent, while at 1, it will be fully visible. This setting does not affect the raytracing or compression process like 'Light Bounce Intensity' does, as it only changes the final rendered transparency of the bounce light.")]
+        [Range(0f, 1f)]
+        public float lightBounceModifier = 1.0f;
+
+        /// <summary>
         /// The intensity of the bounce lighting when using 'Single Bounce' illumination. This is
         /// useful for brightening up areas where the bounce lighting appears too dim.
         /// <para>
@@ -172,6 +183,7 @@ namespace AlpacaIT.DynamicLighting
         /// changes to take effect.
         /// </para>
         /// </summary>
+        [Header("Raytracing Settings:")]
         [Tooltip("The intensity of the bounce lighting when using 'Single Bounce' illumination. This is useful for brightening up areas where the bounce lighting appears too dim.\n\nNote that any adjustments to this setting require raytracing the scene again for the changes to take effect.")]
         [Min(0f)]
         public float lightBounceIntensity = 1f;

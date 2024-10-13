@@ -1016,6 +1016,7 @@ namespace AlpacaIT.DynamicLighting
             var lightRadius = light.lightRadius;
             var lightColor = light.lightColor;
             var lightBounceColor = light.lightBounceColor;
+            var lightBounceModifier = light.lightBounceModifier;
             var lightFalloff = light.lightFalloff;
 
             // the first 5 bits are unused (used to be channel index).
@@ -1028,9 +1029,9 @@ namespace AlpacaIT.DynamicLighting
             shaderLight->color.y = lightColor.g;
             shaderLight->color.z = lightColor.b;
 
-            shaderLight->bounceColor.x = lightColor.r + (lightBounceColor.r - lightColor.r) * lightBounceColor.a;
-            shaderLight->bounceColor.y = lightColor.g + (lightBounceColor.g - lightColor.g) * lightBounceColor.a;
-            shaderLight->bounceColor.z = lightColor.b + (lightBounceColor.b - lightColor.b) * lightBounceColor.a;
+            shaderLight->bounceColor.x = (lightColor.r + (lightBounceColor.r - lightColor.r) * lightBounceColor.a) * lightBounceModifier;
+            shaderLight->bounceColor.y = (lightColor.g + (lightBounceColor.g - lightColor.g) * lightBounceColor.a) * lightBounceModifier;
+            shaderLight->bounceColor.z = (lightColor.b + (lightBounceColor.b - lightColor.b) * lightBounceColor.a) * lightBounceModifier;
 
             shaderLight->radiusSqr = lightRadius * lightRadius;
             shaderLight->falloff = lightRadius * lightFalloff * lightFalloff;
