@@ -1090,6 +1090,7 @@ namespace AlpacaIT.DynamicLighting
             // otherwise read outside the bounds on the UV borders, causing visual artifacts to
             // appear as lines of shadow.
             var bounceTexture = new float[(5 + maxX - minX) * (5 + maxY - minY)];
+            var bounceTextureIlluminated = false;
 
             // todo: surely there's a clever memory copy function for this?
             var yy = 2;
@@ -1102,7 +1103,12 @@ namespace AlpacaIT.DynamicLighting
                 {
                     int xyPtr = yPtr + x;
 
-                    bounceTexture[yy * (5 + maxX - minX) + xx] = pixels_bounce[xyPtr];
+                    // check whether the bounce lighting illuminates anything.
+                    float pixel = pixels_bounce[xyPtr];
+                    if (pixel > 0.0f)
+                        bounceTextureIlluminated = true;
+
+                    bounceTexture[yy * (5 + maxX - minX) + xx] = pixel;
 
                     xx++;
                 }
@@ -1110,7 +1116,9 @@ namespace AlpacaIT.DynamicLighting
                 yy++;
             }
 
-            dynamic_triangles.SetBounceTexture(triangle_index, triangleLightIndex, bounceTexture);
+            // only store the bounce lighting if it's actually illuminating the triangle.
+            if (bounceTextureIlluminated)
+                dynamic_triangles.SetBounceTexture(triangle_index, triangleLightIndex, bounceTexture);
         }
 
         private unsafe void DilateBounceTexture(float* bounceTexture, float[] original)
