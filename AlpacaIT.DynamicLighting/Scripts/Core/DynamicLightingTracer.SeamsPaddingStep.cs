@@ -23,7 +23,7 @@ namespace AlpacaIT.DynamicLighting
             /// <summary>The texture size squared required to evenly distribute texels over the mesh.</summary>
             private uint meshTextureSizeSqr;
 
-            /// <summary>Creates a new instance of <see cref="TriangleUvTo3dStep"/>.</summary>
+            /// <summary>Creates a new instance of <see cref="TriangleUvToFull3dStep"/>.</summary>
             /// <param name="pixelsOcclusion">The 1bpp shadow occlusion bitmask for every light source.</param>
             /// <param name="pixelsVisited">The visited flag bitmask for every light source.</param>
             /// <param name="meshTextureSize">The texture size required to evenly distribute texels over the mesh.</param>

@@ -11,8 +11,11 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>The original unmodified UV1 coordinates of the mesh.</summary>
         public readonly Vector2[] meshUv1;
 
-        /// <summary>The vertices of the mesh in world-space coordinates.</summary>
+        /// <summary>The vertices of the mesh transformed to world-space.</summary>
         public readonly Vector3[] worldVertices;
+
+        /// <summary>The normals of the mesh transformed to world-space.</summary>
+        public readonly Vector3[] worldNormals;
 
         /// <summary>The world-space bounding box of the mesh.</summary>
         public readonly Bounds worldBounds;
@@ -40,14 +43,23 @@ namespace AlpacaIT.DynamicLighting
         {
             // read the original mesh data into memory.
             var meshVertices = mesh.vertices;
+            var meshNormals = mesh.normals;
             meshTriangles = mesh.triangles;
             meshUv1 = mesh.uv2;
 
-            // convert the vertices to world positions.
+            // transform the vertices to world positions.
             worldVertices = new Vector3[meshVertices.Length];
             for (int i = 0; i < meshVertices.Length; i++)
             {
                 worldVertices[i] = localToWorldMatrix.MultiplyPoint(meshVertices[i]);
+            }
+
+            // transform the normals to world space.
+            worldNormals = new Vector3[meshNormals.Length];
+            Matrix4x4 normalMatrix = localToWorldMatrix.inverse.transpose;
+            for (int i = 0; i < meshNormals.Length; i++)
+            {
+                worldNormals[i] = normalMatrix.MultiplyVector(meshNormals[i]);
             }
 
             // calculate the surface area of the mesh.
@@ -107,6 +119,18 @@ namespace AlpacaIT.DynamicLighting
             var v1 = meshUv1[meshTriangles[triangleIndex]];
             var v2 = meshUv1[meshTriangles[triangleIndex + 1]];
             var v3 = meshUv1[meshTriangles[triangleIndex + 2]];
+            return (v1, v2, v3);
+        }
+
+        /// <summary>Gets the 3 vertex normals for the triangle at the given triangle index.</summary>
+        /// <param name="triangleIndex">The index of the triangle in the mesh.</param>
+        /// <returns>The 3 vertex normals associated with the triangle.</returns>
+        public (Vector3 a, Vector3 b, Vector3 c) GetTriangleNormals(int triangleIndex)
+        {
+            triangleIndex *= 3;
+            var v1 = worldNormals[meshTriangles[triangleIndex]];
+            var v2 = worldNormals[meshTriangles[triangleIndex + 1]];
+            var v3 = worldNormals[meshTriangles[triangleIndex + 2]];
             return (v1, v2, v3);
         }
     }

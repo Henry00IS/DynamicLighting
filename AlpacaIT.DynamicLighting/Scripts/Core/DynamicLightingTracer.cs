@@ -356,10 +356,7 @@ namespace AlpacaIT.DynamicLighting
                     }
                 }
 #endif
-                var (v1, v2, v3) = meshBuilder.GetTriangleVertices(i);
-                var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
-
-                RaycastTriangle(i, dynamic_triangles, pixels_visited_ptr, pixels_lightmap_ptr, v1, v2, v3, t1, t2, t3);
+                RaycastTriangle(i, dynamic_triangles, pixels_visited_ptr, pixels_lightmap_ptr, meshBuilder);
             }
 
             // finish any remaining raycasting work.
@@ -392,10 +389,7 @@ namespace AlpacaIT.DynamicLighting
                     // iterate over all triangles in the mesh.
                     for (int i = 0; i < meshBuilder.triangleCount; i++)
                     {
-                        var (v1, v2, v3) = meshBuilder.GetTriangleVertices(i);
-                        var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
-
-                        BounceTriangle(j, i, dynamic_triangles, pixels_bounce_ptr, v1, v2, v3, t1, t2, t3);
+                        BounceTriangle(j, i, dynamic_triangles, pixels_bounce_ptr, meshBuilder);
                     }
 
                     // finish any remaining raycasting work.
@@ -407,9 +401,7 @@ namespace AlpacaIT.DynamicLighting
                     // iterate over all triangles in the mesh.
                     for (int i = 0; i < meshBuilder.triangleCount; i++)
                     {
-                        var (t1, t2, t3) = meshBuilder.GetTriangleUv1(i);
-
-                        BuildBounceTextures(j, i, pixels_bounce_ptr, dynamic_triangles, t1, t2, t3);
+                        BuildBounceTextures(j, i, pixels_bounce_ptr, dynamic_triangles, meshBuilder);
                     }
 
                     // free the bounce lighting texture.
@@ -461,8 +453,11 @@ namespace AlpacaIT.DynamicLighting
                 dynamicLightManager.raycastedMeshRenderers.Add(lightmap);
         }
 
-        private unsafe void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, bool* pixels_visited, uint* pixels_lightmap, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        private unsafe void RaycastTriangle(int triangle_index, DynamicTrianglesBuilder dynamic_triangles, bool* pixels_visited, uint* pixels_lightmap, MeshBuilder meshBuilder)
         {
+            var (v1, v2, v3) = meshBuilder.GetTriangleVertices(triangle_index);
+            var (n1, n2, n3) = meshBuilder.GetTriangleNormals(triangle_index);
+
             // calculate the triangle normal (this may fail when degenerate or very small).
             var triangleNormal3 = math.normalizesafe(math.cross(v2 - v1, v3 - v1));
             var triangleNormalPtr = (Vector3*)&triangleNormal3;
@@ -491,16 +486,17 @@ namespace AlpacaIT.DynamicLighting
                 var light = pointLights[i];
                 var lightPosition = pointLightsCache[i].position;
 
-                // if we have the triangle normal then exclude triangles facing away from the light.
                 // indirect light can bounce onto a triangle with any normal, so the following
                 // optimization only works when light bouncing is disabled for this light source.
-                if (triangleNormalValid && light.lightIllumination == DynamicLightIlluminationMode.DirectIllumination)
+                // when normals are all the same (flat shading) then we can exclude triangles facing
+                // away from the light early on here.
+                if (triangleNormalValid && light.lightIllumination == DynamicLightIlluminationMode.DirectIllumination && n1.ApproximatelyEquals(n2) && n2.ApproximatelyEquals(n3))
                 {
                     // [unsafe] lightDirection = (lightPosition - triangleCenter).normalized
                     lightDirection = lightPosition;
                     UMath.Subtract(lightDirectionPtr, triangleCenterPtr);
                     UMath.Normalize(lightDirectionPtr);
-                    if (UMath.Dot(triangleNormalPtr, lightDirectionPtr) <= -0.1f)
+                    if (UMath.Dot(triangleNormalPtr, lightDirectionPtr) <= -0.1f) // slight tolerance.
                         continue;
                 }
 
@@ -521,6 +517,7 @@ namespace AlpacaIT.DynamicLighting
             if (!triangleNormalValid) return;
 
             // do some initial uv to 3d work here and also determine whether we can early out.
+            var (t1, t2, t3) = meshBuilder.GetTriangleUv1(triangle_index);
             if (!MathEx.UvTo3dFastPrerequisite(t1, t2, t3, out float triangleSurfaceArea))
                 return;
 
@@ -533,9 +530,10 @@ namespace AlpacaIT.DynamicLighting
             var maxY = triangleBoundingBox.yMax;
 
             // calculate the world position for every UV position on a triangle.
-            var triangleUvTo3dStep = new TriangleUvTo3dStep(v1, v2, v3, t1, t2, t3, triangleSurfaceArea, triangleBoundingBox, lightmapSize);
+            var triangleUvTo3dStep = new TriangleUvToFull3dStep(v1, v2, v3, n1, n2, n3, t1, t2, t3, triangleSurfaceArea, triangleBoundingBox, lightmapSize);
             triangleUvTo3dStep.Execute();
             var uvWorldPositions = triangleUvTo3dStep.worldPositionsPtr;
+            var uvWorldNormals = triangleUvTo3dStep.worldNormalsPtr;
 
             // prepare to only iterate over lights potentially affecting the current triangle.
             var triangleLightIndices = dynamic_triangles.GetRaycastedLightIndices(triangle_index);
@@ -550,6 +548,8 @@ namespace AlpacaIT.DynamicLighting
             // optimize for the IL by preparing memory and pointers outside of the loop.
             Vector3 world;
             var worldPtr = &world;
+            Vector3 normal;
+            var normalPtr = &normal;
             var localTracesCounter = 0;
 
             // we can do less work than the constructor and recycle this memory.
@@ -576,8 +576,9 @@ namespace AlpacaIT.DynamicLighting
 
                     for (int x = minX; x <= maxX; x++)
                     {
-                        // fetch the world position for the current uv coordinate.
-                        world = uvWorldPositions[ptr++];
+                        // fetch the world position and interpolated normal for the current uv coordinate.
+                        world = uvWorldPositions[ptr];
+                        normal = uvWorldNormals[ptr++];
                         if (UMath.IsZero(worldPtr)) continue;
 
                         // [unsafe] lightDirection = lightPosition - world;
@@ -589,10 +590,10 @@ namespace AlpacaIT.DynamicLighting
                         if (lightDistanceToWorldSqr > lightRadiusSqr)
                             continue;
 
-                        // early out by normal.
+                        // early out by interpolated normal (smooth normals).
                         // [unsafe] lightDirection = lightDirection.normalized
                         UMath.Normalize(lightDirectionPtr);
-                        if (UMath.Dot(triangleNormalPtr, lightDirectionPtr) < -0.1f)
+                        if (UMath.Dot(normalPtr, lightDirectionPtr) <= -0.1f) // slight tolerance.
                             continue;
 
                         int xyPtr = yPtr + x;
@@ -699,12 +700,13 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
-        private unsafe void BounceTriangle(int light_index, int triangle_index, DynamicTrianglesBuilder dynamic_triangles, float* pixels_bounce_ptr, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        private unsafe void BounceTriangle(int light_index, int triangle_index, DynamicTrianglesBuilder dynamic_triangles, float* pixels_bounce_ptr, MeshBuilder meshBuilder)
         {
             // lights have already been associated with triangles that can potentially be affected
             // by them during the direct illumination step. bounce light sources also include
             // triangles facing away from the light source which is very important as bounce
             // lighting can go anywhere within the light radius.
+            var (v1, v2, v3) = meshBuilder.GetTriangleVertices(triangle_index);
 
             // calculate the triangle normal (this may fail when degenerate or very small).
             var triangleNormal3 = math.normalizesafe(math.cross(v2 - v1, v3 - v1));
@@ -716,6 +718,7 @@ namespace AlpacaIT.DynamicLighting
             if (!triangleNormalValid) return;
 
             // do some initial uv to 3d work here and also determine whether we can early out.
+            var (t1, t2, t3) = meshBuilder.GetTriangleUv1(triangle_index);
             if (!MathEx.UvTo3dFastPrerequisite(t1, t2, t3, out float triangleSurfaceArea))
                 return;
 
@@ -1053,7 +1056,7 @@ namespace AlpacaIT.DynamicLighting
             return false;
         }
 
-        private unsafe void BuildBounceTextures(int light_index, int triangle_index, float* pixels_bounce, DynamicTrianglesBuilder dynamic_triangles, Vector2 t1, Vector2 t2, Vector2 t3)
+        private unsafe void BuildBounceTextures(int light_index, int triangle_index, float* pixels_bounce, DynamicTrianglesBuilder dynamic_triangles, MeshBuilder meshBuilder)
         {
             // now the lightmap pixels have also been padded and all the unused light sources have
             // been removed from the triangle, so we only have to store the 1bpp light occlusion
@@ -1065,6 +1068,7 @@ namespace AlpacaIT.DynamicLighting
                 return;
 
             // calculate the bounding box of the polygon in UV space.
+            var (t1, t2, t3) = meshBuilder.GetTriangleUv1(triangle_index);
             var triangleBoundingBox = MathEx.ComputeTriangleBoundingBox(t1, t2, t3);
 
             // triangles may be so thin and small that they do not have their own UV texels, so we
