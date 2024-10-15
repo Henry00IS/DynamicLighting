@@ -207,8 +207,12 @@ namespace AlpacaIT.DynamicLighting
         /// The compression level for bounce lighting data. Choosing a higher compression can reduce
         /// VRAM usage, but may result in reduced visual quality. For best results, adjust based on
         /// your VRAM availability and visual preferences.
+        /// <para>
+        /// Note that any adjustments to this setting require raytracing the scene again for the
+        /// changes to take effect.
+        /// </para>
         /// </summary>
-        [Tooltip("The compression level for bounce lighting data. Choosing a higher compression can reduce VRAM usage, but may result in reduced visual quality. For best results, adjust based on your VRAM availability and visual preferences.")]
+        [Tooltip("The compression level for bounce lighting data. Choosing a higher compression can reduce VRAM usage, but may result in reduced visual quality. For best results, adjust based on your VRAM availability and visual preferences.\n\nNote that any adjustments to this setting require raytracing the scene again for the changes to take effect.")]
         public DynamicBounceLightingCompressionMode lightBounceCompression = DynamicBounceLightingCompressionMode.Inherit;
 
         /// <summary>
