@@ -12,8 +12,15 @@ namespace AlpacaIT.DynamicLighting.Editor
     [Overlay(typeof(SceneView), "Dynamic Lighting")]
     internal class DynamicLightingToolbar : ToolbarOverlay
     {
+        public static DynamicLightingToolbar instance;
+
         public DynamicLightingToolbar() : base(LightGroupElement.ID, BakeButtonGroup.ID)
         {
+        }
+
+        public override void OnCreated()
+        {
+            instance = this;
         }
     }
 
@@ -28,10 +35,29 @@ namespace AlpacaIT.DynamicLighting.Editor
         {
             name = ID;
 
+            Add(new PreviewBakeButton());
             Add(new BakeButton());
             Add(new BakeOptionsButton());
 
             EditorToolbarUtility.SetupChildrenAsButtonStrip(this);
+        }
+    }
+
+    internal class PreviewBakeButton : EditorToolbarButton
+    {
+        public const string ID = nameof(DynamicLightingToolbar) + "_" + nameof(BakeButton);
+
+        public PreviewBakeButton()
+        {
+            name = ID;
+            icon = EditorGUIUtility.TrIconContent("d_Profiler.LastFrame").image as Texture2D;
+            text = "Preview Bake";
+            tooltip = "Performs a preview bake of the scene without bounce lighting.";
+
+            clicked += () =>
+            {
+                DynamicLightManager.Instance.Raytrace(DynamicLightingPreferences.BakeResolution, DynamicLightingTracerFlags.SkipAll);
+            };
         }
     }
 
@@ -44,7 +70,7 @@ namespace AlpacaIT.DynamicLighting.Editor
             name = ID;
             icon = EditorGUIUtility.TrIconContent("Refresh@2x").image as Texture2D;
             text = "Bake";
-            tooltip = "Bakes scene lighting.";
+            tooltip = "Performs a full bake of the scene lighting.";
 
             clicked += () =>
             {
@@ -99,6 +125,13 @@ namespace AlpacaIT.DynamicLighting.Editor
                 {
                     DynamicLightingPreferences.DefaultToBounceLighting = !DynamicLightingPreferences.DefaultToBounceLighting;
                 }, DynamicLightingPreferences.DefaultToBounceLighting
+            );
+
+            addItem(
+                "New Lights Use Transparency", () =>
+                {
+                    DynamicLightingPreferences.DefaultToTransparency = !DynamicLightingPreferences.DefaultToTransparency;
+                }, DynamicLightingPreferences.DefaultToTransparency
             );
 
             menu.AddSeparator("");
@@ -168,6 +201,7 @@ namespace AlpacaIT.DynamicLighting.Editor
             {
                 var light = EditorMenus.EditorCreateDynamicPointLight(null);
                 light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
+                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
             };
         }
     }
@@ -187,6 +221,7 @@ namespace AlpacaIT.DynamicLighting.Editor
             {
                 var light = EditorMenus.EditorCreateDynamicSpotLight(null);
                 light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
+                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
             };
         }
     }
@@ -206,6 +241,7 @@ namespace AlpacaIT.DynamicLighting.Editor
             {
                 var light = EditorMenus.EditorCreateDynamicDirectionalLight(null);
                 light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
+                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
             };
         }
     }
@@ -241,12 +277,14 @@ namespace AlpacaIT.DynamicLighting.Editor
             {
                 var light = EditorMenus.EditorCreateDynamicDiscoballLight(null);
                 light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
+                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
             });
 
             addItem("Wave Light", () =>
             {
                 var light = EditorMenus.EditorCreateDynamicLight("Dynamic Wave Light");
                 light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
+                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
                 light.lightType = DynamicLightType.Wave;
             });
 
@@ -254,6 +292,7 @@ namespace AlpacaIT.DynamicLighting.Editor
             {
                 var light = EditorMenus.EditorCreateDynamicLight("Dynamic Interference Light");
                 light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
+                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
                 light.lightType = DynamicLightType.Wave;
             });
 
@@ -261,6 +300,7 @@ namespace AlpacaIT.DynamicLighting.Editor
             {
                 var light = EditorMenus.EditorCreateDynamicLight("Dynamic Rotor Light");
                 light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
+                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
                 light.lightType = DynamicLightType.Rotor;
                 light.lightWaveFrequency = 5f;
             });
@@ -269,6 +309,7 @@ namespace AlpacaIT.DynamicLighting.Editor
             {
                 var light = EditorMenus.EditorCreateDynamicLight("Dynamic Shock Light");
                 light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
+                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
                 light.lightType = DynamicLightType.Shock;
             });
 
@@ -276,6 +317,7 @@ namespace AlpacaIT.DynamicLighting.Editor
             {
                 var light = EditorMenus.EditorCreateDynamicLight("Dynamic Disco Light");
                 light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
+                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
                 light.lightType = DynamicLightType.Disco;
                 light.lightWaveFrequency = 10f;
             });
@@ -286,6 +328,7 @@ namespace AlpacaIT.DynamicLighting.Editor
             {
                 var light = EditorMenus.EditorCreateDynamicLight("Dynamic Pulsating Light");
                 light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
+                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
                 light.lightEffect = DynamicLightEffect.Pulse;
             });
 
@@ -293,6 +336,7 @@ namespace AlpacaIT.DynamicLighting.Editor
             {
                 var light = EditorMenus.EditorCreateDynamicLight("Dynamic Random Light");
                 light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
+                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
                 light.lightEffect = DynamicLightEffect.Random;
             });
 
@@ -300,6 +344,7 @@ namespace AlpacaIT.DynamicLighting.Editor
             {
                 var light = EditorMenus.EditorCreateDynamicLight("Dynamic Strobe Light");
                 light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
+                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
                 light.lightEffect = DynamicLightEffect.Strobe;
             });
 
@@ -307,6 +352,7 @@ namespace AlpacaIT.DynamicLighting.Editor
             {
                 var light = EditorMenus.EditorCreateDynamicLight("Dynamic Flickering Light");
                 light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
+                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
                 light.lightEffect = DynamicLightEffect.Flicker;
             });
 
@@ -316,6 +362,7 @@ namespace AlpacaIT.DynamicLighting.Editor
             {
                 var light = EditorMenus.EditorCreateDynamicLight("Dynamic Water Shimmer Light");
                 light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
+                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
                 light.lightShimmer = DynamicLightShimmer.Water;
             });
 
@@ -323,7 +370,19 @@ namespace AlpacaIT.DynamicLighting.Editor
             {
                 var light = EditorMenus.EditorCreateDynamicLight("Dynamic Fire Shimmer Light");
                 light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
+                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
                 light.lightShimmer = DynamicLightShimmer.Random;
+            });
+
+            genericMenu.AddSeparator("");
+
+            addItem("Indirect Bounce Light", () =>
+            {
+                var light = EditorMenus.EditorCreateDynamicLight("Indirect Bounce Light");
+                light.lightIllumination = DynamicLightIlluminationMode.SingleBounce;
+                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
+                light.lightColor = Color.black;
+                light.lightBounceColor = Color.white;
             });
 
             return; // local methods

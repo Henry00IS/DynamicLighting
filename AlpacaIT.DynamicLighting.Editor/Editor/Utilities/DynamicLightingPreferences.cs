@@ -7,6 +7,7 @@ namespace AlpacaIT.DynamicLighting.Editor
         private const string PREF_ROOT = "de.alpacait.dynamiclighting.editor.";
 
         private const string BOUNCE_LIGHTING_BY_DEFAULT_PREF = PREF_ROOT + "defaultBounceLighting";
+        private const string TRANSPARENCY_BY_DEFAULT_PREF = PREF_ROOT + "defaultTransparency";
         private const string BAKE_RESOLUTION_PREF = PREF_ROOT + "bakeResolution";
 
         /// <summary>Do we default to creating all lights with bounce lighting?</summary>
@@ -14,6 +15,13 @@ namespace AlpacaIT.DynamicLighting.Editor
         {
             get => EditorPrefs.GetBool(BOUNCE_LIGHTING_BY_DEFAULT_PREF, false); // don't turn this on by default.
             set => EditorPrefs.SetBool(BOUNCE_LIGHTING_BY_DEFAULT_PREF, value);
+        }
+
+        /// <summary>Do we default to creating all lights with transparency?</summary>
+        public static bool DefaultToTransparency
+        {
+            get => EditorPrefs.GetBool(TRANSPARENCY_BY_DEFAULT_PREF, false); // don't turn this on by default.
+            set => EditorPrefs.SetBool(TRANSPARENCY_BY_DEFAULT_PREF, value);
         }
 
         /// <summary>The default bake resolution we desire.</summary>

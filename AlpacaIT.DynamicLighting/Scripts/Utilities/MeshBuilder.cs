@@ -47,6 +47,10 @@ namespace AlpacaIT.DynamicLighting
             meshTriangles = mesh.triangles;
             meshUv1 = mesh.uv2;
 
+            // when there is no uv1 we fall back to uv0 (matches default Unity behaviour).
+            if (meshUv1.Length == 0)
+                meshUv1 = mesh.uv;
+
             // transform the vertices to world positions.
             worldVertices = new Vector3[meshVertices.Length];
             for (int i = 0; i < meshVertices.Length; i++)

@@ -279,7 +279,7 @@ namespace AlpacaIT.DynamicLighting
             UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
         }
 
-        [UnityEditor.MenuItem("Dynamic Lighting/Delete Scene Lightmaps", false, 40)]
+        [UnityEditor.MenuItem("Dynamic Lighting/Delete Scene Lightmaps", false, 60)]
         private static void EditorDeleteLightmapsNow()
         {
             Instance.EditorDeleteLightmaps();
@@ -1242,7 +1242,10 @@ namespace AlpacaIT.DynamicLighting
         /// <param name="maximumLightmapSize">
         /// The maximum size of the lightmap to be baked (defaults to 2048x2048).
         /// </param>
-        public void Raytrace(int maximumLightmapSize = 2048)
+        /// <param name="dynamicLightingTracerFlags">
+        /// The flags controlling aspects of the raytracing process, such as skipping certain computations.
+        /// </param>
+        public void Raytrace(int maximumLightmapSize = 2048, DynamicLightingTracerFlags dynamicLightingTracerFlags = DynamicLightingTracerFlags.None)
         {
 #if UNITY_EDITOR
             if (!EditorEnsureUserSavedScene()) return;
@@ -1250,6 +1253,7 @@ namespace AlpacaIT.DynamicLighting
             var tracer = new DynamicLightingTracer();
             tracer.maximumLightmapSize = maximumLightmapSize;
             tracer.bounceLightingCompression = bounceLightingCompression;
+            tracer.tracerFlags = dynamicLightingTracerFlags;
 
             bool cancelled = false;
             tracer.cancelled += (s, e) => { cancelled = true; traceCancelled?.Invoke(this, new DynamicLightingTraceCancelledEventArgs(this)); };

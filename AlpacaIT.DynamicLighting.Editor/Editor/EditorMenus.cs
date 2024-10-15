@@ -18,22 +18,60 @@ namespace AlpacaIT.DynamicLighting.Editor
             DynamicLightManager.Instance.Raytrace(512);
         }
 
-        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 1024", false, 21)]
+        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 1024", false, 20)]
         private static void EditorRaytrace1024()
         {
             DynamicLightManager.Instance.Raytrace(1024);
         }
 
-        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 2048 (Recommended)", false, 21)]
+        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 2048 (Recommended)", false, 20)]
         private static void EditorRaytrace2048()
         {
             DynamicLightManager.Instance.Raytrace(2048);
         }
 
-        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 4096", false, 21)]
+        [UnityEditor.MenuItem("Dynamic Lighting/Raytrace Scene: 4096", false, 20)]
         private static void EditorRaytrace4096()
         {
             DynamicLightManager.Instance.Raytrace(4096);
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Preview Scene/Skip Bounce Lighting: Unlimited", false, 40)]
+        private static void EditorPreviewUnlimited()
+        {
+            DynamicLightManager.Instance.Raytrace(23170, DynamicLightingTracerFlags.SkipAll); // 46340 squared is 2,147,395,600 but had OutOfMemoryException.
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Preview Scene/Skip Bounce Lighting: 512", false, 60)]
+        private static void EditorPreview512()
+        {
+            DynamicLightManager.Instance.Raytrace(512, DynamicLightingTracerFlags.SkipAll);
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Preview Scene/Skip Bounce Lighting: 1024", false, 60)]
+        private static void EditorPreview1024()
+        {
+            DynamicLightManager.Instance.Raytrace(1024, DynamicLightingTracerFlags.SkipAll);
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Preview Scene/Skip Bounce Lighting: 2048 (Recommended)", false, 60)]
+        private static void EditorPreview2048()
+        {
+            DynamicLightManager.Instance.Raytrace(2048, DynamicLightingTracerFlags.SkipAll);
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Preview Scene/Skip Bounce Lighting: 4096", false, 60)]
+        private static void EditorPreview4096()
+        {
+            DynamicLightManager.Instance.Raytrace(4096, DynamicLightingTracerFlags.SkipAll);
+        }
+
+        [UnityEditor.MenuItem("Dynamic Lighting/Preview Scene/Tip: Activate the scene view overlay", false, 80)]
+        private static void EditorMenuOverlayTip()
+        {
+            if (UnityEditor.EditorUtility.DisplayDialog("Dynamic Lighting", "Press the space bar in Scene View to open the Dynamic Lighting Overlay. This overlay makes raytracing lighting easier and provides quick access to various light types.", "Activate", "Cancel"))
+                if (DynamicLightingToolbar.instance != null)
+                    DynamicLightingToolbar.instance.displayed = true;
         }
 
 #if !UNITY_2021_2_OR_NEWER
@@ -70,7 +108,7 @@ namespace AlpacaIT.DynamicLighting.Editor
 
 #else
 
-        [UnityEditor.MenuItem("Dynamic Lighting/About...", false, 60)]
+        [UnityEditor.MenuItem("Dynamic Lighting/About...", false, 80)]
         private static void EditorMenuAbout()
         {
             AboutWindow.Init();

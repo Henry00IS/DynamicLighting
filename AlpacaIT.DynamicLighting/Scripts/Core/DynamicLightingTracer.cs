@@ -10,7 +10,7 @@ namespace AlpacaIT.DynamicLighting
     internal partial class DynamicLightingTracer
     {
         /// <summary>The maximum size of the lightmap to be baked (defaults to 2048x2048).</summary>
-        public int maximumLightmapSize { get; set; } = 2048;
+        public int maximumLightmapSize = 2048;
 
         /// <summary>
         /// The compression level for bounce lighting data. Choosing a higher compression can reduce
@@ -18,6 +18,11 @@ namespace AlpacaIT.DynamicLighting
         /// your VRAM availability and visual preferences.
         /// </summary>
         public DynamicBounceLightingCompressionMode bounceLightingCompression = DynamicBounceLightingCompressionMode.EightBitsPerPixel;
+
+        /// <summary>
+        /// The flags controlling aspects of the raytracing process, such as skipping certain computations.
+        /// </summary>
+        public DynamicLightingTracerFlags tracerFlags = DynamicLightingTracerFlags.None;
 
         /// <summary>Called when this tracer instance has been cancelled.</summary>
 #pragma warning disable CS0067
@@ -209,7 +214,7 @@ namespace AlpacaIT.DynamicLighting
                         requiresPhotonCube = true;
 
                     // check for the usage of bounce lighting in the scene.
-                    if (light.lightIllumination == DynamicLightIlluminationMode.SingleBounce)
+                    if (light.lightIllumination == DynamicLightIlluminationMode.SingleBounce && !tracerFlags.HasFlag(DynamicLightingTracerFlags.SkipBounceLighting))
                     {
                         // bounce lighting requires a photon cube.
                         requiresPhotonCube = true;
@@ -490,7 +495,7 @@ namespace AlpacaIT.DynamicLighting
                 // optimization only works when light bouncing is disabled for this light source.
                 // when normals are all the same (flat shading) then we can exclude triangles facing
                 // away from the light early on here.
-                if (triangleNormalValid && light.lightIllumination == DynamicLightIlluminationMode.DirectIllumination && n1.ApproximatelyEquals(n2) && n2.ApproximatelyEquals(n3))
+                if (triangleNormalValid && (light.lightIllumination == DynamicLightIlluminationMode.DirectIllumination || tracerFlags.HasFlag(DynamicLightingTracerFlags.SkipBounceLighting)) && n1.ApproximatelyEquals(n2) && n2.ApproximatelyEquals(n3))
                 {
                     // [unsafe] lightDirection = (lightPosition - triangleCenter).normalized
                     lightDirection = lightPosition;
