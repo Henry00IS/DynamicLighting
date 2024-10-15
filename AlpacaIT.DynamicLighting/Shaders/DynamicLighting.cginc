@@ -618,6 +618,14 @@ struct DynamicTriangle
         // the bounce texture data is compressed with 5 pixels in one uint.
         uint uintIndex = index / 5; // determine the index of the uint in the buffer.
         uint byteIndex = index % 5; // find the byte position within the uint.
+#elif DYNAMIC_LIGHTING_BOUNCE_5BPP
+        // the bounce texture data is compressed with 6 pixels in one uint.
+        uint uintIndex = index / 6; // determine the index of the uint in the buffer.
+        uint byteIndex = index % 6; // find the byte position within the uint.
+#elif DYNAMIC_LIGHTING_BOUNCE_4BPP
+        // the bounce texture data is compressed with 6 pixels in one uint.
+        uint uintIndex = index / 8; // determine the index of the uint in the buffer.
+        uint byteIndex = index % 8; // find the byte position within the uint.
 #else
         // the bounce texture data is compressed with 4 pixels in one uint.
         uint uintIndex = index / 4; // determine the index of the uint in the buffer.
@@ -628,6 +636,14 @@ struct DynamicTriangle
         uint shift = (3 - byteIndex) * 6;    // calculate the shift amount for the correct byte.
         uint byte = (value >> shift) & 0x3F; // extract the desired byte.
         float pixelValue = byte / 63.0;      // convert the byte to a float in [0, 1].
+#elif DYNAMIC_LIGHTING_BOUNCE_5BPP
+        uint shift = (3 - byteIndex) * 5;    // calculate the shift amount for the correct byte.
+        uint byte = (value >> shift) & 0x1F; // extract the desired byte.
+        float pixelValue = byte / 31.0;      // convert the byte to a float in [0, 1].
+#elif DYNAMIC_LIGHTING_BOUNCE_4BPP
+        uint shift = (3 - byteIndex) * 4;    // calculate the shift amount for the correct byte.
+        uint byte = (value >> shift) & 0xF;  // extract the desired byte.
+        float pixelValue = byte / 15.0;      // convert the byte to a float in [0, 1].
 #else
         uint shift = (3 - byteIndex) * 8;    // calculate the shift amount for the correct byte.
         uint byte = (value >> shift) & 0xFF; // extract the desired byte.

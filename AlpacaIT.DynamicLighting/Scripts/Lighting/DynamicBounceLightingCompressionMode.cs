@@ -28,5 +28,33 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         [Tooltip("Stores bounce lighting data with 5 pixels in 32-bit units on the graphics card, each pixel using 6-bit (0-63) depth. This reduces the amount of VRAM used by 20% (e.g., 4GiB becomes 3.2GiB). However, it may cause noticeable shading differences (color banding), which are softened by adding a slight noise pattern (dithering).\n\nNote that any adjustments to this setting require raytracing the scene again for the changes to take effect.")]
         SixBitsPerPixel = 1,
+
+        /// <summary>
+        /// Stores bounce lighting data with 6 pixels in 32-bit units on the graphics card, each
+        /// pixel using 5-bit (0-31) depth. This reduces the amount of VRAM used by 34% (e.g., 4GiB
+        /// becomes 2.7GiB). However, it may cause noticeable shading differences (color banding),
+        /// which are softened by adding a slight noise pattern (dithering). This mode works well
+        /// for games with low resolution textures, as the pixelation hides the dithering.
+        /// <para>
+        /// Note that any adjustments to this setting require raytracing the scene again for the
+        /// changes to take effect.
+        /// </para>
+        /// </summary>
+        [Tooltip("Stores bounce lighting data with 6 pixels in 32-bit units on the graphics card, each pixel using 5-bit (0-31) depth. This reduces the amount of VRAM used by 34% (e.g., 4GiB becomes 2.7GiB). However, it may cause noticeable shading differences (color banding), which are softened by adding a slight noise pattern (dithering). This mode works well for games with low resolution textures, as the pixelation hides the dithering.\n\nNote that any adjustments to this setting require raytracing the scene again for the changes to take effect.")]
+        FiveBitsPerPixel = 2,
+
+        /// <summary>
+        /// Stores bounce lighting data with 8 pixels in 32-bit units on the graphics card, each
+        /// pixel using 4-bit (0-15) depth. This reduces the amount of VRAM used by 50% (e.g., 4GiB
+        /// becomes 2GiB). However, it may cause noticeable shading differences (color banding),
+        /// which are softened by adding a slight noise pattern (dithering). This mode works well
+        /// for games with low resolution textures, as the pixelation hides the dithering.
+        /// <para>
+        /// Note that any adjustments to this setting require raytracing the scene again for the
+        /// changes to take effect.
+        /// </para>
+        /// </summary>
+        [Tooltip("Stores bounce lighting data with 8 pixels in 32-bit units on the graphics card, each pixel using 4-bit (0-15) depth. This reduces the amount of VRAM used by 50% (e.g., 4GiB becomes 2GiB). However, it may cause noticeable shading differences (color banding), which are softened by adding a slight noise pattern (dithering). This mode works well for games with low resolution textures, as the pixelation hides the dithering.\n\nNote that any adjustments to this setting require raytracing the scene again for the changes to take effect.")]
+        FourBitsPerPixel = 3,
     }
 }
