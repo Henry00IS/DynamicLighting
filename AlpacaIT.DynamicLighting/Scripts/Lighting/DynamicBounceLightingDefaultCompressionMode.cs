@@ -3,14 +3,8 @@
 namespace AlpacaIT.DynamicLighting
 {
     /// <summary>The compression modes for bounce lighting data on the graphics card.</summary>
-    public enum DynamicBounceLightingCompressionMode
+    public enum DynamicBounceLightingDefaultCompressionMode
     {
-        /// <summary>
-        /// Inherits the bounce lighting data compression mode from the dynamic light manager in the scene.
-        /// </summary>
-        [Tooltip("Inherits the bounce lighting data compression mode from the dynamic light manager in the scene.")]
-        Inherit = 0,
-
         /// <summary>
         /// Stores bounce lighting data with 4 pixels in 32-bit units on the graphics card, each
         /// pixel using 8-bit (0-255) depth (default).
@@ -58,7 +52,8 @@ namespace AlpacaIT.DynamicLighting
         /// becomes 2GiB). However, it may cause noticeable shading differences (color banding),
         /// which are softened by adding a slight noise pattern (dithering). This mode works well
         /// for games with low resolution textures, as the pixelation hides the dithering. Avoid
-        /// using this mode near white or single-colored textures as the noise becomes very obvious.
+        /// using this mode near white, single-colored or high resolution textures as the noise
+        /// becomes very obvious.
         /// <para>
         /// Note that any adjustments to this setting require raytracing the scene again for the
         /// changes to take effect.

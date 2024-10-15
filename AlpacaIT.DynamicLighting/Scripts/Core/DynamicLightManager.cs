@@ -113,11 +113,6 @@ namespace AlpacaIT.DynamicLighting
         [HideInInspector]
         internal bool activateBounceLightingInCurrentScene;
 
-        /// <summary>The bounce lighting compression mode used during the tracing of the scene.</summary>
-        [SerializeField]
-        [HideInInspector]
-        internal DynamicBounceLightingCompressionMode bounceLightingCompressionInCurrentScene = DynamicBounceLightingCompressionMode.EightBitsPerPixel;
-
         /// <summary>
         /// The settings of the dynamic light manager can be shared across several scenes by
         /// assigning a template here. The values are copied from the template to this instance
@@ -194,12 +189,12 @@ namespace AlpacaIT.DynamicLighting
         public int pixelDensityPerSquareMeter = 128;
 
         /// <summary>
-        /// The compression level for bounce lighting data. Choosing a higher compression can reduce
-        /// VRAM usage, but may result in reduced visual quality. For best results, adjust based on
-        /// your VRAM availability and visual preferences.
+        /// The default compression level for bounce lighting data. Choosing a higher compression
+        /// can reduce VRAM usage, but may result in reduced visual quality. For best results,
+        /// adjust based on your VRAM availability and visual preferences.
         /// </summary>
-        [Tooltip("The compression level for bounce lighting data. Choosing a higher compression can reduce VRAM usage, but may result in reduced visual quality. For best results, adjust based on your VRAM availability and visual preferences.")]
-        public DynamicBounceLightingCompressionMode bounceLightingCompression = DynamicBounceLightingCompressionMode.EightBitsPerPixel;
+        [Tooltip("The default compression level for bounce lighting data. Choosing a higher compression can reduce VRAM usage, but may result in reduced visual quality. For best results, adjust based on your VRAM availability and visual preferences.")]
+        public DynamicBounceLightingDefaultCompressionMode bounceLightingCompression = DynamicBounceLightingDefaultCompressionMode.EightBitsPerPixel;
 
         /// <summary>The collection of raycasted mesh renderers in the scene.</summary>
         [SerializeField]
@@ -1252,7 +1247,7 @@ namespace AlpacaIT.DynamicLighting
 #endif
             var tracer = new DynamicLightingTracer();
             tracer.maximumLightmapSize = maximumLightmapSize;
-            tracer.bounceLightingCompression = bounceLightingCompression;
+            tracer.bounceLightingDefaultCompression = bounceLightingCompression;
             tracer.tracerFlags = dynamicLightingTracerFlags;
 
             bool cancelled = false;

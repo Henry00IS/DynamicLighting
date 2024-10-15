@@ -204,6 +204,14 @@ namespace AlpacaIT.DynamicLighting
         public int lightBounceSamples = 32;
 
         /// <summary>
+        /// The compression level for bounce lighting data. Choosing a higher compression can reduce
+        /// VRAM usage, but may result in reduced visual quality. For best results, adjust based on
+        /// your VRAM availability and visual preferences.
+        /// </summary>
+        [Tooltip("The compression level for bounce lighting data. Choosing a higher compression can reduce VRAM usage, but may result in reduced visual quality. For best results, adjust based on your VRAM availability and visual preferences.")]
+        public DynamicBounceLightingCompressionMode lightBounceCompression = DynamicBounceLightingCompressionMode.Inherit;
+
+        /// <summary>
         /// The shimmer effects overlay the world with random blocks that project water caustics or
         /// fire wavering.
         /// </summary>

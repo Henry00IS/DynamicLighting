@@ -9,12 +9,8 @@ namespace AlpacaIT.DynamicLighting
     /// </summary>
     internal class DynamicTrianglesBuilder
     {
-        /// <summary>
-        /// The compression level for bounce lighting data. Choosing a higher compression can reduce
-        /// VRAM usage, but may result in reduced visual quality. For best results, adjust based on
-        /// your VRAM availability and visual preferences.
-        /// </summary>
-        private readonly DynamicBounceLightingCompressionMode bounceLightingCompression;
+        private readonly DynamicLight[] pointLights;
+        private readonly DynamicLightManager dynamicLightManager;
 
         private class DtbTriangleLightData
         {
@@ -74,9 +70,10 @@ namespace AlpacaIT.DynamicLighting
 
         /// <summary>Creates a new instance of <see cref="DynamicTrianglesBuilder"/>.</summary>
         /// <param name="triangleCount">The amount of triangles in the static mesh in the scene.</param>
-        public DynamicTrianglesBuilder(MeshBuilder meshBuilder, int lightmapSize, DynamicBounceLightingCompressionMode bounceLightingCompression)
+        public DynamicTrianglesBuilder(MeshBuilder meshBuilder, int lightmapSize, DynamicLight[] pointLights, DynamicLightManager dynamicLightManager)
         {
-            this.bounceLightingCompression = bounceLightingCompression;
+            this.pointLights = pointLights;
+            this.dynamicLightManager = dynamicLightManager;
 
             // create triangle data for every triangle in the mesh.
             triangles = new List<DtbTriangle>(meshBuilder.triangleCount);
@@ -257,11 +254,15 @@ namespace AlpacaIT.DynamicLighting
                 // +--------------------+
                 // |Bounce Data Offset 1| --> dynamic_lights[+2]              ONLY IF DYNAMIC_LIGHTING_BOUNCE ENABLED
                 // +--------------------+
+                // |Bounce Data BPP 1   | --> dynamic_lights[+3]              ONLY IF DYNAMIC_LIGHTING_BOUNCE ENABLED
+                // +--------------------+
                 // |Light Index 2       | --> dynamic_lights[Light Index 2]
                 // +--------------------+
                 // |Shadow Data Offset 2| --> dynamic_lights[+1]
                 // +--------------------+
                 // |Bounce Data Offset 2| --> dynamic_lights[+2]              ONLY IF DYNAMIC_LIGHTING_BOUNCE ENABLED
+                // +--------------------+
+                // |Bounce Data BPP 2   | --> dynamic_lights[+3]              ONLY IF DYNAMIC_LIGHTING_BOUNCE ENABLED
                 // +--------------------+
                 // |...                 |
                 // +--------------------+
@@ -281,6 +282,10 @@ namespace AlpacaIT.DynamicLighting
                         // create a bounce data offset entry for every light.
                         // this will be filled out later.
                         buffer.Add(0);
+
+                        // create a bounce data compression entry for every light.
+                        // this will be filled out later.
+                        buffer.Add(0);
                     }
                 }
 
@@ -294,12 +299,16 @@ namespace AlpacaIT.DynamicLighting
             // iterate over all of the triangles:
             for (int triangleIndex = 0; triangleIndex < trianglesCount; triangleIndex++)
             {
+                var triangleDynamicLightIndices = GetRaycastedLightIndices(triangleIndex);
                 var bufferTriangleOffset = buffer[triangleIndex * triangleHeaderSize];
 
                 // iterate over all of the associated light indices:
                 var bufferLightCount = buffer[(int)bufferTriangleOffset++];
                 for (int lightIndex = 0; lightIndex < bufferLightCount; lightIndex++)
                 {
+                    var raycastedLightIndex = triangleDynamicLightIndices[lightIndex];
+                    var pointLight = pointLights[raycastedLightIndex];
+
                     // fill out the shadow data offset.
                     bufferTriangleOffset++; // Shadow Data Offset
 
@@ -322,11 +331,16 @@ namespace AlpacaIT.DynamicLighting
                     {
                         bufferTriangleOffset++; // Bounce Data Offset
 
+                        // figure out the compression mode of the light or inherit from the manager.
+                        var compressionMode = pointLight.lightBounceCompression;
+                        if (compressionMode == DynamicBounceLightingCompressionMode.Inherit)
+                            compressionMode = (DynamicBounceLightingCompressionMode)dynamicLightManager.bounceLightingCompression;
+
                         // fill out the bounce data offset.
                         var bounceTexture = GetBounceTexture(triangleIndex, lightIndex);
                         if (bounceTexture != null)
                         {
-                            switch (bounceLightingCompression)
+                            switch (compressionMode)
                             {
                                 case DynamicBounceLightingCompressionMode.EightBitsPerPixel:
                                     buffer.AddRange(CompressBounceLightingEightBitsPerPixel(bounceTexture));
@@ -351,6 +365,9 @@ namespace AlpacaIT.DynamicLighting
                         {
                             buffer[(int)(bufferTriangleOffset)] = 0;
                         }
+
+                        bufferTriangleOffset++; // Bounce BPP Compression
+                        buffer[(int)(bufferTriangleOffset)] = (uint)compressionMode;
                     }
                     lightDataOffset = (uint)buffer.Count;
 

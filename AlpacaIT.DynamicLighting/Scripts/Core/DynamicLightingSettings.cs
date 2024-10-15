@@ -44,7 +44,7 @@ namespace AlpacaIT.DynamicLighting
         /// <inheritdoc cref="DynamicLightManager.bounceLightingCompression"/>
         [SerializeField]
         [Tooltip("The compression level for bounce lighting data. Choosing a higher compression can reduce VRAM usage, but may result in reduced visual quality. For best results, adjust based on your VRAM availability and visual preferences.")]
-        private DynamicBounceLightingCompressionMode bounceLightingCompression;
+        private DynamicBounceLightingDefaultCompressionMode bounceLightingCompression;
 
         /// <summary>
         /// Creates a new instance of the <see cref="DynamicLightingSettings"/> with default values.
@@ -62,7 +62,7 @@ namespace AlpacaIT.DynamicLighting
             raytraceLayers = ~0;
             realtimeShadowLayers = ~(4 | 16 | 32);
             pixelDensityPerSquareMeter = 128;
-            bounceLightingCompression = DynamicBounceLightingCompressionMode.EightBitsPerPixel;
+            bounceLightingCompression = DynamicBounceLightingDefaultCompressionMode.EightBitsPerPixel;
 
             TryApply();
         }

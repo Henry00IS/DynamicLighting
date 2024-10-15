@@ -13,11 +13,11 @@ namespace AlpacaIT.DynamicLighting
         public int maximumLightmapSize = 2048;
 
         /// <summary>
-        /// The compression level for bounce lighting data. Choosing a higher compression can reduce
-        /// VRAM usage, but may result in reduced visual quality. For best results, adjust based on
-        /// your VRAM availability and visual preferences.
+        /// The default compression level for bounce lighting data. Choosing a higher compression
+        /// can reduce VRAM usage, but may result in reduced visual quality. For best results,
+        /// adjust based on your VRAM availability and visual preferences.
         /// </summary>
-        public DynamicBounceLightingCompressionMode bounceLightingCompression = DynamicBounceLightingCompressionMode.EightBitsPerPixel;
+        public DynamicBounceLightingDefaultCompressionMode bounceLightingDefaultCompression = DynamicBounceLightingDefaultCompressionMode.EightBitsPerPixel;
 
         /// <summary>
         /// The flags controlling aspects of the raytracing process, such as skipping certain computations.
@@ -181,7 +181,6 @@ namespace AlpacaIT.DynamicLighting
                 // try to remember the version used.
                 dynamicLightManager.version = 3;
                 dynamicLightManager.activateBounceLightingInCurrentScene = false;
-                dynamicLightManager.bounceLightingCompressionInCurrentScene = bounceLightingCompression;
 
                 // find all light sources and calculate the bounding volume hierarchy.
                 CreateDynamicLightsBvh();
@@ -336,7 +335,7 @@ namespace AlpacaIT.DynamicLighting
             }
 
             tracingTime.Begin();
-            var dynamic_triangles = new DynamicTrianglesBuilder(meshBuilder, lightmapSize, bounceLightingCompression);
+            var dynamic_triangles = new DynamicTrianglesBuilder(meshBuilder, lightmapSize, pointLights, dynamicLightManager);
             var pixels_lightmap = new uint[lightmapSize * lightmapSize];
             var pixels_visited = new bool[lightmapSize * lightmapSize];
             var pixels_lightmap_gc = GCHandle.Alloc(pixels_lightmap, GCHandleType.Pinned);

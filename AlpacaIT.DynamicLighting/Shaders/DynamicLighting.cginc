@@ -334,11 +334,15 @@ float3 dynamic_ambient_color;
 //                       +--------------------+
 //                       |Bounce Data Offset 1| --> dynamic_lights[+2]              ONLY IF DYNAMIC_LIGHTING_BOUNCE ENABLED
 //                       +--------------------+
+//                       |Bounce Data BPP 1   | --> dynamic_lights[+3]              ONLY IF DYNAMIC_LIGHTING_BOUNCE ENABLED
+//                       +--------------------+
 //                       |Light Index 2       | --> dynamic_lights[Light Index 2]
 //                       +--------------------+
 //                       |Shadow Data Offset 2| --> dynamic_lights[+1]
 //                       +--------------------+
 //                       |Bounce Data Offset 2| --> dynamic_lights[+2]              ONLY IF DYNAMIC_LIGHTING_BOUNCE ENABLED
+//                       +--------------------+
+//                       |Bounce Data BPP 2   | --> dynamic_lights[+3]              ONLY IF DYNAMIC_LIGHTING_BOUNCE ENABLED
 //                       +--------------------+
 //                       |...                 |
 //                       +--------------------+
@@ -363,6 +367,8 @@ struct DynamicTriangle
 #if DYNAMIC_LIGHTING_BOUNCE
     // offset into dynamic_triangles[] for the bounce data.
     uint activeLightBounceDataOffset;
+    // the bits per pixel compression of the bounce data.
+    uint activeLightBounceDataBpp;
 #endif
     
     void initialize()
@@ -375,6 +381,7 @@ struct DynamicTriangle
         activeLightShadowDataOffset = 0;
 #if DYNAMIC_LIGHTING_BOUNCE
         activeLightBounceDataOffset = 0;
+        activeLightBounceDataBpp = 8;
 #endif
     }
     
@@ -406,7 +413,7 @@ struct DynamicTriangle
         if (activeLightIndex < lightCount)
         {
 #if DYNAMIC_LIGHTING_BOUNCE
-            uint offset = lightDataOffset + activeLightIndex * 3; // struct size.
+            uint offset = lightDataOffset + activeLightIndex * 4; // struct size.
 #else
             uint offset = lightDataOffset + activeLightIndex * 2; // struct size.
 #endif
@@ -419,7 +426,9 @@ struct DynamicTriangle
             
 #if DYNAMIC_LIGHTING_BOUNCE
             // read the bounce data offset.
-            activeLightBounceDataOffset = dynamic_triangles[offset];
+            activeLightBounceDataOffset = dynamic_triangles[offset++];
+            // read the bounce data bits per pixel.
+            activeLightBounceDataBpp = dynamic_triangles[offset];
 #endif      
             return;
         }
@@ -614,41 +623,20 @@ struct DynamicTriangle
     float bounce_sample(float2 uv)
     {
         uint index = uv.y * bounds.z + uv.x;
-#if DYNAMIC_LIGHTING_BOUNCE_6BPP
-        // the bounce texture data is compressed with 5 pixels in one uint.
-        uint uintIndex = index / 5; // determine the index of the uint in the buffer.
-        uint byteIndex = index % 5; // find the byte position within the uint.
-#elif DYNAMIC_LIGHTING_BOUNCE_5BPP
-        // the bounce texture data is compressed with 6 pixels in one uint.
-        uint uintIndex = index / 6; // determine the index of the uint in the buffer.
-        uint byteIndex = index % 6; // find the byte position within the uint.
-#elif DYNAMIC_LIGHTING_BOUNCE_4BPP
-        // the bounce texture data is compressed with 6 pixels in one uint.
-        uint uintIndex = index / 8; // determine the index of the uint in the buffer.
-        uint byteIndex = index % 8; // find the byte position within the uint.
-#else
-        // the bounce texture data is compressed with 4 pixels in one uint.
-        uint uintIndex = index / 4; // determine the index of the uint in the buffer.
-        uint byteIndex = index % 4; // find the byte position within the uint.
-#endif
+        
+        // the bounce texture data is compressed with multiple pixels in one uint.
+        uint pixels = 32 / activeLightBounceDataBpp;
+        uint uintIndex = index / pixels; // determine the index of the uint in the buffer.
+        uint byteIndex = index % pixels; // find the byte position within the uint.
+        
+        // read the uint from memory.
         uint value = dynamic_triangles[activeLightBounceDataOffset + uintIndex];
-#if DYNAMIC_LIGHTING_BOUNCE_6BPP
-        uint shift = (3 - byteIndex) * 6;    // calculate the shift amount for the correct byte.
-        uint byte = (value >> shift) & 0x3F; // extract the desired byte.
-        float pixelValue = byte / 63.0;      // convert the byte to a float in [0, 1].
-#elif DYNAMIC_LIGHTING_BOUNCE_5BPP
-        uint shift = (3 - byteIndex) * 5;    // calculate the shift amount for the correct byte.
-        uint byte = (value >> shift) & 0x1F; // extract the desired byte.
-        float pixelValue = byte / 31.0;      // convert the byte to a float in [0, 1].
-#elif DYNAMIC_LIGHTING_BOUNCE_4BPP
-        uint shift = (3 - byteIndex) * 4;    // calculate the shift amount for the correct byte.
-        uint byte = (value >> shift) & 0xF;  // extract the desired byte.
-        float pixelValue = byte / 15.0;      // convert the byte to a float in [0, 1].
-#else
-        uint shift = (3 - byteIndex) * 8;    // calculate the shift amount for the correct byte.
-        uint byte = (value >> shift) & 0xFF; // extract the desired byte.
-        float pixelValue = byte / 255.0;     // convert the byte to a float in [0, 1].
-#endif
+        
+        uint mask = (1 << activeLightBounceDataBpp) - 1;         // the bitmask for the bits per pixel (e.g. 5 = 31).
+        uint shift = (3 - byteIndex) * activeLightBounceDataBpp; // calculate the shift amount for the correct byte.
+        uint byte = (value >> shift) & mask;                     // extract the desired byte.
+        float pixelValue = byte / float(mask);                   // convert the byte to a float in [0, 1].
+        
         // restore linear color by squaring to recover detail in darker shades.
         return pixelValue * pixelValue;
     }

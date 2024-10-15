@@ -27,7 +27,6 @@ Shader "Dynamic Lighting/Transparent"
             #pragma multi_compile __ DYNAMIC_LIGHTING_LIT
             #pragma multi_compile __ DYNAMIC_LIGHTING_BVH
             #pragma multi_compile __ DYNAMIC_LIGHTING_BOUNCE
-            #pragma multi_compile __ DYNAMIC_LIGHTING_BOUNCE_6BPP DYNAMIC_LIGHTING_BOUNCE_5BPP DYNAMIC_LIGHTING_BOUNCE_4BPP
             #pragma multi_compile multi_compile_fwdbase
 
             #include "UnityCG.cginc"
