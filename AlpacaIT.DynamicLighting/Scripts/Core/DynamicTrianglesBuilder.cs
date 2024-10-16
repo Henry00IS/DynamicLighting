@@ -405,7 +405,8 @@ namespace AlpacaIT.DynamicLighting
                         byte byteValue = (byte)(compressedColor * 255f);
 
                         // shift the byte into the correct position and pack it into the uint.
-                        packed |= ((uint)byteValue) << ((3 - j) * 8);
+                        // it would make more sense with 3 - j but this prevents doing that in the shader.
+                        packed |= ((uint)byteValue) << (j * 8);
                     }
                 }
 
@@ -464,7 +465,8 @@ namespace AlpacaIT.DynamicLighting
                         byte byteValue = (byte)(compressedColor * 63f);
 
                         // shift the byte into the correct position and pack it into the uint.
-                        packed |= ((uint)byteValue) << ((3 - j) * 6);
+                        // it would make more sense with 3 - j but this prevents doing that in the shader.
+                        packed |= ((uint)byteValue) << (j * 6);
                     }
                 }
 
@@ -523,7 +525,8 @@ namespace AlpacaIT.DynamicLighting
                         byte byteValue = (byte)(compressedColor * 31f);
 
                         // shift the byte into the correct position and pack it into the uint.
-                        packed |= ((uint)byteValue) << ((3 - j) * 5);
+                        // it would make more sense with 3 - j but this prevents doing that in the shader.
+                        packed |= ((uint)byteValue) << (j * 5);
                     }
                 }
 
@@ -582,7 +585,8 @@ namespace AlpacaIT.DynamicLighting
                         byte byteValue = (byte)(compressedColor * 15f);
 
                         // shift the byte into the correct position and pack it into the uint.
-                        packed |= ((uint)byteValue) << ((3 - j) * 4);
+                        // it would make more sense with 3 - j but this prevents doing that in the shader.
+                        packed |= ((uint)byteValue) << (j * 4);
                     }
                 }
 

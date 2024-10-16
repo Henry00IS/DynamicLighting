@@ -369,8 +369,6 @@ struct DynamicTriangle
 #if DYNAMIC_LIGHTING_BOUNCE
     // offset into dynamic_triangles[] for the bounce data.
     uint activeLightBounceDataOffset;
-    // the bits per pixel compression of the bounce data.
-    uint activeLightBounceDataBpp;
 #endif
     
     void initialize()
@@ -383,7 +381,6 @@ struct DynamicTriangle
         activeLightShadowDataOffset = 0;
 #if DYNAMIC_LIGHTING_BOUNCE
         activeLightBounceDataOffset = 0;
-        activeLightBounceDataBpp = 8;
 #endif
     }
     
@@ -429,8 +426,6 @@ struct DynamicTriangle
 #if DYNAMIC_LIGHTING_BOUNCE
             // read the bounce data offset.
             activeLightBounceDataOffset = dynamic_triangles[offset];
-            // read the bounce data bits per pixel.
-            activeLightBounceDataBpp = dynamic_lights[activeLightDynamicLightsIndex].bounce_compression_level();
 #endif      
             return;
         }
@@ -443,6 +438,13 @@ struct DynamicTriangle
     uint get_dynamic_light_index()
     {
         return activeLightDynamicLightsIndex;
+    }
+    
+    // fetches a shadow bit at the specified index from the shadow data.
+    // note: requires 'uv -= bounds.xy' to be calculated up front.
+    bool shadow_sample_index(uint index)
+    {
+        return dynamic_triangles[activeLightShadowDataOffset + index / 32] & (1 << index % 32);
     }
     
     // fetches a shadow bit at the specified uv coordinates from the shadow data.
@@ -507,7 +509,8 @@ struct DynamicTriangle
     }
     
     #ifndef DYNAMIC_LIGHTING_SHADOW_SAMPLER
-    #define DYNAMIC_LIGHTING_SHADOW_SAMPLER shadow_sample
+    #define DYNAMIC_LIGHTING_SHADOW_SAMPLER_INDEX
+    #define DYNAMIC_LIGHTING_SHADOW_SAMPLER shadow_sample_index
     #endif
     
     // x x x
@@ -515,22 +518,22 @@ struct DynamicTriangle
     // x x x
     float shadow_sample3x3(uint2 uv)
     {
-        float map;
+        float map = 0.0;
         
         // offset the lightmap triangle uv to the top-left corner to read near zero, zero.
         uv -= bounds.xy;
 
-        map  = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(uv.x - 1u, uv.y - 1u));
-        map += DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(uv.x     , uv.y - 1u));
-        map += DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(uv.x + 1u, uv.y - 1u));
-
-        map += DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(uv.x - 1u, uv.y     ));
-        map += DYNAMIC_LIGHTING_SHADOW_SAMPLER(uv                         );
-        map += DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(uv.x + 1u, uv.y     ));
-
-        map += DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(uv.x - 1u, uv.y + 1u));
-        map += DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(uv.x     , uv.y + 1u));
-        map += DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(uv.x + 1u, uv.y + 1u));
+        for (int y = -1; y <= 1; y++)
+        {
+#ifdef DYNAMIC_LIGHTING_SHADOW_SAMPLER_INDEX
+            uint index = (uv.y + y) * bounds.z + uv.x;
+            for (int x = -1; x <= 1; x++)
+                map += DYNAMIC_LIGHTING_SHADOW_SAMPLER(index + x);
+#else
+            for (int x = -1; x <= 1; x++)
+                map += DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(uv.x + x, uv.y + y));
+#endif
+        }
 
         return map / 9.0;
     }
@@ -559,24 +562,19 @@ struct DynamicTriangle
         pos_top_left -= bounds.xy;
 
         // read all of the lightmap samples we need in advance.
-        float4x4 map;
-        map[0][0] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x - 1, pos_top_left.y - 1));
-        map[0][1] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x    , pos_top_left.y - 1));
-        map[0][2] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x + 1, pos_top_left.y - 1));
-        map[0][3] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x + 2, pos_top_left.y - 1));
-        map[1][0] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x - 1, pos_top_left.y    ));
-        map[1][1] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(pos_top_left                                 );
-        map[1][2] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x + 1, pos_top_left.y    ));
-        map[1][3] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x + 2, pos_top_left.y    ));
-        map[2][0] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x - 1, pos_top_left.y + 1));
-        map[2][1] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x    , pos_top_left.y + 1));
-        map[2][2] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x + 1, pos_top_left.y + 1));
-        map[2][3] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x + 2, pos_top_left.y + 1));
-        map[3][0] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x - 1, pos_top_left.y + 2));
-        map[3][1] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x    , pos_top_left.y + 2));
-        map[3][2] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x + 1, pos_top_left.y + 2));
-        map[3][3] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x + 2, pos_top_left.y + 2));
-
+        float map[4][4];
+        for (int y = -1; y <= 2; y++)
+        {
+#ifdef DYNAMIC_LIGHTING_SHADOW_SAMPLER_INDEX
+            uint index = (pos_top_left.y + y) * bounds.z + pos_top_left.x;
+            for (int x = -1; x <= 2; x++)
+                map[y + 1][x + 1] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(index + x);
+#else
+            for (int x = -1; x <= 2; x++)
+                map[y + 1][x + 1] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x + x, pos_top_left.y + y));
+#endif
+        }
+        
         // there are several common overlapping 3x3 samples (marked as X).
         //
         // ----
@@ -622,22 +620,18 @@ struct DynamicTriangle
 #if DYNAMIC_LIGHTING_BOUNCE
     // fetches a bounce pixel at the specified uv coordinates from the bounce texture data.
     // note: requires 'uv -= bounds.xy' to be calculated up front.
-    float bounce_sample(uint2 uv)
+    float bounce_sample(uint index, uint bounceBpp, uint bouncePixels, uint bounceMask)
     {
-        uint index = uv.y * bounds.z + uv.x;
-    
         // the bounce texture data is compressed with multiple pixels in one uint.
-        uint pixels = 32 / activeLightBounceDataBpp;
-        uint uintIndex = index / pixels; // determine the index of the uint in the buffer.
-        uint byteIndex = index % pixels; // find the byte position within the uint.
+        uint uintIndex = index / bouncePixels; // determine the index of the uint in the buffer.
+        uint byteIndex = index % bouncePixels; // find the byte position within the uint.
         
         // read the uint from memory.
         uint value = dynamic_triangles[activeLightBounceDataOffset + uintIndex];
         
-        uint mask = (1 << activeLightBounceDataBpp) - 1;         // the bitmask for the bits per pixel (e.g. 5 = 31).
-        uint shift = (3 - byteIndex) * activeLightBounceDataBpp; // calculate the shift amount for the correct byte.
-        uint byte = (value >> shift) & mask;                     // extract the desired byte.
-        float pixelValue = byte / float(mask);                   // convert the byte to a float in [0, 1].
+        uint shift = byteIndex * bounceBpp;         // calculate the shift amount for the correct byte.
+        float byte = (value >> shift) & bounceMask; // extract the desired byte.
+        float pixelValue = byte / bounceMask;       // convert the byte to a float in [0, 1].
         
         // restore linear color by squaring to recover detail in darker shades.
         return pixelValue * pixelValue;
@@ -657,10 +651,16 @@ struct DynamicTriangle
         // offset the lightmap triangle uv to the top-left corner to read near zero, zero.
         pos_top_left -= bounds.xy;
         
-        float tl = bounce_sample(pos_top_left);
-        float tr = bounce_sample(pos_top_left + uint2(1, 0));
-        float bl = bounce_sample(pos_top_left + uint2(0, 1));
-        float br = bounce_sample(pos_top_left + uint2(1, 1));
+        uint bounceBpp = dynamic_lights[activeLightDynamicLightsIndex].bounce_compression_level();
+        uint bouncePixels = 32 / bounceBpp;
+        uint bounceMask = (1 << bounceBpp) - 1; // the bitmask for the bits per pixel (e.g. 5 = 31).
+        
+        uint index = pos_top_left.y * bounds.z + pos_top_left.x;
+        float tl   = bounce_sample(index    , bounceBpp, bouncePixels, bounceMask);
+        float tr   = bounce_sample(index + 1, bounceBpp, bouncePixels, bounceMask);
+        index      = (pos_top_left.y + 1) * bounds.z + pos_top_left.x;
+        float bl   = bounce_sample(index    , bounceBpp, bouncePixels, bounceMask);
+        float br   = bounce_sample(index + 1, bounceBpp, bouncePixels, bounceMask);
         
         return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y);
     }
