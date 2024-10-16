@@ -116,6 +116,12 @@ struct DynamicLight
         return channel & 65536u;
     }
     
+    // bit 18-21 determine the bounce light compression level (1-8).
+    uint bounce_compression_level()
+    {
+        return 1 + ((channel & 917504u) >> 17);
+    }
+    
     // calculates the spotlight effect.
     //
     // returns:
@@ -334,15 +340,11 @@ float3 dynamic_ambient_color;
 //                       +--------------------+
 //                       |Bounce Data Offset 1| --> dynamic_lights[+2]              ONLY IF DYNAMIC_LIGHTING_BOUNCE ENABLED
 //                       +--------------------+
-//                       |Bounce Data BPP 1   | --> dynamic_lights[+3]              ONLY IF DYNAMIC_LIGHTING_BOUNCE ENABLED
-//                       +--------------------+
 //                       |Light Index 2       | --> dynamic_lights[Light Index 2]
 //                       +--------------------+
 //                       |Shadow Data Offset 2| --> dynamic_lights[+1]
 //                       +--------------------+
 //                       |Bounce Data Offset 2| --> dynamic_lights[+2]              ONLY IF DYNAMIC_LIGHTING_BOUNCE ENABLED
-//                       +--------------------+
-//                       |Bounce Data BPP 2   | --> dynamic_lights[+3]              ONLY IF DYNAMIC_LIGHTING_BOUNCE ENABLED
 //                       +--------------------+
 //                       |...                 |
 //                       +--------------------+
@@ -413,7 +415,7 @@ struct DynamicTriangle
         if (activeLightIndex < lightCount)
         {
 #if DYNAMIC_LIGHTING_BOUNCE
-            uint offset = lightDataOffset + activeLightIndex * 4; // struct size.
+            uint offset = lightDataOffset + activeLightIndex * 3; // struct size.
 #else
             uint offset = lightDataOffset + activeLightIndex * 2; // struct size.
 #endif
@@ -426,9 +428,9 @@ struct DynamicTriangle
             
 #if DYNAMIC_LIGHTING_BOUNCE
             // read the bounce data offset.
-            activeLightBounceDataOffset = dynamic_triangles[offset++];
+            activeLightBounceDataOffset = dynamic_triangles[offset];
             // read the bounce data bits per pixel.
-            activeLightBounceDataBpp = dynamic_triangles[offset];
+            activeLightBounceDataBpp = dynamic_lights[activeLightDynamicLightsIndex].bounce_compression_level();
 #endif      
             return;
         }
@@ -620,10 +622,10 @@ struct DynamicTriangle
 #if DYNAMIC_LIGHTING_BOUNCE
     // fetches a bounce pixel at the specified uv coordinates from the bounce texture data.
     // note: requires 'uv -= bounds.xy' to be calculated up front.
-    float bounce_sample(float2 uv)
+    float bounce_sample(uint2 uv)
     {
         uint index = uv.y * bounds.z + uv.x;
-        
+    
         // the bounce texture data is compressed with multiple pixels in one uint.
         uint pixels = 32 / activeLightBounceDataBpp;
         uint uintIndex = index / pixels; // determine the index of the uint in the buffer.

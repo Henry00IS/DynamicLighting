@@ -19,12 +19,21 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Gets or sets whether the <see cref="light"/> is a valid instance and enabled.</summary>
         public bool lightAvailable = true;
 
+        /// <summary>The compression level for bounce lighting data used during raytracing.</summary>
+        public DynamicBounceLightingCompressionMode bounceCompression = DynamicBounceLightingCompressionMode.Inherit;
+
         /// <summary>Creates a new instance for the given <see cref="DynamicLight"/>.</summary>
         /// <param name="dynamicLight">The <see cref="DynamicLight"/> to be referenced.</param>
-        public RaycastedDynamicLight(DynamicLight dynamicLight)
+        public RaycastedDynamicLight(DynamicLight dynamicLight, DynamicBounceLightingDefaultCompressionMode defaultCompressionMode)
         {
             light = dynamicLight;
             origin = dynamicLight.transform.position;
+
+            // inherit the compression mode from the dynamic light manager if desired.
+            var compressionMode = dynamicLight.lightBounceCompression;
+            if (compressionMode == DynamicBounceLightingCompressionMode.Inherit)
+                compressionMode = (DynamicBounceLightingCompressionMode)defaultCompressionMode;
+            bounceCompression = compressionMode;
         }
     }
 }

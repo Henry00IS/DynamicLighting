@@ -202,7 +202,7 @@ namespace AlpacaIT.DynamicLighting
                 for (int i = 0; i < pointLights.Length; i++)
                 {
                     var light = pointLights[i];
-                    dynamicLightManager.raycastedDynamicLights.Add(new RaycastedDynamicLight(light));
+                    dynamicLightManager.raycastedDynamicLights.Add(new RaycastedDynamicLight(light, bounceLightingDefaultCompression));
                     pointLightsCache[i] = new CachedLightData(light);
 
                     bool requiresPhotonCube = false;

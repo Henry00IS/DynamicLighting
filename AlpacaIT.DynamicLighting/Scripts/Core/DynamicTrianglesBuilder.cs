@@ -254,15 +254,11 @@ namespace AlpacaIT.DynamicLighting
                 // +--------------------+
                 // |Bounce Data Offset 1| --> dynamic_lights[+2]              ONLY IF DYNAMIC_LIGHTING_BOUNCE ENABLED
                 // +--------------------+
-                // |Bounce Data BPP 1   | --> dynamic_lights[+3]              ONLY IF DYNAMIC_LIGHTING_BOUNCE ENABLED
-                // +--------------------+
                 // |Light Index 2       | --> dynamic_lights[Light Index 2]
                 // +--------------------+
                 // |Shadow Data Offset 2| --> dynamic_lights[+1]
                 // +--------------------+
                 // |Bounce Data Offset 2| --> dynamic_lights[+2]              ONLY IF DYNAMIC_LIGHTING_BOUNCE ENABLED
-                // +--------------------+
-                // |Bounce Data BPP 2   | --> dynamic_lights[+3]              ONLY IF DYNAMIC_LIGHTING_BOUNCE ENABLED
                 // +--------------------+
                 // |...                 |
                 // +--------------------+
@@ -280,10 +276,6 @@ namespace AlpacaIT.DynamicLighting
                     if (bounceLightingInScene)
                     {
                         // create a bounce data offset entry for every light.
-                        // this will be filled out later.
-                        buffer.Add(0);
-
-                        // create a bounce data compression entry for every light.
                         // this will be filled out later.
                         buffer.Add(0);
                     }
@@ -365,9 +357,6 @@ namespace AlpacaIT.DynamicLighting
                         {
                             buffer[(int)(bufferTriangleOffset)] = 0;
                         }
-
-                        bufferTriangleOffset++; // Bounce BPP Compression
-                        buffer[(int)(bufferTriangleOffset)] = (uint)compressionMode;
                     }
                     lightDataOffset = (uint)buffer.Count;
 

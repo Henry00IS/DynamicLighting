@@ -841,7 +841,8 @@ namespace AlpacaIT.DynamicLighting
                     var shaderLight = &shaderLightsPtr[idx];
                     var light = raycastedDynamicLight.light;
                     var lightAvailable = raycastedDynamicLight.lightAvailable;
-                    SetShaderDynamicLight(shaderLight, light, lightAvailable, false);
+                    var lightBounceCompression = raycastedDynamicLight.bounceCompression;
+                    SetShaderDynamicLight(shaderLight, light, lightBounceCompression, lightAvailable, false);
                     UpdateLightEffects(shaderLight, light, lightAvailable);
                     idx++;
 
@@ -864,7 +865,7 @@ namespace AlpacaIT.DynamicLighting
                     var light = activeRealtimeLights[i];
                     var shaderLight = &shaderLightsPtr[idx];
                     bool lightAvailable = light;
-                    SetShaderDynamicLight(shaderLight, light, lightAvailable, true);
+                    SetShaderDynamicLight(shaderLight, light, DynamicBounceLightingCompressionMode.Inherit, lightAvailable, true);
                     UpdateLightEffects(shaderLight, light, lightAvailable);
                     idx++;
 
@@ -997,7 +998,7 @@ namespace AlpacaIT.DynamicLighting
             .CompareTo((origin - b.cache.transformPosition).sqrMagnitude));
         }
 
-        private unsafe void SetShaderDynamicLight(ShaderDynamicLight* shaderLight, DynamicLight light, bool lightAvailable, bool realtime)
+        private unsafe void SetShaderDynamicLight(ShaderDynamicLight* shaderLight, DynamicLight light, DynamicBounceLightingCompressionMode lightBounceCompression, bool lightAvailable, bool realtime)
         {
             // destroyed raycasted lights in the scene, must still exist in the shader. we can make
             // the radius negative causing an early out whenever a fragment tries to use it.
@@ -1030,6 +1031,9 @@ namespace AlpacaIT.DynamicLighting
 
             shaderLight->radiusSqr = lightRadius * lightRadius;
             shaderLight->falloff = lightRadius * lightFalloff * lightFalloff;
+
+            // bit 18-21 is the bounce lighting compression mode.
+            shaderLight->channel |= (((uint)lightBounceCompression - 1) << 17) & 917504u;
 
             // reset to impossible values to detect assignment later below.
             shaderLight->forward.x = -200f;
