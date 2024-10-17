@@ -40,7 +40,6 @@ namespace AlpacaIT.DynamicLighting
         private RenderTexture photonCameraRenderTexture;
 
         private const int photonCameraResolution = 1024;
-        private int photonCameraCubemapIndex;
 
         /// <summary>Initialization of the DynamicLightingTracer.PhotonCamera partial class.</summary>
         private void PhotonCameraInitialize()
@@ -92,8 +91,6 @@ namespace AlpacaIT.DynamicLighting
             photonCameraCubemaps.volumeDepth = 6;
             photonCameraCubemaps.filterMode = FilterMode.Point;
             photonCameraCubemaps.Create();
-
-            Shader.SetGlobalTexture("photon_cubemaps", photonCameraCubemaps);
         }
 
         /// <summary>Cleanup of the DynamicLightingTracer.PhotonCamera partial class.</summary>
