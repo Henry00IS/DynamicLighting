@@ -230,6 +230,9 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Stores the time since the beginning of the frame (<see cref="Time.time"/>).</summary>
         private float timeTime;
 
+        /// <summary>Stores the color space of the project at initialization.</summary>
+        internal static ColorSpace colorSpace = ColorSpace.Linear;
+
         [System.NonSerialized]
         private bool isInitialized = false;
 
@@ -396,6 +399,9 @@ namespace AlpacaIT.DynamicLighting
             // only execute the rest if not initialized yet.
             if (isInitialized) return;
             isInitialized = true;
+
+            // check and store the color space mode of the project.
+            colorSpace = QualitySettings.activeColorSpace;
 
             // apply the lighting settings template if set.
             if (settingsTemplate)
@@ -1028,6 +1034,13 @@ namespace AlpacaIT.DynamicLighting
             shaderLight->bounceColor.x = (lightColor.r + (lightBounceColor.r - lightColor.r) * lightBounceColor.a) * lightBounceModifier;
             shaderLight->bounceColor.y = (lightColor.g + (lightBounceColor.g - lightColor.g) * lightBounceColor.a) * lightBounceModifier;
             shaderLight->bounceColor.z = (lightColor.b + (lightBounceColor.b - lightColor.b) * lightBounceColor.a) * lightBounceModifier;
+
+            // unity stores colors in gamma and we must convert them to linear.
+            if (colorSpace == ColorSpace.Linear)
+            {
+                UMath.GammaToLinearSpace(&shaderLight->color);
+                UMath.GammaToLinearSpace(&shaderLight->bounceColor);
+            }
 
             shaderLight->radiusSqr = lightRadius * lightRadius;
             shaderLight->falloff = lightRadius * lightFalloff * lightFalloff;

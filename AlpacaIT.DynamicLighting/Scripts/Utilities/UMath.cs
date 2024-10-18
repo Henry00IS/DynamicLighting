@@ -74,6 +74,17 @@ namespace AlpacaIT.DynamicLighting
             lhs->z *= rhs;
         }
 
+        /// <summary>Applies the result of a componentwise multiplication operation on two Vector3 vectors.</summary>
+        /// <param name="lhs">Left hand side Vector3 to use to compute componentwise multiplication.</param>
+        /// <param name="rhs">Right hand side Vector3 to use to compute componentwise multiplication.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Scale(Vector3* lhs, Vector3* rhs)
+        {
+            lhs->x *= rhs->x;
+            lhs->y *= rhs->y;
+            lhs->z *= rhs->z;
+        }
+
         /// <summary>Applies the result of a componentwise addition operation on a float2 vector and a float value.</summary>
         /// <param name="lhs">Left hand side float2 to use to compute componentwise addition.</param>
         /// <param name="rhs">Right hand side float to use to compute componentwise addition.</param>
@@ -114,6 +125,40 @@ namespace AlpacaIT.DynamicLighting
             lhs->x += rhs->x;
             lhs->y += rhs->y;
             lhs->z += rhs->z;
+        }
+
+        /// <summary>Applies the result of a componentwise addition operation on a Vector3 vector and a float value.</summary>
+        /// <param name="lhs">Left hand side Vector3 to use to compute componentwise addition.</param>
+        /// <param name="rhs">Right hand side float to use to compute componentwise addition.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Add(Vector3* lhs, float rhs)
+        {
+            lhs->x += rhs;
+            lhs->y += rhs;
+            lhs->z += rhs;
+        }
+
+        /// <summary>Applies the result of a componentwise multiplication operation on a float value and adding a float value.</summary>
+        /// <param name="lhs">Left hand side Vector3 to use to compute componentwise multiplication.</param>
+        /// <param name="mul">Right hand side float to use to compute componentwise multiplication.</param>
+        /// <param name="add">Right hand side float to use to compute componentwise addition.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Mad(Vector3* lhs, float mul, float add)
+        {
+            lhs->x = lhs->x * mul + add;
+            lhs->y = lhs->y * mul + add;
+            lhs->z = lhs->z * mul + add;
+        }
+
+        /// <summary>Applies the result of a componentwise multiplication operation on a Vector3 vector and adding a float value.</summary>
+        /// <param name="lhs">Left hand side Vector3 to use to compute componentwise multiplication.</param>
+        /// <param name="mul">Right hand side Vector3 to use to compute componentwise multiplication.</param>
+        /// <param name="add">Right hand side float to use to compute componentwise addition.</param>
+        public static void Mad(Vector3* lhs, Vector3* mul, float add)
+        {
+            lhs->x = lhs->x * mul->x + add;
+            lhs->y = lhs->y * mul->y + add;
+            lhs->z = lhs->z * mul->z + add;
         }
 
         /// <summary>Applies the result of a componentwise unary minus operation on a float3 vector.</summary>
@@ -255,6 +300,19 @@ namespace AlpacaIT.DynamicLighting
             lhs->x = lhs->y * rhs->z - lhs->z * rhs->y;
             lhs->y = a;
             lhs->z = b;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void GammaToLinearSpace(Vector3* sRGB)
+        {
+            // Approximate version from http://chilliant.blogspot.com.au/2012/08/srgb-approximations-for-hlsl.html?m=1
+            // [unsafe] sRGB * (sRGB * (sRGB * 0.305306011f + 0.682171111f) + 0.012522878f);
+            var x = sRGB->x;
+            var y = sRGB->y;
+            var z = sRGB->z;
+            sRGB->x = x * (x * (x * 0.305306011f + 0.682171111f) + 0.012522878f);
+            sRGB->y = y * (y * (y * 0.305306011f + 0.682171111f) + 0.012522878f);
+            sRGB->z = z * (z * (z * 0.305306011f + 0.682171111f) + 0.012522878f);
         }
     }
 }
