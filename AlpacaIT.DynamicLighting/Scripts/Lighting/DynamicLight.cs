@@ -321,6 +321,40 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Gets whether this dynamic light is realtime (no shadows, channel 32).</summary>
         public bool realtime { get => lightChannel == 32; }
 
+        /// <summary>
+        /// Unity stores <see cref="Color"/> (when assigned in an inspector) in <see
+        /// cref="ColorSpace.Gamma"/>, regardless of the project setting. This will return the
+        /// current <see cref="lightColor"/> and convert <see cref="ColorSpace.Gamma"/> colors to
+        /// <see cref="ColorSpace.Linear"/> when necessary.
+        /// </summary>
+        public unsafe Color lightColorAdjusted
+        {
+            get
+            {
+                Color result = lightColor;
+                if (DynamicLightManager.colorSpace == ColorSpace.Linear)
+                    UMath.GammaToLinearSpace((Vector3*)&result);
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Unity stores <see cref="Color"/> (when assigned in an inspector) in <see
+        /// cref="ColorSpace.Gamma"/>, regardless of the project setting. This will return the
+        /// current <see cref="lightBounceColor"/> and convert <see cref="ColorSpace.Gamma"/> colors
+        /// to <see cref="ColorSpace.Linear"/> when necessary.
+        /// </summary>
+        public unsafe Color lightBounceColorAdjusted
+        {
+            get
+            {
+                Color result = lightBounceColor;
+                if (DynamicLightManager.colorSpace == ColorSpace.Linear)
+                    UMath.GammaToLinearSpace((Vector3*)&result);
+                return result;
+            }
+        }
+
         /// <summary>Stores dynamic light runtime effect values that change at irregular intervals.</summary>
         internal DynamicLightCache cache = new DynamicLightCache();
 
@@ -422,6 +456,7 @@ namespace AlpacaIT.DynamicLighting
         private void OnDrawGizmos()
         {
             var transformPosition = cache.transformPosition;
+            var lightColor = lightColorAdjusted;
 
             switch (lightType)
             {
@@ -505,7 +540,7 @@ namespace AlpacaIT.DynamicLighting
 
         private void OnDrawGizmosSelected()
         {
-            Gizmos.color = lightColor;
+            Gizmos.color = lightColorAdjusted;
 
             Gizmos.DrawWireSphere(cache.transformPosition, largestLightRadius);
 
