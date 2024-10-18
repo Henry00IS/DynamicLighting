@@ -311,6 +311,140 @@ sampler sampler_light_cookies;
 
 float3 dynamic_ambient_color;
 
+// [distance cubes technique]
+//
+// there is only shadow occlusion data for raycasted static geometry,
+// light will leak through walls onto dynamic meshes so we need a fix.
+//
+// stale cubemaps with distances are used to compute occlusion like
+// realtime shadows, except that they rarely/never update their data.
+//
+// +-----------+        +----------------+
+// |Light Index|-----+->|Cube Data Offset|
+// +-----------+     |  +----------------+
+//                   |  |Cube Dimensions |
+//                   |  +----------------+
+//                   |  |Cube Compression|
+//                   |  +----------------+
+//                   |  |Cube Distance   |
+//                   |  +----------------+
+//                   +->|Cube Data Offset|
+//                      +----------------+
+//                      |...             |
+//                      +----------------+
+//                              |
+//                              v
+//                      +--------------+
+// Cube Data Offset --> |Floats/Float16|
+//                      +--------------+
+//
+StructuredBuffer<uint> dynamic_lights_distance_cubes;
+
+float2 sample_cube(const float3 v, out uint faceIndex)
+{
+	float3 vAbs = abs(v);
+	float ma;
+	float2 uv;
+	if(vAbs.z >= vAbs.x && vAbs.z >= vAbs.y)
+	{
+		faceIndex = v.z < 0 ? 5 : 4;
+		ma = 0.5 / vAbs.z;
+		uv = float2(v.z < 0.0 ? -v.x : v.x, -v.y);
+	}
+	else if(vAbs.y >= vAbs.x)
+	{
+		faceIndex = v.y < 0 ? 3 : 2;
+		ma = 0.5 / vAbs.y;
+		uv = float2(v.x, v.y < 0.0 ? -v.z : v.z);
+	}
+	else
+	{
+		faceIndex = v.x < 0 ? 1 : 0;
+		ma = 0.5 / vAbs.x;
+		uv = float2(v.x < 0.0 ? v.z : -v.z, -v.y);
+	}
+	return uv * ma + 0.5;
+}
+
+float sample_distance_cube(uint dynamicLightIndex, float3 dir)
+{
+    int headerSize = 4;
+    uint cubeDataOffset = dynamic_lights_distance_cubes[(dynamicLightIndex * headerSize)];
+    uint cubeSize = dynamic_lights_distance_cubes[(dynamicLightIndex * headerSize) + 1];
+    uint cubeCompression = dynamic_lights_distance_cubes[(dynamicLightIndex * headerSize) + 2];
+    float cubeDistance = asfloat(dynamic_lights_distance_cubes[(dynamicLightIndex * headerSize) + 3]);
+
+    uint faceIndex;
+    float2 uv = sample_cube(dir, faceIndex);
+
+    // fixme: this code as the same bugs as the code on the cpu.
+    uv.x = 1.0 - uv.x;
+
+    // convert uv to integer pixel coordinates.
+    int x = (int)(uv.x * (cubeSize - 1) + 0.5);
+    int y = (int)(uv.y * (cubeSize - 1) + 0.5);
+
+    // calculate the index into the cube map data.
+    int index = (faceIndex * cubeSize * cubeSize) + (y * cubeSize) + x;
+
+    return asfloat(dynamic_lights_distance_cubes[cubeDataOffset + index]);
+}
+
+float sample_distance_cube_tiny(uint dynamicLightIndex, float3 world, float3 lightPos)
+{
+    float3 light_direction = lightPos - world;
+    float light_distanceSqr = dot(light_direction, light_direction);
+    
+    float lightDistance = sqrt(light_distanceSqr); // todo: remove with sqr comparison.
+    float shadow_distance = sample_distance_cube(dynamicLightIndex, -light_direction);
+    
+    // check whether the fragment is occluded.
+    return (lightDistance < shadow_distance);
+}
+
+float sample_distance_cube_bilinear(uint dynamicLightIndex, float3 world, float3 lightPos)
+{
+    float gridScale = 0.5;
+    
+    // convert world position to grid coordinates based on the grid scale.
+    float3 gridCoord = world / gridScale;
+
+    // calculate the weights for the bilinear interpolation.
+    float3 weight = frac(gridCoord);
+
+    // calculate the integer part of the grid coordinates.
+    float3 gridCoordInt = floor(gridCoord);
+
+    // convert grid coordinates back to world positions for sampling.
+    float3 baseWorldPos = gridCoordInt * gridScale;
+
+    // sample the texture at the neighboring cells
+    float topLeftFront     = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos, lightPos); 
+    float topRightFront    = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(gridScale, 0, 0), lightPos); 
+    float bottomLeftFront  = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(0, gridScale, 0), lightPos); 
+    float bottomRightFront = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(gridScale, gridScale, 0), lightPos); 
+    float topLeftBack      = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(0, 0, gridScale), lightPos); 
+    float topRightBack     = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(gridScale, 0, gridScale), lightPos); 
+    float bottomLeftBack   = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(0, gridScale, gridScale), lightPos); 
+    float bottomRightBack  = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(gridScale, gridScale, gridScale), lightPos); 
+    
+    // perform linear interpolation in the x direction.
+    float topFront = lerp(topLeftFront, topRightFront, weight.x);
+    float bottomFront = lerp(bottomLeftFront, bottomRightFront, weight.x);
+    float topBack = lerp(topLeftBack, topRightBack, weight.x);
+    float bottomBack = lerp(bottomLeftBack, bottomRightBack, weight.x);
+    
+    // perform linear interpolation in the y direction.
+    float front = lerp(topFront, bottomFront, weight.y);
+    float back = lerp(topBack, bottomBack, weight.y);
+     
+    // perform linear interpolation in the z direction.
+    float result = lerp(front, back, weight.z);
+     
+    // return the final interpolated value.
+    return result;
+}
+
 // [dynamic triangles technique]
 //
 // instead of iterating over all light sources in the scene per fragment,
@@ -724,7 +858,7 @@ float4 dynamic_lighting_unity_LightmapST;
 // next we prepare macro statements that shaders use to implement their fragment functions.
 
 #define DYNLIT_FRAGMENT_FUNCTION \
-void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, inout DynamicLight light, inout DynamicTriangle dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS);\
+void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, int bvhLightIndex, inout DynamicLight light, inout DynamicTriangle dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS);\
 \
 fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
 
@@ -752,7 +886,7 @@ fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
                 {\
                     DynamicLight light = dynamic_lights[k];\
                     \
-                    dynlit_frag_light(i, triangle_index, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS); \
+                    dynlit_frag_light(i, triangle_index, k, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS); \
                 }\
                 \
                 /* check whether we are done traversing the bvh: */ \
@@ -779,7 +913,7 @@ fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
             /* get the current light from memory. */ \
             DynamicLight light = dynamic_lights[dynamic_lights_count + k];\
             \
-            dynlit_frag_light(i, triangle_index, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
+            dynlit_frag_light(i, triangle_index, -1, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
         }\
     }\
     else\
@@ -794,7 +928,7 @@ fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
             dynamic_triangle.set_active_light_index(k);\
             DynamicLight light = dynamic_lights[dynamic_triangle.get_dynamic_light_index()];\
             \
-            dynlit_frag_light(i, triangle_index, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
+            dynlit_frag_light(i, triangle_index, -1, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
         }\
     }
 
@@ -811,7 +945,7 @@ fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
             /* get the current light from memory. */ \
             DynamicLight light = dynamic_lights[k];\
             \
-            dynlit_frag_light(i, triangle_index, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
+            dynlit_frag_light(i, triangle_index, -1, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
         }\
     }\
     else\
@@ -826,13 +960,13 @@ fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
             dynamic_triangle.set_active_light_index(k);\
             DynamicLight light = dynamic_lights[dynamic_triangle.get_dynamic_light_index()];\
             \
-            dynlit_frag_light(i, triangle_index, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
+            dynlit_frag_light(i, triangle_index, -1, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
         }\
     }
 
 #endif
 
-#define DYNLIT_FRAGMENT_LIGHT void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, inout DynamicLight light, inout DynamicTriangle dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS)
+#define DYNLIT_FRAGMENT_LIGHT void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, int bvhLightIndex, inout DynamicLight light, inout DynamicTriangle dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS)
 
 #define DYNLIT_FRAGMENT_UNLIT \
 fixed4 frag (v2f i) : SV_Target\

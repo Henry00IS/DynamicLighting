@@ -79,6 +79,9 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Global <see cref="Shader.PropertyToID"/> for buffer "dynamic_lights_bvh".</summary>
         private int shadersGlobalPropertyIdDynamicLightsBvh;
 
+        /// <summary>Global <see cref="Shader.PropertyToID"/> for buffer "dynamic_lights_distance_cubes".</summary>
+        private int shadersGlobalPropertyIdDynamicLightsDistanceCubes;
+
         /// <summary>Stores the value last assigned with <see cref="ShadersSetGlobalDynamicLightsCount"/>.</summary>
         private int shadersLastDynamicLightsCount;
 
@@ -156,6 +159,12 @@ namespace AlpacaIT.DynamicLighting
             Shader.SetGlobalBuffer(shadersGlobalPropertyIdDynamicLightsBvh, buffer);
         }
 
+        /// <summary>Sets the global shader buffer property "dynamic_lights_distance_cubes".</summary>
+        private void ShadersSetGlobalDynamicLightsDistanceCubes(ComputeBuffer buffer)
+        {
+            Shader.SetGlobalBuffer(shadersGlobalPropertyIdDynamicLightsDistanceCubes, buffer);
+        }
+
         /// <summary>
         /// Initialization of shader related variables in the DynamicLightManager.Shaders partial class.
         /// </summary>
@@ -171,6 +180,7 @@ namespace AlpacaIT.DynamicLighting
             shadersGlobalPropertyIdRealtimeLightsCount = Shader.PropertyToID("realtime_lights_count");
             shadersGlobalPropertyIdDynamicAmbientColor = Shader.PropertyToID("dynamic_ambient_color");
             shadersGlobalPropertyIdDynamicLightsBvh = Shader.PropertyToID("dynamic_lights_bvh");
+            shadersGlobalPropertyIdDynamicLightsDistanceCubes = Shader.PropertyToID("dynamic_lights_distance_cubes");
 
             // upon startup (or level transitions):
 

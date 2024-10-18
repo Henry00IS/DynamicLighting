@@ -18,8 +18,19 @@ float3 light_position_minus_world = light_direction;
 // properly normalize the direction between the light source and the fragment.
 light_direction = normalize(light_direction);
 
-// a simple dot product with the normal gives us diffusion.
-float NdotL = max(dot(GENERATE_NORMAL, light_direction), 0);
+float NdotL;
+if (lightmap_resolution > 0)
+{
+    // static geometry:
+    // a simple dot product with the normal gives us diffusion.
+    NdotL = max(dot(GENERATE_NORMAL, light_direction), 0);
+}
+else
+{
+    // dynamic geometry:
+    // pull the dot product all the way around for half lambert diffusion.
+    NdotL = pow(0.5 + dot(GENERATE_NORMAL, light_direction) * 0.5, 2.0);
+}
 
 #if DYNAMIC_LIGHTING_BOUNCE
 // check whether bounce texture data is available on this triangle.
@@ -86,6 +97,11 @@ if (lightmap_resolution > 0 && light.is_dynamic())
     // confirmed with NVIDIA Quadro K1000M improving the framerate.
     if (map == 0.0) return;
 #endif
+}
+// dynamic geometry drawn using the bounding volume hierarchy sample distance cubemaps.
+else if (bvhLightIndex != -1)
+{
+    map = sample_distance_cube_bilinear(bvhLightIndex, i.world, light.position);
 }
 
 #if DYNAMIC_LIGHTING_BOUNCE

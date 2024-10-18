@@ -25,7 +25,7 @@ namespace AlpacaIT.DynamicLighting
         }
 
         /// <summary>One side of a <see cref="PhotonCube"/> containing pixel data.</summary>
-        private class PhotonCubeFace
+        internal class PhotonCubeFace
         {
             /// <summary>The compressed distances to each pixel on the cubemap face.</summary>
             public readonly NativeArray<ScaledAbsFloat16> distances;
@@ -127,7 +127,7 @@ namespace AlpacaIT.DynamicLighting
         }
 
         /// <summary>The six faces of the photon cube.</summary>
-        private readonly PhotonCubeFace[] faces = new PhotonCubeFace[6];
+        internal readonly PhotonCubeFace[] faces = new PhotonCubeFace[6];
 
         /// <summary>The width and height of each face of the photon cube in pixels.</summary>
         private readonly int size;

@@ -53,5 +53,11 @@ namespace AlpacaIT.DynamicLighting
         {
             return ushortValue / (float)ushort.MaxValue * scale;
         }
+
+        public unsafe uint ToFloatAsUInt32(float scale)
+        {
+            var f = ToFloat(scale);
+            return *(uint*)&f;
+        }
     }
 }

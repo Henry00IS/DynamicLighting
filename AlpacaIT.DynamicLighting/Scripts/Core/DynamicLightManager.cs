@@ -220,6 +220,8 @@ namespace AlpacaIT.DynamicLighting
         private ShaderDynamicLight[] shaderDynamicLights;
         private ComputeBuffer dynamicLightsBuffer;
 
+        private ComputeBuffer dynamicLightsDistanceCubesBuffer;
+
         /// <summary>The memory size in bytes of the <see cref="BvhLightNode"/> struct.</summary>
         private int dynamicLightsBvhNodeStride;
         private ComputeBuffer dynamicLightsBvhBuffer;
@@ -518,6 +520,15 @@ namespace AlpacaIT.DynamicLighting
                     shadersKeywordBvhEnabled = true;
                 }
                 else Debug.LogError("Unable to read the dynamic lights bounding volume hierarchy file! Probably because you upgraded from an older version. Please raytrace your scene again.");
+
+                // assign the dynamic lights distance cubes to a global buffer.
+                if (raycastedScene && raycastedScene.dynamicLightsDistanceCubes.Read(out uint[] distanceCubesData))
+                {
+                    dynamicLightsDistanceCubesBuffer = new ComputeBuffer(distanceCubesData.Length, sizeof(uint), ComputeBufferType.Default);
+                    dynamicLightsDistanceCubesBuffer.SetData(distanceCubesData);
+                    ShadersSetGlobalDynamicLightsDistanceCubes(dynamicLightsDistanceCubesBuffer);
+                }
+                else Debug.LogError("Unable to read the dynamic lights distance cubes file! Probably because you upgraded from an older version. Please raytrace your scene again.");
             }
         }
 
@@ -542,6 +553,12 @@ namespace AlpacaIT.DynamicLighting
             {
                 dynamicLightsBvhBuffer.Release();
                 dynamicLightsBvhBuffer = null;
+            }
+
+            if (dynamicLightsDistanceCubesBuffer != null && dynamicLightsDistanceCubesBuffer.IsValid())
+            {
+                dynamicLightsDistanceCubesBuffer.Release();
+                dynamicLightsDistanceCubesBuffer = null;
             }
 
             // always disable the bounding volume hierarchy in the shader as it's dangerous now.
