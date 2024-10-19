@@ -101,7 +101,7 @@ if (lightmap_resolution > 0 && light.is_dynamic())
 // dynamic geometry drawn using the bounding volume hierarchy sample distance cubemaps.
 else if (bvhLightIndex != -1)
 {
-    map = sample_distance_cube_bilinear(bvhLightIndex, i.world, light.position);
+    map = sample_distance_cube_bilinear(bvhLightIndex, i.world, light.position, NdotL);
 }
 
 #if DYNAMIC_LIGHTING_BOUNCE

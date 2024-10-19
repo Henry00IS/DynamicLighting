@@ -356,7 +356,7 @@ float sample_distance_cube(uint dynamicLightIndex, float3 dir)
     return asfloat(dynamic_lights_distance_cubes[cubeDataOffset + index]);
 }
 
-float sample_distance_cube_tiny(uint dynamicLightIndex, float3 world, float3 lightPos)
+float sample_distance_cube_tiny(uint dynamicLightIndex, float3 world, float3 lightPos, float NdotL)
 {
     float3 light_direction = lightPos - world;
     float light_distanceSqr = dot(light_direction, light_direction);
@@ -364,11 +364,16 @@ float sample_distance_cube_tiny(uint dynamicLightIndex, float3 world, float3 lig
     float shadow_distance = sample_distance_cube(dynamicLightIndex, light_direction);
     float shadow_distanceSqr = shadow_distance * shadow_distance;
     
+    // magic bias function! it is amazing!
+    float magic = 0.125 + 0.02 * (light_distanceSqr / sqrt(light_distanceSqr));
+    float autobias = magic * tan(acos(1.0 - NdotL));
+    autobias = clamp(autobias, 0.0, magic);
+    
     // check whether the fragment is occluded.
-    return (light_distanceSqr - 0.125 < shadow_distanceSqr);
+    return (light_distanceSqr - autobias < shadow_distanceSqr);
 }
 
-float sample_distance_cube_bilinear(uint dynamicLightIndex, float3 world, float3 lightPos)
+float sample_distance_cube_bilinear(uint dynamicLightIndex, float3 world, float3 lightPos, float NdotL)
 {
     float gridScale = 0.25;
     
@@ -385,14 +390,14 @@ float sample_distance_cube_bilinear(uint dynamicLightIndex, float3 world, float3
     float3 baseWorldPos = gridCoordInt * gridScale;
     
     // sample the texture at the neighboring cells
-    float topLeftFront     = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos, lightPos); 
-    float topRightFront    = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(gridScale, 0, 0), lightPos); 
-    float bottomLeftFront  = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(0, gridScale, 0), lightPos); 
-    float bottomRightFront = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(gridScale, gridScale, 0), lightPos); 
-    float topLeftBack      = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(0, 0, gridScale), lightPos); 
-    float topRightBack     = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(gridScale, 0, gridScale), lightPos); 
-    float bottomLeftBack   = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(0, gridScale, gridScale), lightPos); 
-    float bottomRightBack  = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(gridScale, gridScale, gridScale), lightPos); 
+    float topLeftFront     = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos, lightPos, NdotL); 
+    float topRightFront    = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(gridScale, 0, 0), lightPos, NdotL); 
+    float bottomLeftFront  = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(0, gridScale, 0), lightPos, NdotL); 
+    float bottomRightFront = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(gridScale, gridScale, 0), lightPos, NdotL); 
+    float topLeftBack      = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(0, 0, gridScale), lightPos, NdotL); 
+    float topRightBack     = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(gridScale, 0, gridScale), lightPos, NdotL); 
+    float bottomLeftBack   = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(0, gridScale, gridScale), lightPos, NdotL); 
+    float bottomRightBack  = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(gridScale, gridScale, gridScale), lightPos, NdotL); 
     
     // perform linear interpolation in the x direction.
     float topFront = lerp(topLeftFront, topRightFront, weight.x);
