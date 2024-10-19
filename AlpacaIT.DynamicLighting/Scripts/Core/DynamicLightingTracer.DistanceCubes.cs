@@ -49,17 +49,17 @@ namespace AlpacaIT.DynamicLighting
 
                 // write the distances:
                 for (int j = 0; j < distanceCubesResolution * distanceCubesResolution; j++)
-                    data.Add(photonCube.faces[0].distances[j].ToFloatAsUInt32(light.lightRadius));
+                    data.Add(photonCube.faces[1].distances[j].ToFloatAsUInt32(light.lightRadius)); // L OK
                 for (int j = 0; j < distanceCubesResolution * distanceCubesResolution; j++)
-                    data.Add(photonCube.faces[1].distances[j].ToFloatAsUInt32(light.lightRadius));
+                    data.Add(photonCube.faces[0].distances[j].ToFloatAsUInt32(light.lightRadius)); // R OK
                 for (int j = 0; j < distanceCubesResolution * distanceCubesResolution; j++)
-                    data.Add(photonCube.faces[2].distances[j].ToFloatAsUInt32(light.lightRadius));
+                    data.Add(photonCube.faces[3].distances[j].ToFloatAsUInt32(light.lightRadius)); // Floor
                 for (int j = 0; j < distanceCubesResolution * distanceCubesResolution; j++)
-                    data.Add(photonCube.faces[3].distances[j].ToFloatAsUInt32(light.lightRadius));
+                    data.Add(photonCube.faces[2].distances[j].ToFloatAsUInt32(light.lightRadius)); // Ceiling
                 for (int j = 0; j < distanceCubesResolution * distanceCubesResolution; j++)
-                    data.Add(photonCube.faces[4].distances[j].ToFloatAsUInt32(light.lightRadius));
+                    data.Add(photonCube.faces[5].distances[j].ToFloatAsUInt32(light.lightRadius)); // Back
                 for (int j = 0; j < distanceCubesResolution * distanceCubesResolution; j++)
-                    data.Add(photonCube.faces[5].distances[j].ToFloatAsUInt32(light.lightRadius));
+                    data.Add(photonCube.faces[4].distances[j].ToFloatAsUInt32(light.lightRadius)); // Works on my machine OK
 
                 photonCube.Dispose();
 

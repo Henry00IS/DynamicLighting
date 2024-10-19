@@ -340,53 +340,19 @@ float3 dynamic_ambient_color;
 //
 StructuredBuffer<uint> dynamic_lights_distance_cubes;
 
-float2 sample_cube(const float3 v, out uint faceIndex)
-{
-	float3 vAbs = abs(v);
-	float ma;
-	float2 uv;
-	if(vAbs.z >= vAbs.x && vAbs.z >= vAbs.y)
-	{
-		faceIndex = v.z < 0 ? 5 : 4;
-		ma = 0.5 / vAbs.z;
-		uv = float2(v.z < 0.0 ? -v.x : v.x, -v.y);
-	}
-	else if(vAbs.y >= vAbs.x)
-	{
-		faceIndex = v.y < 0 ? 3 : 2;
-		ma = 0.5 / vAbs.y;
-		uv = float2(v.x, v.y < 0.0 ? -v.z : v.z);
-	}
-	else
-	{
-		faceIndex = v.x < 0 ? 1 : 0;
-		ma = 0.5 / vAbs.x;
-		uv = float2(v.x < 0.0 ? v.z : -v.z, -v.y);
-	}
-	return uv * ma + 0.5;
-}
+TextureCube dynamic_lights_distance_cube_lookup32;
+sampler sampler_dynamic_lights_distance_cube_lookup32;
 
 float sample_distance_cube(uint dynamicLightIndex, float3 dir)
 {
     int headerSize = 4;
     uint cubeDataOffset = dynamic_lights_distance_cubes[(dynamicLightIndex * headerSize)];
-    uint cubeSize = dynamic_lights_distance_cubes[(dynamicLightIndex * headerSize) + 1];
-    uint cubeCompression = dynamic_lights_distance_cubes[(dynamicLightIndex * headerSize) + 2];
-    float cubeDistance = asfloat(dynamic_lights_distance_cubes[(dynamicLightIndex * headerSize) + 3]);
+    //uint cubeSize = dynamic_lights_distance_cubes[(dynamicLightIndex * headerSize) + 1];
+    //uint cubeCompression = dynamic_lights_distance_cubes[(dynamicLightIndex * headerSize) + 2];
+    //float cubeDistance = asfloat(dynamic_lights_distance_cubes[(dynamicLightIndex * headerSize) + 3]);
 
-    uint faceIndex;
-    float2 uv = sample_cube(dir, faceIndex);
-
-    // fixme: this code as the same bugs as the code on the cpu.
-    uv.x = 1.0 - uv.x;
-
-    // convert uv to integer pixel coordinates.
-    int x = (int)(uv.x * (cubeSize - 1) + 0.5);
-    int y = (int)(uv.y * (cubeSize - 1) + 0.5);
-
-    // calculate the index into the cube map data.
-    int index = (faceIndex * cubeSize * cubeSize) + (y * cubeSize) + x;
-
+    // sample the cubemap lookup texture of array indices to avoid doing complex math.
+    uint index = dynamic_lights_distance_cube_lookup32.SampleLevel(sampler_dynamic_lights_distance_cube_lookup32, dir, 0);
     return asfloat(dynamic_lights_distance_cubes[cubeDataOffset + index]);
 }
 
@@ -395,29 +361,29 @@ float sample_distance_cube_tiny(uint dynamicLightIndex, float3 world, float3 lig
     float3 light_direction = lightPos - world;
     float light_distanceSqr = dot(light_direction, light_direction);
     
-    float lightDistance = sqrt(light_distanceSqr); // todo: remove with sqr comparison.
-    float shadow_distance = sample_distance_cube(dynamicLightIndex, -light_direction);
+    float shadow_distance = sample_distance_cube(dynamicLightIndex, light_direction);
+    float shadow_distanceSqr = shadow_distance * shadow_distance;
     
     // check whether the fragment is occluded.
-    return (lightDistance < shadow_distance);
+    return (light_distanceSqr - 0.125 < shadow_distanceSqr);
 }
 
 float sample_distance_cube_bilinear(uint dynamicLightIndex, float3 world, float3 lightPos)
 {
-    float gridScale = 0.5;
+    float gridScale = 0.25;
     
     // convert world position to grid coordinates based on the grid scale.
     float3 gridCoord = world / gridScale;
-
+    
     // calculate the weights for the bilinear interpolation.
     float3 weight = frac(gridCoord);
-
+    
     // calculate the integer part of the grid coordinates.
     float3 gridCoordInt = floor(gridCoord);
-
+    
     // convert grid coordinates back to world positions for sampling.
     float3 baseWorldPos = gridCoordInt * gridScale;
-
+    
     // sample the texture at the neighboring cells
     float topLeftFront     = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos, lightPos); 
     float topRightFront    = sample_distance_cube_tiny(dynamicLightIndex, baseWorldPos + float3(gridScale, 0, 0), lightPos); 

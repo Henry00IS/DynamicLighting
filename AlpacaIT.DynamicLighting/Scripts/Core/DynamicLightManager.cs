@@ -448,6 +448,9 @@ namespace AlpacaIT.DynamicLighting
             // -> partial class DynamicLightManager.LightPositions initialize.
             LightPositionsInitialize();
 
+            // -> partial class DynamicLightManager.DistanceCubes initialize.
+            DistanceCubesInitialize();
+
             ShadersSetGlobalDynamicLights(dynamicLightsBuffer);
             ShadersSetGlobalDynamicLightsCount(shadersLastDynamicLightsCount = 0);
             ShadersSetGlobalRealtimeLightsCount(shadersLastRealtimeLightsCount = 0);
@@ -595,6 +598,9 @@ namespace AlpacaIT.DynamicLighting
 
             // -> partial class DynamicLightManager.LightPositions cleanup.
             LightPositionsCleanup();
+
+            // -> partial class DynamicLightManager.DistanceCubes cleanup.
+            DistanceCubesCleanup();
         }
 
         /// <summary>Removes the lightmap data from the given material property block.</summary>
