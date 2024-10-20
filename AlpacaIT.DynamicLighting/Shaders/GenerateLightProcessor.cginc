@@ -40,7 +40,7 @@ if (light.is_shadow_available())
 {
     // magic bias function! it is amazing!
     float light_distance = sqrt(light_distanceSqr);
-    float magic = 0.02 + 0.01 * (light_distanceSqr / light_distance);
+    float magic = 0.02 + 0.01 * light_distance;
     float autobias = magic * tan(acos(1.0 - NdotL));
     autobias = clamp(autobias, 0.0, magic);
     

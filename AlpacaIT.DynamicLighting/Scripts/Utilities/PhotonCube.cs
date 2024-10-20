@@ -351,7 +351,7 @@ namespace AlpacaIT.DynamicLighting
 
             // magic bias function! it is amazing!
             float light_distance = Mathf.Sqrt(light_distanceSqr);
-            float magic = 0.02f + 0.01f * (light_distanceSqr / light_distance);
+            float magic = 0.02f + 0.01f * light_distance;
             float autobias = magic * Mathf.Tan(Mathf.Acos(1.0f - NdotL));
             autobias = Mathf.Clamp(autobias, 0.0f, magic);
 
@@ -384,7 +384,7 @@ namespace AlpacaIT.DynamicLighting
 
             // magic bias function! it is amazing!
             float light_distance = lightDistanceToWorld;
-            float magic = 0.02f + 0.01f * (light_distanceSqr / light_distance);
+            float magic = 0.02f + 0.01f * light_distance;
             float autobias = magic * Mathf.Tan(Mathf.Acos(1.0f - NdotL));
             autobias = Mathf.Clamp(autobias, 0.0f, magic);
 
