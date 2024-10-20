@@ -360,17 +360,17 @@ float sample_distance_cube_tiny(uint dynamicLightIndex, float3 world, float3 lig
 {
     float3 light_direction = lightPos - world;
     float light_distanceSqr = dot(light_direction, light_direction);
+    float light_distance = sqrt(light_distanceSqr);
     
     float shadow_distance = sample_distance_cube(dynamicLightIndex, light_direction);
-    float shadow_distanceSqr = shadow_distance * shadow_distance;
     
     // magic bias function! it is amazing!
-    float magic = 0.125 + 0.02 * (light_distanceSqr / sqrt(light_distanceSqr));
+    float magic = 0.02 + 0.01 * light_distance;
     float autobias = magic * tan(acos(1.0 - NdotL));
     autobias = clamp(autobias, 0.0, magic);
     
     // check whether the fragment is occluded.
-    return (light_distanceSqr - autobias < shadow_distanceSqr);
+    return (light_distance - autobias <= shadow_distance);
 }
 
 float sample_distance_cube_bilinear(uint dynamicLightIndex, float3 world, float3 lightPos, float NdotL)
