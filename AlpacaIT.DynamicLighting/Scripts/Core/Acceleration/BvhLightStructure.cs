@@ -1,7 +1,7 @@
 using AlpacaIT.DynamicLighting.Internal;
 using System;
-using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
@@ -76,23 +76,53 @@ namespace AlpacaIT.DynamicLighting
         {
             fixed (BvhLightNode* node = &nodes[index])
             {
-                // terminate recursion.
+                // terminate recursion if the node has 2 or fewer lights.
                 if (node->count <= 2)
                     return;
 
-                // determine split axis and position.
-                var extent = node->size;
-                int axis = 0;
-                if (extent.y > extent.x) axis = 1;
-                if (extent.z > extent[axis]) axis = 2;
-                float splitPos = node->aabbMin[axis] + extent[axis] * 0.5f;
+                // compute parent cost.
+                Vector3 e = node->aabbMax - node->aabbMin; // extent of parent
+                float parentArea = 2 * (e.x * e.y + e.y * e.z + e.z * e.x);
+                float parentCost = node->count * parentArea;
 
-                // in-place partition.
+                int bestAxis = -1;
+                float bestPos = 0;
+                float bestCost = float.MaxValue;
+
+                // try splitting along each axis at the position of each light.
+                for (int axis = 0; axis < 3; axis++)
+                {
+                    for (int k = 0; k < node->count; k++)
+                    {
+                        int lightIdx = dynamicLightsIdx[node->leftFirst + k];
+                        var light = dynamicLights[lightIdx];
+                        float candidatePos = light.transform.position[axis];
+
+                        float cost = EvaluateSAH(node, axis, candidatePos);
+
+                        if (cost < bestCost)
+                        {
+                            bestCost = cost;
+                            bestAxis = axis;
+                            bestPos = candidatePos;
+                        }
+                    }
+                }
+
+                // abort split if no valid split was found or if the best cost is not better than parent cost.
+                if (bestAxis == -1 || bestCost >= parentCost)
+                    return;
+
+                // partition the lights using the best axis and position.
+                float splitPos = bestPos;
+
                 int i = node->leftFirst;
                 int j = i + node->count - 1;
                 while (i <= j)
                 {
-                    if (dynamicLights[dynamicLightsIdx[i]].transform.position[axis] < splitPos)
+                    int lightIdx = dynamicLightsIdx[i];
+                    var light = dynamicLights[lightIdx];
+                    if (light.transform.position[bestAxis] < splitPos)
                     {
                         i++;
                     }
@@ -103,7 +133,6 @@ namespace AlpacaIT.DynamicLighting
                     }
                 }
 
-                // abort split if one of the sides is empty.
                 int leftCount = i - node->leftFirst;
                 if (leftCount == 0 || leftCount == node->count)
                     return;
@@ -120,10 +149,65 @@ namespace AlpacaIT.DynamicLighting
                 UpdateNodeBounds(leftChildIdx);
                 UpdateNodeBounds(rightChildIdx);
 
-                // recurse.
+                // Recurse.
                 SubdivideNodeRecursive(leftChildIdx);
                 SubdivideNodeRecursive(rightChildIdx);
             }
+        }
+
+        /// <summary>
+        /// Evaluates the SAH cost for splitting the node at the specified axis and position.
+        /// </summary>
+        /// <param name="node">The node to split.</param>
+        /// <param name="axis">The axis along which to split (0,1,2).</param>
+        /// <param name="pos">The position along the axis at which to split.</param>
+        /// <returns>The SAH cost of the split.</returns>
+        private unsafe float EvaluateSAH(BvhLightNode* node, int axis, float pos)
+        {
+            int leftCount = 0;
+            int rightCount = 0;
+            Vector3 leftAabbMin = Vector3.positiveInfinity;
+            Vector3 leftAabbMax = Vector3.negativeInfinity;
+            Vector3 rightAabbMin = Vector3.positiveInfinity;
+            Vector3 rightAabbMax = Vector3.negativeInfinity;
+
+            for (int i = 0; i < node->count; i++)
+            {
+                int lightIdx = dynamicLightsIdx[node->leftFirst + i];
+                var light = dynamicLights[lightIdx];
+                float lightPos = light.transform.position[axis];
+
+                var bounds = MathEx.GetSphereBounds(light.transform.position, light.lightRadius);
+
+                if (lightPos < pos)
+                {
+                    leftCount++;
+                    leftAabbMin = Vector3.Min(leftAabbMin, bounds.min);
+                    leftAabbMax = Vector3.Max(leftAabbMax, bounds.max);
+                }
+                else
+                {
+                    rightCount++;
+                    rightAabbMin = Vector3.Min(rightAabbMin, bounds.min);
+                    rightAabbMax = Vector3.Max(rightAabbMax, bounds.max);
+                }
+            }
+
+            // if either side is empty, return a large cost to avoid this split.
+            if (leftCount == 0 || rightCount == 0)
+                return float.MaxValue;
+
+            // compute surface areas.
+            Vector3 leftExtent = leftAabbMax - leftAabbMin;
+            float leftArea = 2 * (leftExtent.x * leftExtent.y + leftExtent.y * leftExtent.z + leftExtent.z * leftExtent.x);
+
+            Vector3 rightExtent = rightAabbMax - rightAabbMin;
+            float rightArea = 2 * (rightExtent.x * rightExtent.y + rightExtent.y * rightExtent.z + rightExtent.z * rightExtent.x);
+
+            // compute cost.
+            float cost = (leftCount * leftArea) + (rightCount * rightArea);
+
+            return cost;
         }
 
         /// <summary>
@@ -166,6 +250,7 @@ namespace AlpacaIT.DynamicLighting
 
             while (true)
             {
+                Gizmos.color = Color.white;
                 Gizmos.DrawWireCube(node.center, node.size);
 
                 /* if the current node is a leaf (has light indices): */
@@ -176,7 +261,8 @@ namespace AlpacaIT.DynamicLighting
                     {
                         DynamicLight light = dynamicLights[dynamicLightsIdx[k]];
 
-                        Gizmos.DrawSphere(light.transform.position, 0.2f);
+                        Gizmos.color = light.lightColorAdjusted;
+                        Gizmos.DrawWireSphere(light.transform.position, light.lightRadius);
                     }
 
                     /* check whether we are done traversing the bvh: */

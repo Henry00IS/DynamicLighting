@@ -262,7 +262,6 @@ namespace AlpacaIT.DynamicLighting
                 // have unity editor reload the modified assets.
                 UnityEditor.AssetDatabase.Refresh();
 #endif
-                log.AppendLine("--------------------------------");
                 log.Append("Raycasts: ").Append(traces).Append(" (").Append(tracingTime.ToString()).AppendLine(")");
                 log.Append("Bounding Volume Hierarchy: ").AppendLine(bvhTime.ToString());
                 log.Append("Occlusion Bits Seams Padding: ").AppendLine(seamTime.ToString());
@@ -336,8 +335,6 @@ namespace AlpacaIT.DynamicLighting
                 // estimate the amount of vram required (purely statistical).
                 ulong vramLightmap = (ulong)(lightmapSize * lightmapSize * 4); // uint32
                 vramLegacyTotal += vramLightmap;
-
-                log.AppendLine(meshFilter.name + " surface area: " + meshBuilder.surfaceArea.ToString("0.00") + "m² lightmap size: " + lightmapSize + "x" + lightmapSize);
             }
 
             tracingTime.Begin();
