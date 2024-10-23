@@ -42,7 +42,7 @@ namespace AlpacaIT.DynamicLighting
         private struct CachedLightData
         {
             public Vector3 position;
-            public Bounds bounds;
+            public FastBounds bounds;
             public PhotonCube photonCube;
 
             public CachedLightData(DynamicLight dynamicLight)

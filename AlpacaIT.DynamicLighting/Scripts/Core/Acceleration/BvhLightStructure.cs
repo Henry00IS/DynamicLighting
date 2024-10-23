@@ -241,10 +241,48 @@ namespace AlpacaIT.DynamicLighting
             nodes = Utilities.ByteArrayToStructArray<BvhLightNode>(byteArray);
         }
 
+        private BvhLightNode[] stack = new BvhLightNode[32];
+
+        public int FindLightsIntersecting(Bounds bounds, int[] results)
+        {
+            /* we traverse the bounding volume hierarchy starting at the root node: */
+            uint stackPointer = 0;
+            int total = 0;
+            BvhLightNode node = nodes[0];
+
+            while (true)
+            {
+                /* if the current node is a leaf (has light indices): */
+                if (node.isLeaf)
+                {
+                    /* process the light indices: */
+                    for (int k = node.leftFirst; k < node.leftFirst + node.count; k++)
+                        results[total++] = k;
+
+                    /* check whether we are done traversing the bvh: */
+                    if (stackPointer == 0) break; else node = stack[--stackPointer];
+                    continue;
+                }
+
+                /* find the left and right child node. */
+                BvhLightNode left = nodes[node.leftFirst];
+                BvhLightNode right = nodes[node.rightNode];
+
+                if (new FastBounds(left.center, left.size).Intersects(bounds))
+                    stack[stackPointer++] = left;
+
+                if (new FastBounds(right.center, right.size).Intersects(bounds))
+                    stack[stackPointer++] = right;
+
+                if (stackPointer == 0) break; else node = stack[--stackPointer];
+            }
+
+            return total;
+        }
+
         public void DebugTraverseDraw(Vector3 position)
         {
             /* we traverse the bounding volume hierarchy starting at the root node: */
-            BvhLightNode[] stack = new BvhLightNode[64];
             uint stackPointer = 0;
             BvhLightNode node = nodes[0];
 

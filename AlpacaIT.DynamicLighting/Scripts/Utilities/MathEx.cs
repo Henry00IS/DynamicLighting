@@ -70,9 +70,14 @@ namespace AlpacaIT.DynamicLighting
         /// <param name="radius">The radius of the sphere.</param>
         /// <returns>The bounding box encompassing the given sphere.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Bounds GetSphereBounds(Vector3 center, float radius)
+        public static unsafe FastBounds GetSphereBounds(Vector3 center, float radius)
         {
-            return new Bounds(center, Vector3.one * radius * 2f);
+            FastBounds bounds;
+            bounds.center = center;
+            bounds.extents.x = radius;
+            bounds.extents.y = radius;
+            bounds.extents.z = radius;
+            return bounds;
         }
 
         /// <summary>Checks whether a sphere intersects with a triangle.</summary>
@@ -182,15 +187,12 @@ namespace AlpacaIT.DynamicLighting
         /// <param name="b">The second vertex position of the triangle.</param>
         /// <param name="c">The third vertex position of the triangle.</param>
         /// <returns>The signed triangle area.</returns>
-        public static unsafe float SignedTriangleArea(Vector2 a, Vector2 b, Vector2 c)
+        public static float SignedTriangleArea(Vector2 a, Vector2 b, Vector2 c)
         {
-            // [unsafe] var v1 = a - c;
-            //          var v2 = b - c;
-            var cPtr = &c;
-            UMath.Subtract(&a, cPtr);
-            UMath.Subtract(&b, cPtr);
-
-            // [unsafe] (v1.x * v2.y - v1.y * v2.x) * 0.5f
+            a.x -= c.x;
+            a.y -= c.y;
+            b.x -= c.x;
+            b.y -= c.y;
             return (a.x * b.y - a.y * b.x) * 0.5f;
         }
 
@@ -234,7 +236,7 @@ namespace AlpacaIT.DynamicLighting
         /// The point converted to vertex-space or else <see cref="Vector3.zero"/> when outside of
         /// the triangle's uv-coordinates.
         /// </returns>
-        public static unsafe Vector3 UvTo3dFast(float triangleSurfaceArea, Vector2 uv, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
+        public static Vector3 UvTo3dFast(float triangleSurfaceArea, Vector2 uv, Vector3 v1, Vector3 v2, Vector3 v3, Vector2 t1, Vector2 t2, Vector2 t3)
         {
             // calculate barycentric coordinates of u1, u2 and u3.
             // if anyone is negative, point is outside the triangle: skip it.
@@ -243,15 +245,9 @@ namespace AlpacaIT.DynamicLighting
             var a3 = SignedTriangleArea(t1, t2, uv) / triangleSurfaceArea; if (a3 < 0f) { v1.x = 0; v1.y = 0; v1.z = 0; return v1; }
 
             // point inside the triangle - find mesh position by interpolation.
-            // [unsafe] a1 * v1 + a2 * v2 + a3 * v3
-            var v1Ptr = &v1;
-            var v2Ptr = &v2;
-            var v3Ptr = &v3;
-            UMath.Scale(v1Ptr, a1);
-            UMath.Scale(v2Ptr, a2);
-            UMath.Scale(v3Ptr, a3);
-            UMath.Add(v1Ptr, v2Ptr);
-            UMath.Add(v1Ptr, v3Ptr);
+            v1.x = a1 * v1.x + a2 * v2.x + a3 * v3.x;
+            v1.y = a1 * v1.y + a2 * v2.y + a3 * v3.y;
+            v1.z = a1 * v1.z + a2 * v2.z + a3 * v3.z;
             return v1;
         }
 

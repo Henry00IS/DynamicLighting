@@ -258,19 +258,35 @@ namespace AlpacaIT.DynamicLighting
         }
 
         /// <summary>Applies a normalized version of the float3 vector x by scaling it by 1 / length(x).</summary>
-        /// <param name="x">Vector to normalize.</param>
+        /// <param name="v">Vector to normalize.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Normalize(float3* x)
+        public static void Normalize(float3* v)
         {
-            Scale(x, math.rsqrt(SqrMagnitude(x)));
+            // Scale(v, 1f / Mathf.Sqrt(SqrMagnitude(v)));
+            var x = v->x;
+            var y = v->y;
+            var z = v->z;
+            var vSqrMagnitude = x * x + y * y + z * z;
+            var vRoot = 1f / Mathf.Sqrt(vSqrMagnitude);
+            v->x = x * vRoot;
+            v->y = y * vRoot;
+            v->z = z * vRoot;
         }
 
         /// <summary>Applies a normalized version of the Vector3 vector x by scaling it by 1 / length(x).</summary>
-        /// <param name="x">Vector to normalize.</param>
+        /// <param name="v">Vector to normalize.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Normalize(Vector3* x)
+        public static void Normalize(Vector3* v)
         {
-            Scale(x, math.rsqrt(SqrMagnitude(x)));
+            // Scale(v, 1f / Mathf.Sqrt(SqrMagnitude(v)));
+            var x = v->x;
+            var y = v->y;
+            var z = v->z;
+            var vSqrMagnitude = x * x + y * y + z * z;
+            var vRoot = 1f / Mathf.Sqrt(vSqrMagnitude);
+            v->x = x * vRoot;
+            v->y = y * vRoot;
+            v->z = z * vRoot;
         }
 
         /// <summary>Checks whether the given Vector3 is zero.</summary>
