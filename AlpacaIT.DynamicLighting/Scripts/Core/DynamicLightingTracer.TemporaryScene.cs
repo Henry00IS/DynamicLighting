@@ -48,7 +48,12 @@ namespace AlpacaIT.DynamicLighting
 
             // the game object must be marked as static.
             if (!originalGameObject.isStatic) return false;
-
+#if UNITY_EDITOR
+            // the game object must also have contributegi enabled.
+            var editorStaticFlags = GameObjectUtility.GetStaticEditorFlags(originalGameObject);
+            if (!editorStaticFlags.HasFlag(StaticEditorFlags.ContributeGI))
+                return false;
+#endif
             // make sure the mesh filter has a mesh assigned.
             var mesh = meshFilter.sharedMesh;
             if (!mesh) return false;
