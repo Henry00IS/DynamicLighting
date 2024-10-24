@@ -91,7 +91,7 @@ if (lightmap_resolution > 0 && light.is_dynamic())
 #if DYNAMIC_LIGHTING_BOUNCE
 // whenever the fragment is fully in shadow we can skip work.
 // confirmed with NVIDIA Quadro K1000M improving the framerate.
-if (map != 0.0)
+if (map != 0.0 || bounce != 0.0)
 {
 #endif
     // spot lights determine whether we are in the light cone or outside.
@@ -102,7 +102,9 @@ if (map != 0.0)
         if (spotlight.x <= light.light_outerCutoff || spotlight.x == 0.0) // prevent division by zero in light cookies.
             return;
         map *= spotlight.y;
-    
+#if DYNAMIC_LIGHTING_BOUNCE
+        bounce *= spotlight.y;
+#endif
         // when the light has a cookie texture we sample that.
         if (light.is_cookie_available() && light.light_outerCutoff > 0.0)
         {
@@ -118,8 +120,18 @@ if (map != 0.0)
         if (spotlight.x <= light.light_outerCutoff)
             return;
         map *= spotlight.y;
+#if DYNAMIC_LIGHTING_BOUNCE
+        bounce *= spotlight.y;
+#endif
     }
-    else if (light.is_wave())
+#if DYNAMIC_LIGHTING_BOUNCE
+}
+if (map != 0.0)
+{
+#else
+    else
+#endif
+    if (light.is_wave())
     {
         map *= light.calculate_wave(i.world);
     }
