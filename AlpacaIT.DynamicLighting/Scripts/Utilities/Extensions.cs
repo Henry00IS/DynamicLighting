@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
 {
@@ -28,10 +27,7 @@ namespace AlpacaIT.DynamicLighting
         /// <returns>The hash of the mesh.</returns>
         public static int GetFastHash(this Mesh mesh)
         {
-            int hash = mesh.GetNativeIndexBufferPtr().GetHashCode();
-            for (int i = 0; i < mesh.vertexBufferCount; i++)
-                hash += mesh.GetNativeVertexBufferPtr(i).GetHashCode();
-            return hash;
+            return mesh.GetNativeIndexBufferPtr().GetHashCode();
         }
     }
 }
