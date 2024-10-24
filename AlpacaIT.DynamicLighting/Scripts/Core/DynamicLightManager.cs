@@ -239,6 +239,12 @@ namespace AlpacaIT.DynamicLighting
 #if UNITY_EDITOR
 
         /// <summary>
+        /// Checking whether meshes have been edited is slow, thus we must iterate in smaller
+        /// batches. This is the offset of the last batch.
+        /// </summary>
+        private int editorMeshEditDetectionOffset = 0;
+
+        /// <summary>
         /// Remembers whether <see cref="Application.isPlaying"/> to prevent native calls.
         /// </summary>
         private bool editorIsPlaying = false;
@@ -920,8 +926,15 @@ namespace AlpacaIT.DynamicLighting
             // detect mesh changes in edit mode.
             if (!editorIsPlaying)
             {
+                // check in batches of 100 mesh renderers (editor performance in large scenes).
                 var raycastedMeshRenderersCount = raycastedMeshRenderers.Count;
-                for (int i = 0; i < raycastedMeshRenderersCount; i++)
+                var loopBegin = editorMeshEditDetectionOffset;
+                var loopEnd = Math.Min(loopBegin + 100, raycastedMeshRenderersCount);
+                editorMeshEditDetectionOffset += 100;
+                if (loopEnd == raycastedMeshRenderersCount)
+                    editorMeshEditDetectionOffset = 0;
+
+                for (int i = loopBegin; i < loopEnd; i++)
                 {
                     // for every game object that requires a lightmap:
                     var lightmap = raycastedMeshRenderers[i];
