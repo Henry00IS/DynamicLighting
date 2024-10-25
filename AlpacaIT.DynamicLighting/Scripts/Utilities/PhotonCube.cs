@@ -25,7 +25,7 @@ namespace AlpacaIT.DynamicLighting
         }
 
         /// <summary>One side of a <see cref="PhotonCube"/> containing pixel data.</summary>
-        private class PhotonCubeFace
+        internal class PhotonCubeFace
         {
             /// <summary>The compressed distances to each pixel on the cubemap face.</summary>
             public readonly NativeArray<ScaledAbsFloat16> distances;
@@ -42,6 +42,9 @@ namespace AlpacaIT.DynamicLighting
             /// <summary>The width and height of each face of the photon cube in pixels.</summary>
             public readonly int size;
 
+            /// <summary>The width and height minus one of each face of the photon cube in pixels.</summary>
+            public readonly int sizeMinusOne;
+
             /// <summary>The maximum radius of the light.</summary>
             public readonly float lightRadius;
 
@@ -51,6 +54,7 @@ namespace AlpacaIT.DynamicLighting
             public PhotonCubeFace(NativeArray<ShaderPhotonCubePixel> shaderColors, Allocator allocator, int size, float lightRadius, bool storeNormals)
             {
                 this.size = size;
+                this.sizeMinusOne = size - 1;
                 this.lightRadius = lightRadius;
                 this.storeNormals = storeNormals;
 
@@ -83,12 +87,11 @@ namespace AlpacaIT.DynamicLighting
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private int Index(Vector2 position)
+            public int Index(Vector2 position)
             {
                 position.x = 1.0f - position.x;
                 var x = (int)(position.x * size);
                 var y = (int)(position.y * size);
-                var sizeMinusOne = size - 1;
                 if (x < 0) x = 0; else if (x > sizeMinusOne) x = sizeMinusOne;
                 if (y < 0) y = 0; else if (y > sizeMinusOne) y = sizeMinusOne;
                 return y * size + x;
@@ -228,9 +231,9 @@ namespace AlpacaIT.DynamicLighting
                 uv.x = direction.x < 0.0f ? direction.z : -direction.z;
                 uv.y = -direction.y;
             }
-            UMath.Scale(&uv, ma);
-            UMath.Add(&uv, 0.5f);
-            return uv;//uv * ma + 0.5f;
+            uv.x = uv.x * ma + 0.5f;
+            uv.y = uv.y * ma + 0.5f;
+            return uv;
         }
 
         /// <summary>
@@ -265,10 +268,11 @@ namespace AlpacaIT.DynamicLighting
         /// <param name="direction">The direction to sample the cubemap in.</param>
         /// <param name="photonCubeFace">The face index of the cubemap.</param>
         /// <param name="photonCubeFaceIndex">The index into the cubemap face data arrays.</param>
-        public void FastSamplePrerequisite(Vector3 direction, out int photonCubeFace, out int photonCubeFaceIndex)
+        public void FastSamplePrerequisite(Vector3 direction, out PhotonCubeFace photonCubeFace, out int photonCubeFaceIndex)
         {
-            var uv = GetFaceUvByDirection(direction, out photonCubeFace);
-            photonCubeFaceIndex = PhotonCubeFace.Index(uv, size);
+            var uv = GetFaceUvByDirection(direction, out var photonCubeFaceNumber);
+            photonCubeFace = faces[photonCubeFaceNumber];
+            photonCubeFaceIndex = photonCubeFace.Index(uv);
         }
 
         /// <summary>Gets the distance to the closest fragment in the given direction.</summary>
@@ -281,9 +285,9 @@ namespace AlpacaIT.DynamicLighting
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public float SampleDistanceFast(int photonCubeFace, int photonCubeFaceIndex)
+        public float SampleDistanceFast(PhotonCubeFace photonCubeFace, int photonCubeFaceIndex)
         {
-            return faces[photonCubeFace].distancesPtr[photonCubeFaceIndex].ToFloat(lightRadius);
+            return photonCubeFace.distancesPtr[photonCubeFaceIndex].ToFloat(lightRadius);
         }
 
         /// <summary>Gets an approximate normal of the closest fragment in the given direction.</summary>
@@ -296,11 +300,11 @@ namespace AlpacaIT.DynamicLighting
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Vector3 SampleNormalFast(int photonCubeFace, int photonCubeFaceIndex)
+        public Vector3 SampleNormalFast(PhotonCubeFace photonCubeFace, int photonCubeFaceIndex)
         {
             // unpack normalfloat8vector3 manually for a big performance gain:
-            Vector3 normal; _ = &normal;
-            var bla = &faces[photonCubeFace].normalsPtr[photonCubeFaceIndex];
+            Vector3 normal;
+            var bla = &photonCubeFace.normalsPtr[photonCubeFaceIndex];
             normal.x = bla->x.byteValue * (2.0f / 254.0f) - 1.0f;
             normal.y = bla->y.byteValue * (2.0f / 254.0f) - 1.0f;
             normal.z = bla->z.byteValue * (2.0f / 254.0f) - 1.0f;
@@ -318,12 +322,13 @@ namespace AlpacaIT.DynamicLighting
             return lightPosition + direction * SampleDistance(direction);
         }
 
-        public unsafe Vector3 SampleWorldFast(Vector3 direction, Vector3 lightPosition, int photonCubeFace, int photonCubeFaceIndex)
+        public Vector3 SampleWorldFast(Vector3 direction, Vector3 lightPosition, PhotonCubeFace photonCubeFace, int photonCubeFaceIndex)
         {
             // return lightPosition + direction * SampleDistanceFast(photonCubeFace, photonCubeFaceIndex);
-            // using 'direction' as scratch buffer.
-            UMath.Scale(&direction, SampleDistanceFast(photonCubeFace, photonCubeFaceIndex));
-            UMath.Add(&direction, &lightPosition);
+            float distance = SampleDistanceFast(photonCubeFace, photonCubeFaceIndex);
+            direction.x = lightPosition.x + direction.x * distance;
+            direction.y = lightPosition.y + direction.y * distance;
+            direction.z = lightPosition.z + direction.z * distance;
             return direction;
         }
 

@@ -715,8 +715,13 @@ namespace AlpacaIT.DynamicLighting
                 var n_p = photonNormals[i];
                 var d = directions[i];
 
+                Vector3 negative_d;
+                negative_d.x = -d.x;
+                negative_d.y = -d.y;
+                negative_d.z = -d.z;
+
                 float dot_ns_d = Mathf.Max(Vector3.Dot(n_s, d), 0f);
-                float dot_np_minus_d = Mathf.Max(Vector3.Dot(n_p, -d), 0f);
+                float dot_np_minus_d = Mathf.Max(Vector3.Dot(n_p, negative_d), 0f);
 
                 float attenuation = lightBounceIntensity;
                 float E_out = dot_ns_d * dot_np_minus_d * attenuation;
@@ -812,18 +817,20 @@ namespace AlpacaIT.DynamicLighting
                     world = uvWorldPositions[ptr++];
                     if (UMath.IsZero(worldPtr)) continue;
 
-                    // [unsafe] lightDirectionNegative = world - lightPosition;
-                    lightDirectionNegative = world;
-                    UMath.Subtract(lightDirectionNegativePtr, lightPositionPtr);
+                    // lightDirectionNegative = world - lightPosition;
+                    lightDirectionNegative.x = world.x - lightPosition.x;
+                    lightDirectionNegative.y = world.y - lightPosition.y;
+                    lightDirectionNegative.z = world.z - lightPosition.z;
 
                     // early out by distance.
                     var lightDistanceToWorldSqr = UMath.Dot(lightDirectionNegativePtr, lightDirectionNegativePtr);
                     if (lightDistanceToWorldSqr > lightRadiusSqr)
                         continue;
 
-                    // [unsafe] world + triangleNormalOffset
-                    worldPlusTriangleNormalOffset = world;
-                    UMath.Add(worldPlusTriangleNormalOffsetPtr, triangleNormalOffsetPtr);
+                    // worldPlusTriangleNormalOffset = world + triangleNormalOffset
+                    worldPlusTriangleNormalOffset.x = world.x + triangleNormalOffset.x;
+                    worldPlusTriangleNormalOffset.y = world.y + triangleNormalOffset.y;
+                    worldPlusTriangleNormalOffset.z = world.z + triangleNormalOffset.z;
 
                     var raycastHandler = bounceRaycastHandlerPool.GetInstance();
                     raycastHandler.Setup(pixels_bounce_ptr, yPtr + x, triangleNormal, lightBounceSamples, lightBounceIntensity);
@@ -847,9 +854,11 @@ namespace AlpacaIT.DynamicLighting
                         var photonWorld = photonCube.SampleWorldFast(randomSampleDirection, lightPosition, photonCubeFace, photonCubeFaceIndex);
                         var photonNormal = photonCube.SampleNormalFast(photonCubeFace, photonCubeFaceIndex);
 
-                        // [unsafe] photonWorldMinusWorldWithNormalOffset = photonWorld - worldPlusTriangleNormalOffset;
-                        photonWorldMinusWorldWithNormalOffset = photonWorld;
-                        UMath.Subtract(photonWorldMinusWorldWithNormalOffsetPtr, worldPlusTriangleNormalOffsetPtr);
+                        // photonWorldMinusWorldWithNormalOffset = photonWorld - worldPlusTriangleNormalOffset;
+                        photonWorldMinusWorldWithNormalOffset.x = photonWorld.x - worldPlusTriangleNormalOffset.x;
+                        photonWorldMinusWorldWithNormalOffset.y = photonWorld.y - worldPlusTriangleNormalOffset.y;
+                        photonWorldMinusWorldWithNormalOffset.z = photonWorld.z - worldPlusTriangleNormalOffset.z;
+
                         var photonToWorldDistance = Vector3.Magnitude(photonWorldMinusWorldWithNormalOffset);
                         // [unsafe] photonToWorldDirection = Vector3.Normalize(photonWorldMinusWorldWithNormalOffset);
                         UMath.Normalize(photonWorldMinusWorldWithNormalOffsetPtr);
