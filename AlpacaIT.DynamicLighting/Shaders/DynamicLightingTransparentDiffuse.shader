@@ -62,7 +62,7 @@ Shader "Dynamic Lighting/Transparent"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
-            fixed4 _Color;
+            float4 _Color;
 
             v2f vert (appdata v)
             {
@@ -93,13 +93,13 @@ Shader "Dynamic Lighting/Transparent"
                 
                 // sample the unity baked lightmap (i.e. progressive lightmapper).
                 #if LIGHTMAP_ON
-                    half3 unity_lightmap_color = DecodeLightmap(UNITY_SAMPLE_TEX2D(unity_Lightmap, i.uv2));
+                    float3 unity_lightmap_color = DecodeLightmap(UNITY_SAMPLE_TEX2D(unity_Lightmap, i.uv2));
                 #else
-                    half3 unity_lightmap_color = half3(0.0, 0.0, 0.0);
+                    float3 unity_lightmap_color = float3(0.0, 0.0, 0.0);
                 #endif
 
                 // sample the main texture, multiply by the light and add vertex colors.
-                fixed4 col = tex2D(_MainTex, i.uv0) * half4(_Color) * half4(light_final + unity_lightmap_color, 1) * i.color;
+                float4 col = tex2D(_MainTex, i.uv0) * _Color * float4(light_final + unity_lightmap_color, 1) * i.color;
                 
                 // apply fog.
                 UNITY_APPLY_FOG(i.fogCoord, col);

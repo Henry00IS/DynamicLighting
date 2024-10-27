@@ -525,14 +525,9 @@ struct DynamicTriangle
 
         for (int y = -1; y <= 1; y++)
         {
-#ifdef DYNAMIC_LIGHTING_SHADOW_SAMPLER_INDEX
             uint index = (uv.y + y) * bounds.z + uv.x;
             for (int x = -1; x <= 1; x++)
-                map += DYNAMIC_LIGHTING_SHADOW_SAMPLER(index + x);
-#else
-            for (int x = -1; x <= 1; x++)
-                map += DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(uv.x + x, uv.y + y));
-#endif
+                map += shadow_sample_index(index + x);
         }
 
         return map / 9.0;
@@ -563,13 +558,16 @@ struct DynamicTriangle
 
         // read all of the lightmap samples we need in advance.
         float map[4][4];
+        [unroll]
         for (int y = -1; y <= 2; y++)
         {
 #ifdef DYNAMIC_LIGHTING_SHADOW_SAMPLER_INDEX
             uint index = (pos_top_left.y + y) * bounds.z + pos_top_left.x;
+            [unroll]
             for (int x = -1; x <= 2; x++)
                 map[y + 1][x + 1] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(index + x);
 #else
+            [unroll]
             for (int x = -1; x <= 2; x++)
                 map[y + 1][x + 1] = DYNAMIC_LIGHTING_SHADOW_SAMPLER(uint2(pos_top_left.x + x, pos_top_left.y + y));
 #endif

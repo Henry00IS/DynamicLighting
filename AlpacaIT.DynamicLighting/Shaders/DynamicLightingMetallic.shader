@@ -65,14 +65,14 @@ Shader "Dynamic Lighting/Metallic"
                 float4 color : COLOR;
                 float3 world : TEXCOORD2;
                 float3 normal : TEXCOORD3;
-                half3 tspace0 : TEXCOORD4; // tangent.x, bitangent.x, normal.x
-                half3 tspace1 : TEXCOORD5; // tangent.y, bitangent.y, normal.y
-                half3 tspace2 : TEXCOORD6; // tangent.z, bitangent.z, normal.z
+                float3 tspace0 : TEXCOORD4; // tangent.x, bitangent.x, normal.x
+                float3 tspace1 : TEXCOORD5; // tangent.y, bitangent.y, normal.y
+                float3 tspace2 : TEXCOORD6; // tangent.z, bitangent.z, normal.z
             };
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
-            fixed4 _Color;
+            float4 _Color;
             sampler2D _MetallicGlossMap;
             float _Metallic;
             float _GlossMapScale;
@@ -94,14 +94,14 @@ Shader "Dynamic Lighting/Metallic"
                 o.normal = UnityObjectToWorldNormal(v.normal);
                 o.world = mul(unity_ObjectToWorld, v.vertex).xyz;
 
-                half3 wTangent = UnityObjectToWorldDir(v.tangent.xyz);
+                float3 wTangent = UnityObjectToWorldDir(v.tangent.xyz);
                 // compute bitangent from cross product of normal and tangent
-                half tangentSign = v.tangent.w * unity_WorldTransformParams.w;
-                half3 wBitangent = cross(o.normal, wTangent) * tangentSign;
+                float tangentSign = v.tangent.w * unity_WorldTransformParams.w;
+                float3 wBitangent = cross(o.normal, wTangent) * tangentSign;
                 // output the tangent space matrix
-                o.tspace0 = half3(wTangent.x, wBitangent.x, o.normal.x);
-                o.tspace1 = half3(wTangent.y, wBitangent.y, o.normal.y);
-                o.tspace2 = half3(wTangent.z, wBitangent.z, o.normal.z);
+                o.tspace0 = float3(wTangent.x, wBitangent.x, o.normal.x);
+                o.tspace1 = float3(wTangent.y, wBitangent.y, o.normal.y);
+                o.tspace2 = float3(wTangent.z, wBitangent.z, o.normal.z);
 
                 UNITY_TRANSFER_FOG(o,o.vertex);
                 return o;
@@ -127,9 +127,9 @@ Shader "Dynamic Lighting/Metallic"
             #endif
                 float ao = tex2D(_OcclusionMap, i.uv0).r;
 
-                half3 bumpmap = UnpackNormalWithScale(tex2D(_BumpMap, i.uv0), _BumpScale);
+                float3 bumpmap = UnpackNormalWithScale(tex2D(_BumpMap, i.uv0), _BumpScale);
                 // transform normal from tangent to world space
-                half3 worldNormal;
+                float3 worldNormal;
                 worldNormal.x = dot(i.tspace0, bumpmap);
                 worldNormal.y = dot(i.tspace1, bumpmap);
                 worldNormal.z = dot(i.tspace2, bumpmap);
@@ -154,17 +154,17 @@ Shader "Dynamic Lighting/Metallic"
                 kD *= 1.0 - metallic;
                 
                 // reflecting a ray from the camera against the object surface.
-                half3 reflection = reflect(-V, worldNormal);
+                float3 reflection = reflect(-V, worldNormal);
                 // sample the default cubemap provided by unity.
-                half4 skyData = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, reflection, roughness * 4.0);
-                half3 skyColor = DecodeHDR(skyData, unity_SpecCube0_HDR);
+                float4 skyData = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, reflection, roughness * 4.0);
+                float3 skyColor = DecodeHDR(skyData, unity_SpecCube0_HDR);
                 float3 specular = skyColor * F;
                 
                 // sample the unity baked lightmap (i.e. progressive lightmapper).
                 #if LIGHTMAP_ON
-                    half3 unity_lightmap_color = DecodeLightmap(UNITY_SAMPLE_TEX2D(unity_Lightmap, i.uv2));
+                    float3 unity_lightmap_color = DecodeLightmap(UNITY_SAMPLE_TEX2D(unity_Lightmap, i.uv2));
                 #else
-                    half3 unity_lightmap_color = half3(0.0, 0.0, 0.0);
+                    float3 unity_lightmap_color = float3(0.0, 0.0, 0.0);
                 #endif
                 
                 // the final lighting calculation combining all of the parts.
@@ -173,7 +173,7 @@ Shader "Dynamic Lighting/Metallic"
                 
                 // apply fog.
                 UNITY_APPLY_FOG(i.fogCoord, color);
-                return fixed4(color, 1.0);
+                return float4(color, 1.0);
             }
 
             DYNLIT_FRAGMENT_LIGHT
