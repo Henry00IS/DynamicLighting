@@ -360,8 +360,6 @@ struct DynamicTriangle
     // the amount of light sources affecting the triangle.
     uint lightCount;
     
-    // (shader only) the active light index we are currently processing.
-    uint activeLightIndex;
     // offset into dynamic_lights[] for the active light.
     uint activeLightDynamicLightsIndex;
     // offset into dynamic_triangles[] for the shadow data.
@@ -376,7 +374,6 @@ struct DynamicTriangle
         bounds = uint3(0, 0, 0);
         lightDataOffset = 0;
         lightCount = 0;
-        activeLightIndex = 0;
         activeLightDynamicLightsIndex = 0;
         activeLightShadowDataOffset = 0;
 #if DYNAMIC_LIGHTING_BOUNCE
@@ -406,32 +403,24 @@ struct DynamicTriangle
     // sets the active triangle light index for light related queries.
     void set_active_light_index(uint light_index)
     {
-        activeLightIndex = light_index;
-        
         // light indices within the triangle light count return the associated light indices.
-        if (activeLightIndex < lightCount)
+        if (light_index < lightCount)
         {
-#if DYNAMIC_LIGHTING_BOUNCE
-            uint offset = lightDataOffset + activeLightIndex * 3; // struct size.
-#else
-            uint offset = lightDataOffset + activeLightIndex * 2; // struct size.
-#endif
-            
             // read the dynamic light index to be used.
-            activeLightDynamicLightsIndex = dynamic_triangles[offset++];
+            activeLightDynamicLightsIndex = dynamic_triangles[lightDataOffset++];
             
             // read the shadow data offset.
-            activeLightShadowDataOffset = dynamic_triangles[offset++];
+            activeLightShadowDataOffset = dynamic_triangles[lightDataOffset++];
             
 #if DYNAMIC_LIGHTING_BOUNCE
             // read the bounce data offset.
-            activeLightBounceDataOffset = dynamic_triangles[offset];
+            activeLightBounceDataOffset = dynamic_triangles[lightDataOffset++];
 #endif      
             return;
         }
         
         // light indices beyond the triangle light count are used for realtime light sources.
-        activeLightDynamicLightsIndex = dynamic_lights_count + activeLightIndex - lightCount;
+        activeLightDynamicLightsIndex = dynamic_lights_count + light_index - lightCount;
     }
     
     // for a triangle gets the dynamic light source affecting it.
