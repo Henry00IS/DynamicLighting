@@ -338,7 +338,7 @@ namespace AlpacaIT.DynamicLighting
                     var lightmapScaleOffset = meshRenderer.lightmapScaleOffset;
                     if (lightmapScaleOffset.x == 0.0f) lightmapScaleOffset.x = 0.00001f;
                     if (lightmapScaleOffset.y == 0.0f) lightmapScaleOffset.y = 0.00001f;
-                    lightmapScaleOffset = new Vector4(1.0f / lightmapScaleOffset.x, 1.0f / lightmapScaleOffset.y, lightmapScaleOffset.z, lightmapScaleOffset.w);
+                    lightmapScaleOffset = new Vector4(1.0f / lightmapScaleOffset.x * lightmap.resolution, 1.0f / lightmapScaleOffset.y * lightmap.resolution, lightmapScaleOffset.z, lightmapScaleOffset.w);
 
                     // assign the material property block to each submesh.
                     var hasPropertyBlock = meshRenderer.HasPropertyBlock(); // unity api oversight: cannot differentiate between submesh blocks and normal ones.
@@ -506,7 +506,7 @@ namespace AlpacaIT.DynamicLighting
 
                         materialPropertyBlock.SetBuffer("dynamic_triangles", lightmap.buffer);
                         materialPropertyBlock.SetInteger("lightmap_resolution", lightmap.resolution);
-                        materialPropertyBlock.SetVector("dynamic_lighting_unity_LightmapST", new Vector4(1f, 1f, 0f, 0f)); // identity.
+                        materialPropertyBlock.SetVector("dynamic_lighting_unity_LightmapST", new Vector4(lightmap.resolution, lightmap.resolution, 0f, 0f)); // identity.
 
                         // add a triangle offset to fix sv_primitiveid starting at zero.
                         materialPropertyBlock.SetInteger("triangle_index_submesh_offset", (int)(mesh.GetIndexStart(j) / 3));

@@ -512,9 +512,11 @@ struct DynamicTriangle
         // offset the lightmap triangle uv to the top-left corner to read near zero, zero.
         uv -= bounds.xy;
 
+        [unroll]
         for (int y = -1; y <= 1; y++)
         {
             uint index = (uv.y + y) * bounds.z + uv.x;
+            [unroll]
             for (int x = -1; x <= 1; x++)
                 map += shadow_sample_index(index + x);
         }

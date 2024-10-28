@@ -69,9 +69,9 @@ Shader "Dynamic Lighting/Transparent"
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.uv0 = TRANSFORM_TEX(v.uv0, _MainTex);
-                // as we need pixel coordinates doing the multiplication here saves time.
+                // as we need pixel coordinates the xy component also contains the lightmap resolution.
                 // confirmed with NVIDIA Quadro K1000M improving the framerate.
-                o.uv1 = (v.uv1 - dynamic_lighting_unity_LightmapST.zw) * dynamic_lighting_unity_LightmapST.xy * lightmap_resolution;
+                o.uv1 = (v.uv1 - dynamic_lighting_unity_LightmapST.zw) * dynamic_lighting_unity_LightmapST.xy;
                 o.uv2 = v.uv1 * unity_LightmapST.xy + unity_LightmapST.zw;
                 o.color = v.color;
                 o.normal = UnityObjectToWorldNormal(v.normal);
