@@ -35,6 +35,7 @@ if (!is_bounce_available && NdotL == 0.0) return;
 if (NdotL == 0.0) return;
 #endif
 
+#ifndef DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS
 // when the light has a shadow cubemap we sample that for real-time shadows.
 if (light.is_shadow_available())
 {
@@ -50,6 +51,7 @@ if (light.is_shadow_available())
     if (light_distance - autobias > shadow_mapping_distance)
         return;
 }
+#endif
 
 // if this renderer has a lightmap we use shadow bits otherwise it's a dynamic object.
 // if this light is realtime we will skip this step.
@@ -59,12 +61,17 @@ float bounce = 0.0;
 #endif
 if (lightmap_resolution > 0 && light.is_dynamic())
 {
-#if DYNAMIC_LIGHTING_SHADOW_SOFT
-    // retrieve the shadow bit at this position with bilinear filtering.
-    map = dynamic_triangle.shadow_sample_bilinear(i.uv1);
+#ifndef DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS
+    #if DYNAMIC_LIGHTING_SHADOW_SOFT
+        // retrieve the shadow bit at this position with bilinear filtering.
+        map = dynamic_triangle.shadow_sample_bilinear(i.uv1);
+    #else
+        // retrieve the shadow bit at this position with 3x3 average sampling.
+        map = dynamic_triangle.shadow_sample3x3(i.uv1);
+    #endif
 #else
-    // retrieve the shadow bit at this position with 3x3 average sampling.
-    map = dynamic_triangle.shadow_sample3x3(i.uv1);
+    // retrieve the shadow bit at this position with basic sampling.
+    map = dynamic_triangle.shadow_sample_integrated(i.uv1);
 #endif
     
 #if DYNAMIC_LIGHTING_BOUNCE

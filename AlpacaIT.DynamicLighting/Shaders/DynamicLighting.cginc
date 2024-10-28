@@ -606,9 +606,36 @@ struct DynamicTriangle
 
         float bl = (bcommon + map[1][0] + map[2][0] + map[3][0]);
         float br = (bcommon + map[1][3] + map[2][3] + map[3][3]);
+        
+        // bilinear interpolation (simd).
+        float2 c = lerp(float2(tl, bl), float2(tr, br), f.x);
+        return lerp(c.x, c.y, f.y) / 9.0;
+    }
+    
+    // x x
+    // x x apply 4x sampling with interpolation to get bilinear filtered shadow bits.
+    //
+    float shadow_sample_integrated(float2 uv)
+    {
+        // huge shoutout to neu_graphic for their software bilinear filter shader.
+        // https://www.shadertoy.com/view/4sBSRK
 
-        // bilinear interpolation.
-        return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y) / 9.0;
+        // we are sample center, so it's the same as point sample.
+        float2 pos = uv - 0.5;
+        float2 f = frac(pos);
+        uint2 pos_top_left = floor(pos);
+
+        // offset the lightmap triangle uv to the top-left corner to read near zero, zero.
+        pos_top_left -= bounds.xy;
+        
+        float tl = shadow_sample(pos_top_left);
+        float tr = shadow_sample(pos_top_left + uint2(1, 0));
+        float bl = shadow_sample(pos_top_left + uint2(0, 1));
+        float br = shadow_sample(pos_top_left + uint2(1, 1));
+        
+        // bilinear interpolation (simd).
+        float2 c = lerp(float2(tl, bl), float2(tr, br), f.x);
+        return lerp(c.x, c.y, f.y);
     }
     
 #if DYNAMIC_LIGHTING_BOUNCE
@@ -656,7 +683,9 @@ struct DynamicTriangle
         float bl   = bounce_sample(index    , bounceBpp, bouncePixels, bounceMask);
         float br   = bounce_sample(index + 1, bounceBpp, bouncePixels, bounceMask);
         
-        return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y);
+        // bilinear interpolation (simd).
+        float2 c = lerp(float2(tl, bl), float2(tr, br), f.x);
+        return lerp(c.x, c.y, f.y);
     }
     
     // returns whether occlusion (1bpp shadow bitmask) data is available for this polygon.

@@ -64,6 +64,13 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         private GlobalKeyword shadersGlobalKeywordBounce;
 
+        /// <summary>
+        /// Stores the <see cref="GlobalKeyword"/> of "DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS".
+        /// Designed for underpowered laptops with integrated graphics.
+        /// <para>Disables support for real-time shadows.</para>
+        /// </summary>
+        private GlobalKeyword shadersGlobalKeywordIntegratedGraphics;
+
         /// <summary>Global <see cref="Shader.PropertyToID"/> for buffer "dynamic_lights".</summary>
         private int shadersGlobalPropertyIdDynamicLights;
 
@@ -111,6 +118,13 @@ namespace AlpacaIT.DynamicLighting
         {
             get => Shader.IsKeywordEnabled(shadersGlobalKeywordBounce);
             set => ShadersSetGlobalKeyword(ref shadersGlobalKeywordBounce, value);
+        }
+
+        /// <summary>Gets or sets whether global shader keyword "DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS" is enabled.</summary>
+        private bool shadersKeywordIntegratedGraphicsEnabled
+        {
+            get => Shader.IsKeywordEnabled(shadersGlobalKeywordIntegratedGraphics);
+            set => ShadersSetGlobalKeyword(ref shadersGlobalKeywordIntegratedGraphics, value);
         }
 
         /// <summary>Sets the global shader buffer property "dynamic_lights".</summary>
@@ -165,6 +179,7 @@ namespace AlpacaIT.DynamicLighting
             shadersGlobalKeywordShadowSoft = GlobalKeyword.Create("DYNAMIC_LIGHTING_SHADOW_SOFT");
             shadersGlobalKeywordBvh = GlobalKeyword.Create("DYNAMIC_LIGHTING_BVH");
             shadersGlobalKeywordBounce = GlobalKeyword.Create("DYNAMIC_LIGHTING_BOUNCE");
+            shadersGlobalKeywordIntegratedGraphics = GlobalKeyword.Create("DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS");
 
             shadersGlobalPropertyIdDynamicLights = Shader.PropertyToID("dynamic_lights");
             shadersGlobalPropertyIdDynamicLightsCount = Shader.PropertyToID("dynamic_lights_count");

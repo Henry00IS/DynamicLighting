@@ -23,6 +23,7 @@ Shader "Dynamic Lighting/Diffuse"
             #pragma multi_compile __ DYNAMIC_LIGHTING_LIT
             #pragma multi_compile __ DYNAMIC_LIGHTING_BVH
             #pragma multi_compile __ DYNAMIC_LIGHTING_BOUNCE
+            #pragma multi_compile __ DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS
             #pragma multi_compile multi_compile_fwdbase
 
             #include "UnityCG.cginc"
