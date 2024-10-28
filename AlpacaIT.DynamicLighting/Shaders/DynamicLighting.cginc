@@ -406,15 +406,20 @@ struct DynamicTriangle
         // light indices within the triangle light count return the associated light indices.
         if (light_index < lightCount)
         {
+#if DYNAMIC_LIGHTING_BOUNCE
+            uint offset = lightDataOffset + light_index * 3; // struct size.
+#else
+            uint offset = lightDataOffset + light_index * 2; // struct size.
+#endif      
             // read the dynamic light index to be used.
-            activeLightDynamicLightsIndex = dynamic_triangles[lightDataOffset++];
+            activeLightDynamicLightsIndex = dynamic_triangles[offset++];
             
             // read the shadow data offset.
-            activeLightShadowDataOffset = dynamic_triangles[lightDataOffset++];
+            activeLightShadowDataOffset = dynamic_triangles[offset++];
             
 #if DYNAMIC_LIGHTING_BOUNCE
             // read the bounce data offset.
-            activeLightBounceDataOffset = dynamic_triangles[lightDataOffset++];
+            activeLightBounceDataOffset = dynamic_triangles[offset];
 #endif      
             return;
         }
