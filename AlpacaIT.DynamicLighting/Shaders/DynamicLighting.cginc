@@ -587,8 +587,8 @@ struct DynamicTriangle
         //
         float tcommon = common + map[0][1] + map[0][2];
 
-        float tl = (tcommon + map[0][0] + map[1][0] + map[2][0]) / 9.0;
-        float tr = (tcommon + map[0][3] + map[1][3] + map[2][3]) / 9.0;
+        float tl = (tcommon + map[0][0] + map[1][0] + map[2][0]);
+        float tr = (tcommon + map[0][3] + map[1][3] + map[2][3]);
 
         // for the bottom 3x3 samples there are more overlapping samples:
         //
@@ -599,11 +599,11 @@ struct DynamicTriangle
         //
         float bcommon = common + map[3][1] + map[3][2];
 
-        float bl = (bcommon + map[1][0] + map[2][0] + map[3][0]) / 9.0;
-        float br = (bcommon + map[1][3] + map[2][3] + map[3][3]) / 9.0;
+        float bl = (bcommon + map[1][0] + map[2][0] + map[3][0]);
+        float br = (bcommon + map[1][3] + map[2][3] + map[3][3]);
 
         // bilinear interpolation.
-        return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y);
+        return lerp(lerp(tl, tr, f.x), lerp(bl, br, f.x), f.y) / 9.0;
     }
     
 #if DYNAMIC_LIGHTING_BOUNCE
