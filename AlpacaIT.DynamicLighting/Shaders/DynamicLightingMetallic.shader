@@ -199,7 +199,7 @@ Shader "Dynamic Lighting/Metallic"
                 
                 // calculate per-light radiance
                 float3 H = normalize(V + light_direction);
-#if DYNAMIC_LIGHTING_BOUNCE
+#if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
                 float3 radiance = (light.color * light.intensity * attenuation) + (light.bounceColor * light.intensity * attenuation * bounce);
 #else
                 float3 radiance = (light.color * light.intensity * attenuation);
@@ -241,7 +241,7 @@ Shader "Dynamic Lighting/Metallic"
                 float3 specular = numerator / denominator;
                 
                 // add to outgoing radiance Lo
-#if DYNAMIC_LIGHTING_BOUNCE
+#if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
                 Lo += (kD * albedo / UNITY_PI + specular) * radiance * NdotL * map;
                 Lo += (kD * albedo / UNITY_PI + specular) * radiance * bounce;
 #else

@@ -21,7 +21,7 @@ light_direction = normalize(light_direction);
 // a simple dot product with the normal gives us diffusion.
 float NdotL = max(dot(GENERATE_NORMAL, light_direction), 0);
 
-#if DYNAMIC_LIGHTING_BOUNCE
+#if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
 // check whether bounce texture data is available on this triangle.
 bool is_bounce_available = dynamic_triangle.is_bounce_available();
 #endif
@@ -29,7 +29,7 @@ bool is_bounce_available = dynamic_triangle.is_bounce_available();
 // this also tells us whether the fragment is facing away from the light.
 // as the fragment will then be black we can early out here.
 // confirmed with NVIDIA Quadro K1000M improving the framerate.
-#if DYNAMIC_LIGHTING_BOUNCE
+#if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
 if (!is_bounce_available && NdotL == 0.0) return;
 #else
 if (NdotL == 0.0) return;
@@ -56,7 +56,7 @@ if (light.is_shadow_available())
 // if this renderer has a lightmap we use shadow bits otherwise it's a dynamic object.
 // if this light is realtime we will skip this step.
 float map = 1.0;
-#if DYNAMIC_LIGHTING_BOUNCE
+#if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
 float bounce = 0.0;
 #endif
 if (lightmap_resolution > 0 && light.is_dynamic())
@@ -74,13 +74,13 @@ if (lightmap_resolution > 0 && light.is_dynamic())
     map = dynamic_triangle.shadow_sample_integrated(i.uv1);
 #endif
     
-#if DYNAMIC_LIGHTING_BOUNCE
+#if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
     // retrieve the bounce lighting sample.
     if (is_bounce_available)
     {
         // bounce is almost never 0.0 and checking for it to early out is more expensive.
         // confirmed with NVIDIA Quadro K1000M.
-        bounce = dynamic_triangle.bounce_sample_bilinear(i.uv1);
+        bounce = dynamic_triangle.bounce_sample_bilinear(light, i.uv1);
     }
     else
     {
@@ -95,7 +95,7 @@ if (lightmap_resolution > 0 && light.is_dynamic())
 #endif
 }
 
-#if DYNAMIC_LIGHTING_BOUNCE
+#if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
 // whenever the fragment is fully in shadow we can skip work.
 // confirmed with NVIDIA Quadro K1000M improving the framerate.
 if (map != 0.0 || bounce != 0.0)
@@ -109,7 +109,7 @@ if (map != 0.0 || bounce != 0.0)
         if (spotlight.x <= light.light_outerCutoff || spotlight.x == 0.0) // prevent division by zero in light cookies.
             return;
         map *= spotlight.y;
-#if DYNAMIC_LIGHTING_BOUNCE
+#if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
         bounce *= spotlight.y;
 #endif
         // when the light has a cookie texture we sample that.
@@ -127,11 +127,11 @@ if (map != 0.0 || bounce != 0.0)
         if (spotlight.x <= light.light_outerCutoff)
             return;
         map *= spotlight.y;
-#if DYNAMIC_LIGHTING_BOUNCE
+#if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
         bounce *= spotlight.y;
 #endif
     }
-#if DYNAMIC_LIGHTING_BOUNCE
+#if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
 }
 if (map != 0.0)
 {
@@ -167,7 +167,7 @@ if (map != 0.0)
     {
         map *= light.calculate_randomshimmer_bilinear(i.world);
     }
-#if DYNAMIC_LIGHTING_BOUNCE
+#if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
 }
 #endif
 

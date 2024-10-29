@@ -129,7 +129,7 @@ Shader "Dynamic Lighting/Transparent"
                 #include "GenerateLightProcessor.cginc"
                 
                 // add this light to the final color of the fragment.
-#if DYNAMIC_LIGHTING_BOUNCE
+#if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
                 light_final += (light.color * attenuation * NdotL * map) + (light.bounceColor * attenuation * bounce);
 #else
                 light_final += (light.color * attenuation * NdotL * map);

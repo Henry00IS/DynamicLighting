@@ -68,6 +68,8 @@ namespace AlpacaIT.DynamicLighting
         /// Stores the <see cref="GlobalKeyword"/> of "DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS".
         /// Designed for underpowered laptops with integrated graphics.
         /// <para>Disables support for real-time shadows.</para>
+        /// <para>Disables support for bounce lighting.</para>
+        /// <para>Uses very cheap bilinear filtering for shadows.</para>
         /// </summary>
         private GlobalKeyword shadersGlobalKeywordIntegratedGraphics;
 

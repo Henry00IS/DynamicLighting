@@ -1232,6 +1232,19 @@ namespace AlpacaIT.DynamicLighting
             }
         }
 
+        /// <summary>
+        /// Gets or sets a special graphics mode for underpowered laptops with integrated graphics.
+        /// You should add this option to your in-game settings menu.
+        /// <para>Disables support for real-time shadows.</para>
+        /// <para>Disables support for bounce lighting.</para>
+        /// <para>Uses very cheap bilinear filtering for shadows.</para>
+        /// </summary>
+        public bool integratedGraphicsModeEnabled
+        {
+            get => shadersKeywordIntegratedGraphicsEnabled;
+            set => shadersKeywordIntegratedGraphicsEnabled = value;
+        }
+
         private void OnDrawGizmos()
         {
 #if UNITY_EDITOR
