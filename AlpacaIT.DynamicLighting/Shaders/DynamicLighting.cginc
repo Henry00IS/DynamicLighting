@@ -364,7 +364,7 @@ struct DynamicTriangle
     uint activeLightDynamicLightsIndex;
     // offset into dynamic_triangles[] for the shadow data.
     uint activeLightShadowDataOffset;
-#if DYNAMIC_LIGHTING_BOUNCE
+#if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
     // offset into dynamic_triangles[] for the bounce data.
     uint activeLightBounceDataOffset;
 #endif
@@ -376,7 +376,7 @@ struct DynamicTriangle
         lightCount = 0;
         activeLightDynamicLightsIndex = 0;
         activeLightShadowDataOffset = 0;
-#if DYNAMIC_LIGHTING_BOUNCE
+#if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
         activeLightBounceDataOffset = 0;
 #endif
     }
@@ -387,17 +387,19 @@ struct DynamicTriangle
         // read the dynamic triangles header.
         uint offset = (triangle_index + triangle_index_submesh_offset) * 4; // struct size.
         
-        // we increase the light data offset by one to skip the light count field.
+        // read the offset into dynamic_triangles[] for the light data.
         lightDataOffset = dynamic_triangles[offset++];
-        lightCount = dynamic_triangles[lightDataOffset++];
-        
-        // we can crash the gpu driver when we read a garbage light count.
-        if (lightCount > 32) lightCount = 32; // tracing limit is 32 overlapping lights.
         
         // read the bounds of the triangle as floats.
         bounds.x = dynamic_triangles[offset++];
         bounds.y = dynamic_triangles[offset++];
         bounds.z = dynamic_triangles[offset];
+        
+        // we increase the light data offset by one to skip the light count field.
+        lightCount = dynamic_triangles[lightDataOffset++];
+        
+        // we can crash the gpu driver when we read a garbage light count.
+        if (lightCount > 32) lightCount = 32; // tracing limit is 32 overlapping lights.
     }
     
     // sets the active triangle light index for light related queries.
@@ -417,7 +419,7 @@ struct DynamicTriangle
             // read the shadow data offset.
             activeLightShadowDataOffset = dynamic_triangles[offset++];
             
-#if DYNAMIC_LIGHTING_BOUNCE
+#if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
             // read the bounce data offset.
             activeLightBounceDataOffset = dynamic_triangles[offset];
 #endif      
@@ -638,7 +640,7 @@ struct DynamicTriangle
         return lerp(c.x, c.y, f.y);
     }
     
-#if DYNAMIC_LIGHTING_BOUNCE
+#if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
     // fetches a bounce pixel at the specified uv coordinates from the bounce texture data.
     // note: requires 'uv -= bounds.xy' to be calculated up front.
     float bounce_sample(uint index, uint bounceBpp, uint uintIndex, uint byteIndex, uint bounceMask)
