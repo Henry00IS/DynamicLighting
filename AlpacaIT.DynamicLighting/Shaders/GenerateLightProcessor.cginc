@@ -113,9 +113,9 @@ if (map != 0.0 || bounce != 0.0)
         bounce *= spotlight.y;
 #endif
         // when the light has a cookie texture we sample that.
-        if (light.is_cookie_available() && light.light_outerCutoff > 0.0)
+        if (light.is_cookie_available())
         {
-            float3x3 rot = look_at_matrix(-light.forward, light.up);
+            float3x3 rot = look_at_matrix(light.forward, light.up);
             float2 world_minus_light_position = mul(light_direction, rot).xy;
             map *= light_cookies.SampleLevel(sampler_light_cookies, float3(0.5 - light.gpFloat3 * world_minus_light_position * (1.0 / spotlight.x), light.cookieIndex), 0);
         }

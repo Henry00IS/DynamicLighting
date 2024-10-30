@@ -138,7 +138,7 @@ struct DynamicLight
     //
     float2 calculate_spotlight(float3 light_direction)
     {
-        float theta = dot(light_direction, -forward);
+        float theta = dot(light_direction, forward);
         float epsilon = light_cutoff - light_outerCutoff;
         float intensity = saturate((theta - light_outerCutoff) / epsilon);
         return float2(theta, intensity);

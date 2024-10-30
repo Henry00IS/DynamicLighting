@@ -1073,7 +1073,7 @@ namespace AlpacaIT.DynamicLighting
                     shaderLight->gpFloat1 = Mathf.Cos(light.lightCutoff * Mathf.Deg2Rad);
                     shaderLight->gpFloat2 = Mathf.Cos(light.lightOuterCutoff * Mathf.Deg2Rad);
                     lightRotation = light.transform.rotation;
-                    shaderLight->forward = lightRotation * Vector3.forward;
+                    shaderLight->forward = lightRotation * -Vector3.forward;
 
                     if (light.lightCookieTexture)
                     {

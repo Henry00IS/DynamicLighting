@@ -58,6 +58,9 @@ namespace AlpacaIT.DynamicLighting
             // the light cookie texture must be set.
             if (shaderLight->cookieIndex != uint.MaxValue) return;
 
+            // the cookie can not be rendered above 90° or at 0°.
+            if (shaderLight->gpFloat2 < 0.0f || shaderLight->gpFloat2 == 1.0f) return;
+
             // assign the same index to the same cookie texture this frame.
             var texture = light.lightCookieTexture;
             if (lightCookieTextureIndices.TryGetValue(texture, out uint index))
