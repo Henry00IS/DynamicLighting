@@ -101,8 +101,14 @@ if (lightmap_resolution > 0 && light.is_dynamic())
 if (map != 0.0 || bounce != 0.0)
 {
 #endif
+    uint light_type = light.get_type();
+    if (light_type == light_type_point)
+    {
+        // early out for this default type, big speed improvement.
+    }
+    else
     // spot lights determine whether we are in the light cone or outside.
-    if (light.is_spotlight())
+    if (light_type == light_type_spot)
     {
         // anything outside of the spot light can and must be skipped.
         float2 spotlight = light.calculate_spotlight(light_direction);
@@ -120,7 +126,7 @@ if (map != 0.0 || bounce != 0.0)
             map *= light_cookies.SampleLevel(sampler_light_cookies, float3(0.5 - light.gpFloat3 * world_minus_light_position * (1.0 / spotlight.x), light.cookieIndex), 0);
         }
     }
-    else if (light.is_discoball())
+    else if (light_type == light_type_discoball)
     {
         // anything outside of the spot lights can and must be skipped.
         float2 spotlight = light.calculate_discoball(light_direction);
@@ -135,35 +141,41 @@ if (map != 0.0 || bounce != 0.0)
 }
 if (map != 0.0)
 {
+    uint light_type = light.get_type();
 #else
     else
 #endif
-    if (light.is_wave())
+    if (light_type == light_type_wave)
     {
         map *= light.calculate_wave(i.world);
     }
-    else if (light.is_interference())
+    else if (light_type == light_type_interference)
     {
         map *= light.calculate_interference(light_position_minus_world);
     }
-    else if (light.is_rotor())
+    else if (light_type == light_type_rotor)
     {
         map *= light.calculate_rotor(light_position_minus_world);
     }
-    else if (light.is_shock())
+    else if (light_type == light_type_shock)
     {
         map *= light.calculate_shock(i.world);
     }
-    else if (light.is_disco())
+    else if (light_type == light_type_disco)
     {
         map *= light.calculate_disco(light_position_minus_world);
     }
 
-    if (light.is_watershimmer())
+    uint light_shimmer = light.get_shimmer();
+    if (light_shimmer == light_shimmer_none)
+    {
+        // early out for this default type, big speed improvement.
+    }
+    else if (light_shimmer == light_shimmer_water)
     {
         map *= light.calculate_watershimmer_bilinear(i.world);
     }
-    else if (light.is_randomshimmer())
+    else if (light_shimmer == light_shimmer_random)
     {
         map *= light.calculate_randomshimmer_bilinear(i.world);
     }

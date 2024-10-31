@@ -1033,10 +1033,17 @@ namespace AlpacaIT.DynamicLighting
             var lightBounceColor = light.lightBounceColor;
             var lightBounceModifier = light.lightBounceModifier;
             var lightFalloff = light.lightFalloff;
+            var lightType = light.lightType;
+            var lightShimmer = light.lightShimmer;
 
             // the first 5 bits are unused (used to be channel index).
             // bit 6 marks lights as realtime without shadows.
             shaderLight->channel = realtime ? 32 : (uint)0;
+            // bit 7-10 store the light type.
+            shaderLight->channel |= (uint)lightType << 6;
+            // bit 11-12 store the light shimmering.
+            shaderLight->channel |= (uint)lightShimmer << 10;
+
             // -> the light intensity is set by the effects update step.
             shaderLight->position = light.cache.transformPosition;
 
@@ -1066,10 +1073,9 @@ namespace AlpacaIT.DynamicLighting
             shaderLight->up.x = -200f;
 
             Quaternion lightRotation;
-            switch (light.lightType)
+            switch (lightType)
             {
                 case DynamicLightType.Spot:
-                    shaderLight->channel |= (uint)1 << 6; // spot light bit
                     shaderLight->gpFloat1 = Mathf.Cos(light.lightCutoff * Mathf.Deg2Rad);
                     shaderLight->gpFloat2 = Mathf.Cos(light.lightOuterCutoff * Mathf.Deg2Rad);
                     lightRotation = light.transform.rotation;
@@ -1086,7 +1092,6 @@ namespace AlpacaIT.DynamicLighting
                     break;
 
                 case DynamicLightType.Discoball:
-                    shaderLight->channel |= (uint)1 << 7; // discoball light bit
                     shaderLight->gpFloat1 = Mathf.Cos(light.lightCutoff * Mathf.Deg2Rad);
                     shaderLight->gpFloat2 = Mathf.Cos(light.lightOuterCutoff * Mathf.Deg2Rad);
                     lightRotation = light.transform.rotation;
@@ -1095,13 +1100,11 @@ namespace AlpacaIT.DynamicLighting
                     break;
 
                 case DynamicLightType.Wave:
-                    shaderLight->channel |= (uint)1 << 10; // wave light bit
                     shaderLight->gpFloat1 = light.lightWaveSpeed;
                     shaderLight->gpFloat2 = light.lightWaveFrequency;
                     break;
 
                 case DynamicLightType.Interference:
-                    shaderLight->channel |= (uint)1 << 11; // interference light bit
                     shaderLight->gpFloat1 = light.lightWaveSpeed;
                     shaderLight->gpFloat2 = light.lightWaveFrequency;
                     lightRotation = light.transform.rotation;
@@ -1110,7 +1113,6 @@ namespace AlpacaIT.DynamicLighting
                     break;
 
                 case DynamicLightType.Rotor:
-                    shaderLight->channel |= (uint)1 << 12; // rotor light bit
                     shaderLight->gpFloat1 = light.lightWaveSpeed;
                     shaderLight->gpFloat2 = Mathf.Round(light.lightWaveFrequency);
                     shaderLight->gpFloat3 = light.lightRotorCenter;
@@ -1120,13 +1122,11 @@ namespace AlpacaIT.DynamicLighting
                     break;
 
                 case DynamicLightType.Shock:
-                    shaderLight->channel |= (uint)1 << 13; // shock light bit
                     shaderLight->gpFloat1 = light.lightWaveSpeed;
                     shaderLight->gpFloat2 = light.lightWaveFrequency;
                     break;
 
                 case DynamicLightType.Disco:
-                    shaderLight->channel |= (uint)1 << 14; // disco light bit
                     shaderLight->gpFloat1 = light.lightWaveSpeed;
                     shaderLight->gpFloat2 = Mathf.Round(light.lightWaveFrequency);
                     shaderLight->gpFloat3 = light.lightDiscoVerticalSpeed;
@@ -1136,16 +1136,14 @@ namespace AlpacaIT.DynamicLighting
                     break;
             }
 
-            switch (light.lightShimmer)
+            switch (lightShimmer)
             {
                 case DynamicLightShimmer.Water:
-                    shaderLight->channel |= (uint)1 << 8; // water shimmer light bit
                     shaderLight->shimmerScale = light.lightShimmerScale;
                     shaderLight->shimmerModifier = light.lightShimmerModifier;
                     break;
 
                 case DynamicLightShimmer.Random:
-                    shaderLight->channel |= (uint)1 << 9; // random shimmer light bit
                     shaderLight->shimmerScale = light.lightShimmerScale;
                     shaderLight->shimmerModifier = light.lightShimmerModifier;
                     break;

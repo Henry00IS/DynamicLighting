@@ -8,6 +8,19 @@
 #define light_rotorCenter gpFloat3
 #define light_discoVerticalSpeed gpFloat3
 
+#define light_type_point 0
+#define light_type_spot 1 << 6
+#define light_type_discoball 2 << 6
+#define light_type_wave 3 << 6
+#define light_type_interference 4 << 6
+#define light_type_rotor 5 << 6
+#define light_type_shock 6 << 6
+#define light_type_disco 7 << 6
+
+#define light_shimmer_none 0
+#define light_shimmer_water 1 << 10
+#define light_shimmer_random 2 << 10
+
 struct DynamicLight
 {
     float3 position;
@@ -49,59 +62,17 @@ struct DynamicLight
     {
         return !is_realtime();
     }
-
-    // bit 7 determines whether the light is a spotlight.
-    bool is_spotlight()
+    
+    // bit 7-10 determines the light type (see the light_type_ defines above).
+    uint get_type()
     {
-        return channel & 64u;
+        return channel & 960u;
     }
-
-    // bit 8 determines whether the light is a discoball.
-    bool is_discoball()
+    
+    // bit 11-12 determines the light shimmering (see the light_shimmer_ defines above).
+    uint get_shimmer()
     {
-        return channel & 128u;
-    }
-
-    // bit 9 determines whether the light has water shimmer.
-    bool is_watershimmer()
-    {
-        return channel & 256u;
-    }
-
-    // bit 10 determines whether the light has random shimmer.
-    bool is_randomshimmer()
-    {
-        return channel & 512u;
-    }
-
-    // bit 11 determines whether the light is a wave.
-    bool is_wave()
-    {
-        return channel & 1024u;
-    }
-
-    // bit 12 determines whether the light is interference.
-    bool is_interference()
-    {
-        return channel & 2048u;
-    }
-
-    // bit 13 determines whether the light is a rotor.
-    bool is_rotor()
-    {
-        return channel & 4096u;
-    }
-
-    // bit 14 determines whether the light is a shockwave.
-    bool is_shock()
-    {
-        return channel & 8192u;
-    }
-
-    // bit 15 determines whether the light is a disco.
-    bool is_disco()
-    {
-        return channel & 16384u;
+        return channel & 3072u;
     }
     
     // bit 16 determines whether the light has a shadow cubemap.
