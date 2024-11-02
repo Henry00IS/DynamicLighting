@@ -247,7 +247,7 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>
         /// Remembers whether <see cref="Application.isPlaying"/> to prevent native calls.
         /// </summary>
-        private bool editorIsPlaying = false;
+        internal bool editorIsPlaying = false;
 
         /// <summary>
         /// Called by <see cref="DynamicLightingTracer"/> to properly free up the compute buffers
@@ -279,8 +279,11 @@ namespace AlpacaIT.DynamicLighting
             raycastedScene = null;
             Utilities.DeleteRaycastedScene();
 
-            // make sure the user gets prompted to save their scene.
-            UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
+            if (!editorIsPlaying)
+            {
+                // make sure the user gets prompted to save their scene.
+                UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
+            }
         }
 
         [UnityEditor.MenuItem("Dynamic Lighting/Delete Scene Lightmaps", false, 60)]

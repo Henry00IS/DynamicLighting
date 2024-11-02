@@ -290,7 +290,10 @@ namespace AlpacaIT.DynamicLighting
                 Debug.Log(log.ToString());
                 dynamicLightManager.Reload();
 #if UNITY_EDITOR
-                UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
+                if (!dynamicLightManager.editorIsPlaying)
+                {
+                    UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
+                }
 #endif
             }
             catch (System.Exception ex)
