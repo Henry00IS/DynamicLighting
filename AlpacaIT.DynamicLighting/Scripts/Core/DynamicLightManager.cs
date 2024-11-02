@@ -72,6 +72,56 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         public static event EventHandler<DynamicLightingTraceCompletedEventArgs> traceCompleted;
 
+        /// <summary>
+        /// Called when the <see cref="DynamicLightManager"/> finishes initializing.
+        /// <para>
+        /// Warning: You must unsubscribe static events to prevent memory leaks during scene reloads
+        ///          (unless your code is wholly static). <br/>
+        ///          Consider using an [InitializeOnLoadMethod] or [RuntimeInitializeOnLoadMethod].
+        /// </para>
+        /// </summary>
+        public static event EventHandler<DynamicLightingInitializedEventArgs> initialized;
+
+        /// <summary>
+        /// Called when the <see cref="DynamicLightManager"/> finishes uninitializing.
+        /// <para>
+        /// Warning: You must unsubscribe static events to prevent memory leaks during scene reloads
+        ///          (unless your code is wholly static). <br/>
+        ///          Consider using an [InitializeOnLoadMethod] or [RuntimeInitializeOnLoadMethod].
+        /// </para>
+        /// </summary>
+        public static event EventHandler<DynamicLightingUninitializedEventArgs> uninitialized;
+
+        /// <summary>
+        /// Called when the <see cref="DynamicLightManager"/> begins updating.
+        /// <para>
+        /// Warning: You must unsubscribe static events to prevent memory leaks during scene reloads
+        ///          (unless your code is wholly static). <br/>
+        ///          Consider using an [InitializeOnLoadMethod] or [RuntimeInitializeOnLoadMethod].
+        /// </para>
+        /// </summary>
+        public static event EventHandler<DynamicLightingPreUpdateEventArgs> preUpdate;
+
+        /// <summary>
+        /// Called when the <see cref="DynamicLightManager"/> finishes updating.
+        /// <para>
+        /// Warning: You must unsubscribe static events to prevent memory leaks during scene reloads
+        ///          (unless your code is wholly static). <br/>
+        ///          Consider using an [InitializeOnLoadMethod] or [RuntimeInitializeOnLoadMethod].
+        /// </para>
+        /// </summary>
+        public static event EventHandler<DynamicLightingPostUpdateEventArgs> postUpdate;
+
+        /// <summary>
+        /// Called when the <see cref="DynamicLightManager"/> deletes the lighting data in the scene.
+        /// <para>
+        /// Warning: You must unsubscribe static events to prevent memory leaks during scene reloads
+        ///          (unless your code is wholly static). <br/>
+        ///          Consider using an [InitializeOnLoadMethod] or [RuntimeInitializeOnLoadMethod].
+        /// </para>
+        /// </summary>
+        public static event EventHandler<DynamicLightingDeletedEventArgs> lightingDeleted;
+
         /// <summary>The light channel number used by realtime lights without baked shadows.</summary>
         public const int realtimeLightChannel = 32;
 
@@ -233,6 +283,16 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Stores the color space of the project at initialization.</summary>
         internal static ColorSpace colorSpace = ColorSpace.Linear;
 
+        /// <summary>
+        /// Cached <see cref="DynamicLightingPreUpdateEventArgs"/> to prevent making new instances.
+        /// </summary>
+        private DynamicLightingPreUpdateEventArgs dynamicLightingPreUpdateEventArgs;
+
+        /// <summary>
+        /// Cached <see cref="DynamicLightingPostUpdateEventArgs"/> to prevent making new instances.
+        /// </summary>
+        private DynamicLightingPostUpdateEventArgs dynamicLightingPostUpdateEventArgs;
+
         [System.NonSerialized]
         private bool isInitialized = false;
 
@@ -284,6 +344,9 @@ namespace AlpacaIT.DynamicLighting
                 // make sure the user gets prompted to save their scene.
                 UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
             }
+
+            // callback for third-party developers.
+            lightingDeleted?.Invoke(this, new DynamicLightingDeletedEventArgs(this));
         }
 
         [UnityEditor.MenuItem("Dynamic Lighting/Delete Scene Lightmaps", false, 60)]
@@ -408,6 +471,10 @@ namespace AlpacaIT.DynamicLighting
             // only execute the rest if not initialized yet.
             if (isInitialized) return;
             isInitialized = true;
+
+            // prepare event arguments for common callbacks.
+            dynamicLightingPreUpdateEventArgs = new DynamicLightingPreUpdateEventArgs(this);
+            dynamicLightingPostUpdateEventArgs = new DynamicLightingPostUpdateEventArgs(this);
 
             // check and store the color space mode of the project.
             colorSpace = QualitySettings.activeColorSpace;
@@ -534,6 +601,9 @@ namespace AlpacaIT.DynamicLighting
                 }
                 else Debug.LogError("Unable to read the dynamic lights bounding volume hierarchy file! Probably because you upgraded from an older version. Please raytrace your scene again.");
             }
+
+            // callback for third-party developers.
+            initialized?.Invoke(this, new DynamicLightingInitializedEventArgs(this));
         }
 
         private void Cleanup()
@@ -587,6 +657,9 @@ namespace AlpacaIT.DynamicLighting
 
             // -> partial class DynamicLightManager.LightPositions cleanup.
             LightPositionsCleanup();
+
+            // callback for third-party developers.
+            uninitialized?.Invoke(this, new DynamicLightingUninitializedEventArgs(this));
         }
 
         /// <summary>Removes the lightmap data from the given material property block.</summary>
@@ -693,6 +766,9 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>This handles the CPU side lighting effects.</summary>
         private unsafe void Update()
         {
+            // callback for third-party developers.
+            preUpdate?.Invoke(this, dynamicLightingPreUpdateEventArgs);
+
             // get the time values once as they are expensive native calls.
             var deltaTime = Time.deltaTime;
             timeTime = Time.time;
@@ -990,6 +1066,8 @@ namespace AlpacaIT.DynamicLighting
                 }
             }
 #endif
+            // callback for third-party developers.
+            postUpdate?.Invoke(this, dynamicLightingPostUpdateEventArgs);
         }
 
         /// <summary>
@@ -1294,13 +1372,16 @@ namespace AlpacaIT.DynamicLighting
             tracer.bounceLightingDefaultCompression = bounceLightingCompression;
             tracer.tracerFlags = dynamicLightingTracerFlags;
 
+            // callback for third-party developers.
             bool cancelled = false;
             tracer.cancelled += (s, e) => { cancelled = true; traceCancelled?.Invoke(this, new DynamicLightingTraceCancelledEventArgs(this)); };
 
+            // callback for third-party developers.
             traceStarted?.Invoke(this, new DynamicLightingTraceStartedEventArgs(this));
 
             tracer.StartRaytracing();
 
+            // callback for third-party developers.
             if (!cancelled)
                 traceCompleted?.Invoke(this, new DynamicLightingTraceCompletedEventArgs(this));
         }
