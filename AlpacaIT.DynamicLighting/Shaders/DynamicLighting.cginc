@@ -370,7 +370,8 @@ struct DynamicTriangle
         lightCount = dynamic_triangles[lightDataOffset++];
         
         // we can crash the gpu driver when we read a garbage light count.
-        if (lightCount > 32) lightCount = 32; // tracing limit is 32 overlapping lights.
+        // 32 overlapping lights limit doesn't restrict a triangle from being hit by more.
+        if (lightCount > 256) lightCount = 256;
     }
     
     // sets the active triangle light index for light related queries.
