@@ -45,9 +45,6 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         private GlobalKeyword shadersGlobalKeywordLit;
 
-        /// <summary>Stores the <see cref="GlobalKeyword"/> of "DYNAMIC_LIGHTING_SHADOW_SOFT".</summary>
-        private GlobalKeyword shadersGlobalKeywordShadowSoft;
-
         /// <summary>
         /// Stores the <see cref="GlobalKeyword"/> of "DYNAMIC_LIGHTING_BVH". Because the Bounding
         /// Volume Hierarchy requires a valid StructuredBuffer on the GPU, we use this flag to have
@@ -64,14 +61,14 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         private GlobalKeyword shadersGlobalKeywordBounce;
 
-        /// <summary>
-        /// Stores the <see cref="GlobalKeyword"/> of "DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS".
-        /// Designed for underpowered laptops with integrated graphics.
-        /// <para>Disables support for real-time shadows.</para>
-        /// <para>Disables support for bounce lighting.</para>
-        /// <para>Uses very cheap bilinear filtering for shadows.</para>
-        /// </summary>
+        /// <summary>Stores the <see cref="GlobalKeyword"/> of "DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS".</summary>
         private GlobalKeyword shadersGlobalKeywordIntegratedGraphics;
+
+        /// <summary>Stores the <see cref="GlobalKeyword"/> of "DYNAMIC_LIGHTING_QUALITY_LOW".</summary>
+        private GlobalKeyword shadersGlobalKeywordQualityLow;
+
+        /// <summary>Stores the <see cref="GlobalKeyword"/> of "DYNAMIC_LIGHTING_QUALITY_HIGH".</summary>
+        private GlobalKeyword shadersGlobalKeywordQualityHigh;
 
         /// <summary>Global <see cref="Shader.PropertyToID"/> for buffer "dynamic_lights".</summary>
         private int shadersGlobalPropertyIdDynamicLights;
@@ -101,13 +98,6 @@ namespace AlpacaIT.DynamicLighting
             set => ShadersSetGlobalKeyword(ref shadersGlobalKeywordLit, value);
         }
 
-        /// <summary>Gets or sets whether global shader keyword "DYNAMIC_LIGHTING_SHADOW_SOFT" is enabled.</summary>
-        private bool shadersKeywordShadowSoftEnabled
-        {
-            get => Shader.IsKeywordEnabled(shadersGlobalKeywordShadowSoft);
-            set => ShadersSetGlobalKeyword(ref shadersGlobalKeywordShadowSoft, value);
-        }
-
         /// <summary>Gets or sets whether global shader keyword "DYNAMIC_LIGHTING_BVH" is enabled.</summary>
         private bool shadersKeywordBvhEnabled
         {
@@ -127,6 +117,20 @@ namespace AlpacaIT.DynamicLighting
         {
             get => Shader.IsKeywordEnabled(shadersGlobalKeywordIntegratedGraphics);
             set => ShadersSetGlobalKeyword(ref shadersGlobalKeywordIntegratedGraphics, value);
+        }
+
+        /// <summary>Gets or sets whether global shader keyword "DYNAMIC_LIGHTING_QUALITY_LOW" is enabled.</summary>
+        private bool shadersKeywordQualityLowEnabled
+        {
+            get => Shader.IsKeywordEnabled(shadersGlobalKeywordQualityLow);
+            set => ShadersSetGlobalKeyword(ref shadersGlobalKeywordQualityLow, value);
+        }
+
+        /// <summary>Gets or sets whether global shader keyword "DYNAMIC_LIGHTING_QUALITY_HIGH" is enabled.</summary>
+        private bool shadersKeywordQualityHighEnabled
+        {
+            get => Shader.IsKeywordEnabled(shadersGlobalKeywordQualityHigh);
+            set => ShadersSetGlobalKeyword(ref shadersGlobalKeywordQualityHigh, value);
         }
 
         /// <summary>Sets the global shader buffer property "dynamic_lights".</summary>
@@ -178,10 +182,11 @@ namespace AlpacaIT.DynamicLighting
         private void ShadersInitialize()
         {
             shadersGlobalKeywordLit = GlobalKeyword.Create("DYNAMIC_LIGHTING_LIT");
-            shadersGlobalKeywordShadowSoft = GlobalKeyword.Create("DYNAMIC_LIGHTING_SHADOW_SOFT");
             shadersGlobalKeywordBvh = GlobalKeyword.Create("DYNAMIC_LIGHTING_BVH");
             shadersGlobalKeywordBounce = GlobalKeyword.Create("DYNAMIC_LIGHTING_BOUNCE");
             shadersGlobalKeywordIntegratedGraphics = GlobalKeyword.Create("DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS");
+            shadersGlobalKeywordQualityLow = GlobalKeyword.Create("DYNAMIC_LIGHTING_QUALITY_LOW");
+            shadersGlobalKeywordQualityHigh = GlobalKeyword.Create("DYNAMIC_LIGHTING_QUALITY_HIGH");
 
             shadersGlobalPropertyIdDynamicLights = Shader.PropertyToID("dynamic_lights");
             shadersGlobalPropertyIdDynamicLightsCount = Shader.PropertyToID("dynamic_lights_count");
@@ -199,6 +204,9 @@ namespace AlpacaIT.DynamicLighting
 
             // enable the bounce lighting code when used in the scene during raytracing.
             shadersKeywordBounceEnabled = activateBounceLightingInCurrentScene;
+
+            // switch to the default medium quality mode.
+            ShadersSetRuntimeQuality(DynamicLightingRuntimeQuality.Medium);
         }
 
         /// <summary>Enables or disables a <see cref="GlobalKeyword"/>.</summary>
@@ -212,6 +220,48 @@ namespace AlpacaIT.DynamicLighting
                 Shader.EnableKeyword(globalKeyword);
             else
                 Shader.DisableKeyword(globalKeyword);
+        }
+
+        /// <summary>
+        /// Enables or disables <see cref="shadersKeywordIntegratedGraphicsEnabled"/> and <see
+        /// cref="shadersKeywordQualityLowEnabled"/> and <see
+        /// cref="shadersKeywordQualityHighEnabled"/> depending on the desired quality setting.
+        /// <para>This sets field <see cref="activeRuntimeQuality"/> accordingly.</para>
+        /// </summary>
+        /// <param name="quality">The runtime quality to be applied.</param>
+        private void ShadersSetRuntimeQuality(DynamicLightingRuntimeQuality quality)
+        {
+            if (activeRuntimeQuality != quality)
+            {
+                activeRuntimeQuality = quality;
+
+                switch (quality)
+                {
+                    case DynamicLightingRuntimeQuality.IntegratedGraphics:
+                        shadersKeywordIntegratedGraphicsEnabled = true;
+                        shadersKeywordQualityLowEnabled = false;
+                        shadersKeywordQualityHighEnabled = false;
+                        break;
+
+                    case DynamicLightingRuntimeQuality.Low:
+                        shadersKeywordIntegratedGraphicsEnabled = false;
+                        shadersKeywordQualityLowEnabled = true;
+                        shadersKeywordQualityHighEnabled = false;
+                        break;
+
+                    case DynamicLightingRuntimeQuality.Medium:
+                        shadersKeywordIntegratedGraphicsEnabled = false;
+                        shadersKeywordQualityLowEnabled = false;
+                        shadersKeywordQualityHighEnabled = false;
+                        break;
+
+                    case DynamicLightingRuntimeQuality.High:
+                        shadersKeywordIntegratedGraphicsEnabled = false;
+                        shadersKeywordQualityLowEnabled = false;
+                        shadersKeywordQualityHighEnabled = true;
+                        break;
+                }
+            }
         }
     }
 }

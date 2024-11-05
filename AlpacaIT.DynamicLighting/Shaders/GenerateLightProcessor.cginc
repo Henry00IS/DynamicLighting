@@ -61,19 +61,17 @@ float bounce = 0.0;
 #endif
 if (lightmap_resolution > 0 && light.is_dynamic())
 {
-#ifndef DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS
-    #if DYNAMIC_LIGHTING_SHADOW_SOFT
-        // retrieve the shadow bit at this position with bilinear filtering.
-        map = dynamic_triangle.shadow_sample_bilinear(i.uv1);
-    #else
-        // retrieve the shadow bit at this position with 3x3 average sampling.
-        map = dynamic_triangle.shadow_sample3x3(i.uv1);
-    #endif
-#else
+#if defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
     // retrieve the shadow bit at this position with basic sampling.
     map = dynamic_triangle.shadow_sample_integrated(i.uv1);
+#elif defined(DYNAMIC_LIGHTING_QUALITY_LOW)
+    // retrieve the shadow bit at this position with 3x3 average sampling.
+    map = dynamic_triangle.shadow_sample3x3(i.uv1);
+#elif defined(DYNAMIC_LIGHTING_QUALITY_MEDIUM) || defined(DYNAMIC_LIGHTING_QUALITY_HIGH)
+    // retrieve the shadow bit at this position with bilinear filtering.
+    map = dynamic_triangle.shadow_sample_bilinear(i.uv1);
 #endif
-    
+
 #if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
     // retrieve the bounce lighting sample.
     if (is_bounce_available)

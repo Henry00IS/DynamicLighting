@@ -19,21 +19,13 @@ Shader "Dynamic Lighting/Diffuse"
             #pragma vertex vert
             #pragma fragment frag
             #pragma multi_compile_fog
-            #pragma multi_compile __ DYNAMIC_LIGHTING_SHADOW_SOFT
+            #pragma multi_compile __ DYNAMIC_LIGHTING_QUALITY_LOW DYNAMIC_LIGHTING_QUALITY_HIGH DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS
             #pragma multi_compile __ DYNAMIC_LIGHTING_LIT
             #pragma multi_compile __ DYNAMIC_LIGHTING_BVH
             #pragma multi_compile __ DYNAMIC_LIGHTING_BOUNCE
-            #pragma multi_compile __ DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS
             #pragma multi_compile multi_compile_fwdbase
 
             #include "UnityCG.cginc"
-
-            // the following compiler flags are available:
-            // 
-            // when targeting modern hardware, you can improve the shadow quality by uncommenting one of these lines:
-            // #define DYNAMIC_LIGHTING_SHADOW_SAMPLER shadow_sample_gaussian3
-            // #define DYNAMIC_LIGHTING_SHADOW_SAMPLER shadow_sample_gaussian5
-            //
             #include "DynamicLighting.cginc"
 
             struct appdata

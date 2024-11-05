@@ -246,6 +246,22 @@ namespace AlpacaIT.DynamicLighting
         [Tooltip("The default compression level for bounce lighting data. Choosing a higher compression can reduce VRAM usage, but may result in reduced visual quality. For best results, adjust based on your VRAM availability and visual preferences.")]
         public DynamicBounceLightingDefaultCompressionMode bounceLightingCompression = DynamicBounceLightingDefaultCompressionMode.EightBitsPerPixel;
 
+        /// <summary>
+        /// The runtime quality for Dynamic Lighting in the scene. These options should be available
+        /// in your in-game settings menu to allow players to adjust lighting quality based on their
+        /// hardware performance.
+        /// <para>Tip: Consider using the <see cref="initialized"/> event to set this field.</para>
+        /// </summary>
+        [HideInInspector]
+        public DynamicLightingRuntimeQuality runtimeQuality = DynamicLightingRuntimeQuality.Medium;
+
+        /// <summary>
+        /// Internally used to detect changes to <see cref="runtimeQuality"/> to prevent unnecessary
+        /// calls into the Unity Shader API. This is deliberately set to an invalid value and
+        /// properly set in the shaders partial class and after a successful update.
+        /// </summary>
+        private DynamicLightingRuntimeQuality activeRuntimeQuality = (DynamicLightingRuntimeQuality)255;
+
         /// <summary>The collection of raycasted mesh renderers in the scene.</summary>
         [SerializeField]
         [HideInInspector]
@@ -988,18 +1004,8 @@ namespace AlpacaIT.DynamicLighting
             // update the ambient lighting color.
             ShadersSetGlobalDynamicAmbientColor(ambientColor);
 
-            // update the shadow filtering algorithm.
-            switch (QualitySettings.shadows)
-            {
-                case ShadowQuality.Disable:
-                case ShadowQuality.HardOnly:
-                    shadersKeywordShadowSoftEnabled = false;
-                    break;
-
-                case ShadowQuality.All:
-                    shadersKeywordShadowSoftEnabled = true;
-                    break;
-            }
+            // update the runtime quality settings.
+            ShadersSetRuntimeQuality(runtimeQuality);
 
 #if UNITY_EDITOR
             // detect mesh changes in edit mode.
