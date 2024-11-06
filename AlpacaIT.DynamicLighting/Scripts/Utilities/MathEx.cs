@@ -279,6 +279,30 @@ namespace AlpacaIT.DynamicLighting
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool FastEqualsRGB(this Color self, Color other)
+        {
+            return self.r == other.r && self.g == other.g && self.b == other.b;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool FastNotEqualsRGB(this Color self, Color other)
+        {
+            return self.r != other.r || self.g != other.g || self.b != other.b;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool FastEquals(this Color self, Color other)
+        {
+            return self.r == other.r && self.g == other.g && self.b == other.b && self.a == other.a;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool FastNotEquals(this Color self, Color other)
+        {
+            return self.r != other.r || self.g != other.g || self.b != other.b || self.a != other.a;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe bool ApproximatelyEquals(this Vector3 self, Vector3 other, float epsilon = 0.00001f)
         {
             *(uint*)&self.x &= 0x7FFFFFFFu;

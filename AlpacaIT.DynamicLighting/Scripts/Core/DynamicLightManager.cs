@@ -252,7 +252,7 @@ namespace AlpacaIT.DynamicLighting
         /// hardware performance.
         /// <para>Tip: Consider using the <see cref="initialized"/> event to set this field.</para>
         /// </summary>
-        [HideInInspector]
+        [NonSerialized]
         public DynamicLightingRuntimeQuality runtimeQuality = DynamicLightingRuntimeQuality.Medium;
 
         /// <summary>
@@ -309,7 +309,7 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         private DynamicLightingPostUpdateEventArgs dynamicLightingPostUpdateEventArgs;
 
-        [System.NonSerialized]
+        [NonSerialized]
         private bool isInitialized = false;
 
 #if UNITY_EDITOR
@@ -539,8 +539,8 @@ namespace AlpacaIT.DynamicLighting
             LightPositionsInitialize();
 
             ShadersSetGlobalDynamicLights(dynamicLightsBuffer);
-            ShadersSetGlobalDynamicLightsCount(shadersLastDynamicLightsCount = 0);
-            ShadersSetGlobalRealtimeLightsCount(shadersLastRealtimeLightsCount = 0);
+            ShadersSetGlobalDynamicLightsCount(0);
+            ShadersSetGlobalRealtimeLightsCount(0);
 
             // unity api oversight: cannot get material count as it's a private method, so to
             // prevent allocations on the garbage collector we recycle a list here.
@@ -819,19 +819,19 @@ namespace AlpacaIT.DynamicLighting
                 {
                     // apply the unlit rendering property.
                     if (renderUnlit)
-                        shadersKeywordLitEnabled = false;
+                        ShadersSetKeywordLitEnabled(false);
                     else
-                        shadersKeywordLitEnabled = sceneView.sceneLighting;
+                        ShadersSetKeywordLitEnabled(sceneView.sceneLighting);
                 }
                 else
                 {
                     // apply the unlit rendering property.
-                    shadersKeywordLitEnabled = !renderUnlit;
+                    ShadersSetKeywordLitEnabled(!renderUnlit);
                 }
             }
 #else
             // apply the unlit rendering property.
-            shadersKeywordLitEnabled = !renderUnlit;
+            ShadersSetKeywordLitEnabled(!renderUnlit);
 #endif
             var raycastedDynamicLightsCount = raycastedDynamicLights.Count;
 
@@ -927,9 +927,6 @@ namespace AlpacaIT.DynamicLighting
                 }
             }
 
-            // -> partial class DynamicLightManager.ShadowCamera.
-            ShadowCameraUpdate();
-
             // -> partial class DynamicLightManager.LightCookie.
             LightCookieUpdate();
 
@@ -998,8 +995,8 @@ namespace AlpacaIT.DynamicLighting
             var activeDynamicLightsCount = raycastedDynamicLightsCount + activeRealtimeLightsCount;
             if (dynamicLightsBuffer != null && dynamicLightsBuffer.IsValid())
                 dynamicLightsBuffer.SetData(shaderDynamicLights, 0, 0, activeDynamicLightsCount);
-            ShadersSetGlobalDynamicLightsCount(shadersLastDynamicLightsCount = raycastedDynamicLightsCount);
-            ShadersSetGlobalRealtimeLightsCount(shadersLastRealtimeLightsCount = activeRealtimeLightsCount);
+            ShadersSetGlobalDynamicLightsCount(raycastedDynamicLightsCount);
+            ShadersSetGlobalRealtimeLightsCount(activeRealtimeLightsCount);
 
             // update the ambient lighting color.
             ShadersSetGlobalDynamicAmbientColor(ambientColor);

@@ -39,6 +39,7 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Temporary render texture used by the shadow camera to render the scene.</summary>
         private RenderTexture shadowCameraRenderTexture;
 
+        private bool shadowCameraReady;
         private const int shadowCameraResolution = 512; // anything above 1024 will fail.
         private const int shadowCameraCubemapBudget = 16; // 300 is around the maximum, from there DX11 D3D error 0x80070057.
         private int shadowCameraCubemapIndex;
@@ -105,8 +106,11 @@ namespace AlpacaIT.DynamicLighting
         }
 
         /// <summary>Called before the lights are processed for rendering.</summary>
-        private void ShadowCameraUpdate()
+        private void ShadowCameraEnsureReady()
         {
+            if (shadowCameraReady) return;
+            shadowCameraReady = true;
+
             shadowCameraCubemapIndex = 0;
 
             // get a temporary render texture.
@@ -119,15 +123,22 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Called after the lights have been processed for rendering.</summary>
         private void ShadowCameraPostUpdate()
         {
+            if (!shadowCameraReady) return;
+            shadowCameraReady = false;
+
             // remove the render texture reference from the camera.
             shadowCamera.targetTexture = null;
 
             // release the temporary render textures.
             RenderTexture.ReleaseTemporary(shadowCameraRenderTexture);
+            shadowCameraRenderTexture = null;
         }
 
         private unsafe void ShadowCameraProcessLight(ShaderDynamicLight* shaderLight, DynamicLight light)
         {
+            // integrated graphics does not render realtime shadows.
+            if (runtimeQuality == DynamicLightingRuntimeQuality.IntegratedGraphics) return;
+
             // the shader light must still be active.
             if (shaderLight->radiusSqr == -1.0f) return;
 
@@ -147,6 +158,9 @@ namespace AlpacaIT.DynamicLighting
 
         private unsafe void ShadowCameraRenderLight(ShaderDynamicLight* shaderLight, DynamicLight light)
         {
+            // delay initialization until necessary.
+            ShadowCameraEnsureReady();
+
             // we move the camera to the light source.
             shadowCameraTransform.position = shaderLight->position;
 

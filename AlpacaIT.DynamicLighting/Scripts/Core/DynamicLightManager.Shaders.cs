@@ -91,6 +91,12 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Stores the value last assigned with <see cref="ShadersSetGlobalRealtimeLightsCount"/>.</summary>
         private int shadersLastRealtimeLightsCount;
 
+        /// <summary>Stores the raw value last assigned with <see cref="ShadersSetGlobalDynamicAmbientColor"/>.</summary>
+        private Color shadersLastRawAmbientColor;
+
+        /// <summary>Stores the keyword state assigned with <see cref="ShadersSetKeywordLitEnabled"/>.</summary>
+        private bool shadersLastKeywordLitEnabled;
+
         /// <summary>Gets or sets whether global shader keyword "DYNAMIC_LIGHTING_LIT" is enabled.</summary>
         private bool shadersKeywordLitEnabled
         {
@@ -133,41 +139,96 @@ namespace AlpacaIT.DynamicLighting
             set => ShadersSetGlobalKeyword(ref shadersGlobalKeywordQualityHigh, value);
         }
 
+        /// <summary>Gets or sets the global shader integer property "dynamic_lights_count".</summary>
+        private int shadersPropertyDynamicLightsCount
+        {
+#if UNITY_2021_1_OR_NEWER
+            get => Shader.GetGlobalInteger(shadersGlobalPropertyIdDynamicLightsCount);
+            set => Shader.SetGlobalInteger(shadersGlobalPropertyIdDynamicLightsCount, value);
+#else
+            get => Shader.GetGlobalInt(shadersGlobalPropertyIdDynamicLightsCount);
+            set => Shader.SetGlobalInt(shadersGlobalPropertyIdDynamicLightsCount, value);
+#endif
+        }
+
+        /// <summary>Gets or sets the global shader integer property "realtime_lights_count".</summary>
+        private int shadersPropertyRealtimeLightsCount
+        {
+#if UNITY_2021_1_OR_NEWER
+            get => Shader.GetGlobalInteger(shadersGlobalPropertyIdRealtimeLightsCount);
+            set => Shader.SetGlobalInteger(shadersGlobalPropertyIdRealtimeLightsCount, value);
+#else
+            get => Shader.GetGlobalInt(shadersGlobalPropertyIdRealtimeLightsCount);
+            set => Shader.SetGlobalInt(shadersGlobalPropertyIdRealtimeLightsCount, value);
+#endif
+        }
+
+        /// <summary>Gets or sets the global shader color property "dynamic_ambient_color".</summary>
+        private Color shadersPropertyAmbientColor
+        {
+            get => Shader.GetGlobalColor(shadersGlobalPropertyIdDynamicAmbientColor);
+            set => Shader.SetGlobalColor(shadersGlobalPropertyIdDynamicAmbientColor, value);
+        }
+
         /// <summary>Sets the global shader buffer property "dynamic_lights".</summary>
         private void ShadersSetGlobalDynamicLights(ComputeBuffer buffer)
         {
             Shader.SetGlobalBuffer(shadersGlobalPropertyIdDynamicLights, buffer);
         }
 
+        /// <summary>Sets whether global shader keyword "DYNAMIC_LIGHTING_LIT" is enabled.</summary>
+        private void ShadersSetKeywordLitEnabled(bool value)
+        {
+            // overwrite the cache and shader keyword when a change is detected.
+            if (shadersLastKeywordLitEnabled != value)
+            {
+                shadersLastKeywordLitEnabled = value;
+                shadersKeywordLitEnabled = value;
+            }
+        }
+
         /// <summary>Sets the global shader integer property "dynamic_lights_count".</summary>
         private void ShadersSetGlobalDynamicLightsCount(int value)
         {
-#if UNITY_2021_1_OR_NEWER
-            Shader.SetGlobalInteger(shadersGlobalPropertyIdDynamicLightsCount, value);
-#else
-            Shader.SetGlobalInt(shadersGlobalPropertyIdDynamicLightsCount, value);
-#endif
+            // overwrite the cache and shader property when a change is detected.
+            if (shadersLastDynamicLightsCount != value)
+            {
+                shadersLastDynamicLightsCount = value;
+                shadersPropertyDynamicLightsCount = value;
+            }
         }
 
         /// <summary>Sets the global shader integer property "realtime_lights_count".</summary>
         private void ShadersSetGlobalRealtimeLightsCount(int value)
         {
-#if UNITY_2021_1_OR_NEWER
-            Shader.SetGlobalInteger(shadersGlobalPropertyIdRealtimeLightsCount, value);
-#else
-            Shader.SetGlobalInt(shadersGlobalPropertyIdRealtimeLightsCount, value);
-#endif
+            // overwrite the cache and shader property when a change is detected.
+            if (shadersLastRealtimeLightsCount != value)
+            {
+                shadersLastRealtimeLightsCount = value;
+                shadersPropertyRealtimeLightsCount = value;
+            }
         }
 
         /// <summary>Sets the global shader color property "dynamic_ambient_color".</summary>
-        private void ShadersSetGlobalDynamicAmbientColor(Color value)
+        private unsafe void ShadersSetGlobalDynamicAmbientColor(Color value)
         {
-            // push the alpha down to allow for more flexibility in the lower end.
-            var a = Mathf.Pow(value.a, 2.0f);
-            value.r *= a;
-            value.g *= a;
-            value.b *= a;
-            Shader.SetGlobalColor(shadersGlobalPropertyIdDynamicAmbientColor, value);
+            // only update the shader property when a change is detected.
+            if (shadersLastRawAmbientColor.FastNotEquals(value))
+            {
+                shadersLastRawAmbientColor = value;
+
+                // unity stores colors in gamma and we must convert them to linear.
+                if (colorSpace == ColorSpace.Linear)
+                    UMath.GammaToLinearSpace((Vector3*)&value);
+
+                // push the alpha down to allow for more flexibility in the lower end.
+                var a = Mathf.Pow(value.a, 2.0f);
+                value.r *= a;
+                value.g *= a;
+                value.b *= a;
+
+                shadersPropertyAmbientColor = value;
+            }
         }
 
         /// <summary>Sets the global shader buffer property "dynamic_lights_bvh".</summary>
@@ -197,7 +258,7 @@ namespace AlpacaIT.DynamicLighting
             // upon startup (or level transitions):
 
             // we always enable lighting.
-            shadersKeywordLitEnabled = !renderUnlit;
+            ShadersSetKeywordLitEnabled(!renderUnlit);
 
             // disable the bounding volume hierarchy logic as it may be dangerous.
             shadersKeywordBvhEnabled = false;
@@ -206,7 +267,14 @@ namespace AlpacaIT.DynamicLighting
             shadersKeywordBounceEnabled = activateBounceLightingInCurrentScene;
 
             // switch to the default medium quality mode.
-            ShadersSetRuntimeQuality(DynamicLightingRuntimeQuality.Medium);
+            ShadersSetRuntimeQuality(runtimeQuality);
+
+            // set the ambient color to black to synchronize the raw ambient color.
+            shadersPropertyAmbientColor = shadersLastRawAmbientColor = Color.black;
+
+            // fetch the current shader properties.
+            shadersLastDynamicLightsCount = shadersPropertyDynamicLightsCount;
+            shadersLastRealtimeLightsCount = shadersPropertyRealtimeLightsCount;
         }
 
         /// <summary>Enables or disables a <see cref="GlobalKeyword"/>.</summary>

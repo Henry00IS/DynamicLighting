@@ -24,6 +24,12 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         internal int postProcessingVolumetricLightsCount;
 
+        /// <summary>Stores the original value of the shader property "dynamic_lights_count".</summary>
+        private int postProcessingShaderDynamicLightsCount;
+
+        /// <summary>Stores the original value of the shader property "realtime_lights_count".</summary>
+        private int postProcessingShaderRealtimeLightsCount;
+
         /// <summary>
         /// Initialization of the DynamicLightManager.PostProcessing partial class.
         /// </summary>
@@ -121,6 +127,8 @@ namespace AlpacaIT.DynamicLighting
             }
 
             // upload shader values to the graphics card.
+            postProcessingShaderDynamicLightsCount = shadersLastDynamicLightsCount;
+            postProcessingShaderRealtimeLightsCount = shadersLastRealtimeLightsCount;
             ShadersSetGlobalDynamicLightsCount(postProcessingVolumetricLightsCount);
             ShadersSetGlobalRealtimeLightsCount(0);
         }
@@ -143,8 +151,8 @@ namespace AlpacaIT.DynamicLighting
             }
 
             // restore shader values on the graphics card.
-            ShadersSetGlobalDynamicLightsCount(shadersLastDynamicLightsCount);
-            ShadersSetGlobalRealtimeLightsCount(shadersLastRealtimeLightsCount);
+            ShadersSetGlobalDynamicLightsCount(postProcessingShaderDynamicLightsCount);
+            ShadersSetGlobalRealtimeLightsCount(postProcessingShaderRealtimeLightsCount);
         }
     }
 }
