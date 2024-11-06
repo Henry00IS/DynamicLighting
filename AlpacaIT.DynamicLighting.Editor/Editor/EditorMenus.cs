@@ -125,7 +125,7 @@ namespace AlpacaIT.DynamicLighting.Editor
         [UnityEditor.MenuItem("GameObject/Light/Dynamic Spot Light", false, 40)]
         internal static DynamicLight EditorCreateDynamicSpotLight(UnityEditor.MenuCommand menuCommand)
         {
-            var light = EditorCreateDynamicLight("Dynamic Spot Light", menuCommand == null);
+            var light = EditorCreateDynamicLight("Dynamic Spot Light", menuCommand == null, spotlight: true);
             light.lightType = DynamicLightType.Spot;
             return light;
         }
@@ -171,7 +171,7 @@ namespace AlpacaIT.DynamicLighting.Editor
         /// <param name="name">The name of the game object that will be created.</param>
         /// <param name="siblings">Whether to add the game object as a sibling not a child.</param>
         /// <returns>The dynamic light component.</returns>
-        internal static DynamicLight EditorCreateDynamicLight(string name, bool siblings = true)
+        internal static DynamicLight EditorCreateDynamicLight(string name, bool siblings = true, bool rotateByNormal = false, bool spotlight = false)
         {
             GameObject go = new GameObject(name);
             UnityEditor.Undo.RegisterCreatedObjectUndo(go, "Create " + name);
@@ -203,9 +203,18 @@ namespace AlpacaIT.DynamicLighting.Editor
                     // cast a ray into the scene at the center of the scene view.
                     var ray = camera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0.0f));
 
+                    Vector3 cameraPosition = camera.transform.position;
+
                     Vector3 hitPoint;
+                    Vector3 hitNormal = Vector3.up;
                     if (Physics.Raycast(ray, out RaycastHit hit, 10f))
-                        hitPoint = hit.point + hit.normal * 0.25f; // place 0.25m off the surface.
+                    {
+                        hitNormal = hit.normal;
+                        if (spotlight)
+                            hitPoint = hit.point;
+                        else
+                            hitPoint = hit.point + hit.normal * 0.25f; // place 0.25m off the surface.
+                    }
                     else
                         hitPoint = camera.transform.TransformPoint(Vector3.forward * 2f);
 
@@ -216,6 +225,7 @@ namespace AlpacaIT.DynamicLighting.Editor
                         if (RealtimeCSG.CSGSettings.GridSnapping)
                         {
                             hitPoint = Snapping.Snap(hitPoint, RealtimeCSG.CSGSettings.SnapVector);
+                            cameraPosition = Snapping.Snap(cameraPosition, RealtimeCSG.CSGSettings.SnapVector);
                         }
                     }
                     else
@@ -224,8 +234,24 @@ namespace AlpacaIT.DynamicLighting.Editor
                     if (UnityEditor.EditorSnapSettings.gridSnapEnabled)
                     {
                         hitPoint = Snapping.Snap(hitPoint, Vector3.one * UnityEditor.EditorSnapSettings.scale);
+                        cameraPosition = Snapping.Snap(cameraPosition, Vector3.one * UnityEditor.EditorSnapSettings.scale);
                     }
-                    go.transform.position = hitPoint;
+
+                    if (spotlight)
+                    {
+                        go.transform.position = cameraPosition;
+                        go.transform.LookAt(hitPoint);
+                    }
+                    else
+                    {
+                        go.transform.position = hitPoint;
+
+                        if (rotateByNormal)
+                        {
+                            go.transform.LookAt(hitPoint + hitNormal);
+                            go.transform.Rotate(new Vector3(90f, 0f, 0f));
+                        }
+                    }
                 }
             }
 

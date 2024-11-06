@@ -179,8 +179,8 @@ namespace AlpacaIT.DynamicLighting.Editor
         {
             Add(new PointLightButton());
             Add(new SpotLightButton());
-            Add(new DirectionalLightButton());
-            Add(new OtherLightsButton());
+            Add(new SpecialLightButton());
+            Add(new SpecialLightsButton());
 
             EditorToolbarUtility.SetupChildrenAsButtonStrip(this);
         }
@@ -226,42 +226,40 @@ namespace AlpacaIT.DynamicLighting.Editor
         }
     }
 
-    internal class DirectionalLightButton : EditorToolbarButton
+    internal class SpecialLightButton : EditorToolbarButton
     {
-        public const string ID = nameof(DynamicLightingToolbar) + "_" + nameof(DirectionalLightButton);
+        public const string ID = nameof(DynamicLightingToolbar) + "_" + nameof(SpecialLightButton);
 
-        public DirectionalLightButton()
+        public SpecialLightButton()
         {
             name = ID;
             icon = EditorGUIUtility.TrIconContent("DirectionalLight Gizmo").image as Texture2D;
-            text = "Directional";
-            tooltip = "Creates a new directional light in the scene.";
+            text = "Special";
+            tooltip = "Creates the last-used special light in the scene.";
 
             clicked += () =>
             {
-                var light = EditorMenus.EditorCreateDynamicDirectionalLight(null);
-                light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
-                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
+                SpecialLight.Create(SpecialLight.LastSpecialLight);
             };
         }
     }
 
     #endregion Basic Light Types
 
-    #region Other Lights
+    #region Special Lights
 
-    internal class OtherLightsButton : EditorToolbarDropdown
+    internal class SpecialLightsButton : EditorToolbarDropdown
     {
-        public const string ID = nameof(DynamicLightingToolbar) + "_" + nameof(OtherLightsButton);
+        public const string ID = nameof(DynamicLightingToolbar) + "_" + nameof(SpecialLightsButton);
 
         private readonly GenericMenu menu = new GenericMenu();
 
-        public OtherLightsButton()
+        public SpecialLightsButton()
         {
             CreateMenu(menu);
 
             name = ID;
-            tooltip = "Other light types.";
+            tooltip = "Special light types...";
 
             style.minWidth = 14f;
 
@@ -273,125 +271,44 @@ namespace AlpacaIT.DynamicLighting.Editor
 
         private void CreateMenu(GenericMenu genericMenu)
         {
-            addItem("Discoball Light", () =>
-            {
-                var light = EditorMenus.EditorCreateDynamicDiscoballLight(null);
-                light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
-                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
-            });
-
-            addItem("Wave Light", () =>
-            {
-                var light = EditorMenus.EditorCreateDynamicLight("Dynamic Wave Light");
-                light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
-                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
-                light.lightType = DynamicLightType.Wave;
-            });
-
-            addItem("Interference Light", () =>
-            {
-                var light = EditorMenus.EditorCreateDynamicLight("Dynamic Interference Light");
-                light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
-                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
-                light.lightType = DynamicLightType.Wave;
-            });
-
-            addItem("Rotor Light", () =>
-            {
-                var light = EditorMenus.EditorCreateDynamicLight("Dynamic Rotor Light");
-                light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
-                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
-                light.lightType = DynamicLightType.Rotor;
-                light.lightWaveFrequency = 5f;
-            });
-
-            addItem("Shock Light", () =>
-            {
-                var light = EditorMenus.EditorCreateDynamicLight("Dynamic Shock Light");
-                light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
-                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
-                light.lightType = DynamicLightType.Shock;
-            });
-
-            addItem("Disco Light", () =>
-            {
-                var light = EditorMenus.EditorCreateDynamicLight("Dynamic Disco Light");
-                light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
-                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
-                light.lightType = DynamicLightType.Disco;
-                light.lightWaveFrequency = 10f;
-            });
+            addItem(SpecialLight.SpecialDirectionalLight);
 
             genericMenu.AddSeparator("");
 
-            addItem("Pulsating Light", () =>
-            {
-                var light = EditorMenus.EditorCreateDynamicLight("Dynamic Pulsating Light");
-                light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
-                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
-                light.lightEffect = DynamicLightEffect.Pulse;
-            });
-
-            addItem("Random Light", () =>
-            {
-                var light = EditorMenus.EditorCreateDynamicLight("Dynamic Random Light");
-                light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
-                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
-                light.lightEffect = DynamicLightEffect.Random;
-            });
-
-            addItem("Strobe Light", () =>
-            {
-                var light = EditorMenus.EditorCreateDynamicLight("Dynamic Strobe Light");
-                light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
-                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
-                light.lightEffect = DynamicLightEffect.Strobe;
-            });
-
-            addItem("Flickering Light", () =>
-            {
-                var light = EditorMenus.EditorCreateDynamicLight("Dynamic Flickering Light");
-                light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
-                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
-                light.lightEffect = DynamicLightEffect.Flicker;
-            });
+            addItem(SpecialLight.SpecialIndirectBounceLight);
 
             genericMenu.AddSeparator("");
 
-            addItem("Water Shimmer Light", () =>
-            {
-                var light = EditorMenus.EditorCreateDynamicLight("Dynamic Water Shimmer Light");
-                light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
-                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
-                light.lightShimmer = DynamicLightShimmer.Water;
-            });
-
-            addItem("Fire Shimmer Light", () =>
-            {
-                var light = EditorMenus.EditorCreateDynamicLight("Dynamic Fire Shimmer Light");
-                light.lightIllumination = DynamicLightingPreferences.DefaultToBounceLighting ? DynamicLightIlluminationMode.SingleBounce : DynamicLightIlluminationMode.DirectIllumination;
-                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
-                light.lightShimmer = DynamicLightShimmer.Random;
-            });
+            addItem(SpecialLight.SpecialDiscoballLight);
+            addItem(SpecialLight.SpecialWaveLight);
+            addItem(SpecialLight.SpecialInterferenceLight);
+            addItem(SpecialLight.SpecialRotorLight);
+            addItem(SpecialLight.SpecialShockLight);
+            addItem(SpecialLight.SpecialDiscoLight);
 
             genericMenu.AddSeparator("");
 
-            addItem("Indirect Bounce Light", () =>
-            {
-                var light = EditorMenus.EditorCreateDynamicLight("Indirect Bounce Light");
-                light.lightIllumination = DynamicLightIlluminationMode.SingleBounce;
-                light.lightTransparency = DynamicLightingPreferences.DefaultToTransparency ? DynamicLightTransparencyMode.Enabled : DynamicLightTransparencyMode.Disabled;
-                light.lightColor = Color.black;
-                light.lightBounceColor = Color.white;
-            });
+            addItem(SpecialLight.SpecialPulsatingLight);
+            addItem(SpecialLight.SpecialRandomLight);
+            addItem(SpecialLight.SpecialStrobeLight);
+            addItem(SpecialLight.SpecialFlickeringLight);
+
+            genericMenu.AddSeparator("");
+
+            addItem(SpecialLight.SpecialWaterShimmerLight);
+            addItem(SpecialLight.SpecialFireShimmerLight);
+
+            genericMenu.AddSeparator("");
+
+            addItem(SpecialLight.SpecialRotaryWarningLight);
 
             return; // local methods
 
-            void addItem(string label, GenericMenu.MenuFunction func, bool enabled = false) => genericMenu.AddItem(new GUIContent(label), enabled, func);
+            void addItem(SpecialLight specialLight) => genericMenu.AddItem(new GUIContent(specialLight.Name), false, () => SpecialLight.Create(specialLight));
         }
     }
 
-    #endregion Other Lights
+    #endregion Special Lights
 }
 
 #endif
