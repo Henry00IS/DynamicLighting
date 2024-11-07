@@ -132,6 +132,15 @@ namespace AlpacaIT.DynamicLighting
         public float lightWaveFrequency = 1f;
 
         /// <summary>
+        /// When using the 'Wave', 'Interference', 'Rotor', 'Shock' or 'Disco' light types, this
+        /// changes the time offset of the waves. This prevents lights from moving in sync and can
+        /// also be used to programatically control the wave animation.
+        /// </summary>
+        [Tooltip("When using the 'Wave', 'Interference', 'Rotor', 'Shock' or 'Disco' light types, this changes the time offset of the waves. This prevents lights from moving in sync and can also be used to programatically control the wave animation.")]
+        [Range(0f, 1f)]
+        public float lightWaveOffset = 0f;
+
+        /// <summary>
         /// When using the 'Rotor' light type, this changes the scale of the blob of light or shadow
         /// in the center. A negative number adds a shadow instead of a blob of light.
         /// </summary>
@@ -148,9 +157,9 @@ namespace AlpacaIT.DynamicLighting
 
         /// <summary>
         /// When using the 'Spot' light type, this texture can be used as a grayscale shadow cookie
-        /// that will be projected within the radius of the spot light.
+        /// that will be projected within the radius of the spot light. Animated render textures are supported.
         /// </summary>
-        [Tooltip("When using the 'Spot' light type, this texture can be used as a grayscale shadow cookie that will be projected within the radius of the spot light.")]
+        [Tooltip("When using the 'Spot' light type, this texture can be used as a grayscale shadow cookie that will be projected within the radius of the spot light. Animated render textures are supported.")]
         public Texture lightCookieTexture;
 
         /// <summary>
@@ -261,6 +270,15 @@ namespace AlpacaIT.DynamicLighting
         [Tooltip("When using the 'Pulse', 'Random', 'Strobe' or 'Flicker' light effect, this specifies how dim the light can become per pulse, where 0 is completely off and 1 does nothing.")]
         [Range(0f, 1f)]
         public float lightEffectPulseModifier = 0.25f;
+
+        /// <summary>
+        /// When using the 'Pulse' light effect, this changes the time offset of the pulses. This
+        /// prevents lights from pulsing in sync and can also be used to programatically control the
+        /// pulse animation.
+        /// </summary>
+        [Tooltip("When using the 'Pulse' light effect, this changes the time offset of the pulses. This prevents lights from pulsing in sync and can also be used to programatically control the pulse animation.")]
+        [Range(0f, 1f)]
+        public float lightEffectPulseOffset = 0f;
 
         /// <summary>
         /// The framerate independent fixed timestep frequency for lighting effects in seconds. For

@@ -288,7 +288,6 @@ namespace AlpacaIT.DynamicLighting
                 log.Insert(0, $"The lighting requires {MathEx.BytesToUnitString(vramDynamicTrianglesTotal + vramBvhTotal)} VRAM on the graphics card to render the current scene ({totalTime}).{System.Environment.NewLine}");
 
                 Debug.Log(log.ToString());
-                dynamicLightManager.Reload();
 #if UNITY_EDITOR
                 if (!dynamicLightManager.editorIsPlaying)
                 {
@@ -328,6 +327,9 @@ namespace AlpacaIT.DynamicLighting
                             pointLightCache.photonCube.Dispose();
                     }
                 }
+
+                // we must always reload the lighting to prevent thousands of errors.
+                dynamicLightManager.Reload();
             }
         }
 

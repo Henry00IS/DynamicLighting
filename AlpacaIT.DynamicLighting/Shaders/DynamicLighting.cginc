@@ -3,10 +3,10 @@
 // macros to name the general purpose variables.
 #define light_cutoff gpFloat1
 #define light_outerCutoff gpFloat2
-#define light_waveSpeed gpFloat1
+#define light_waveTime gpFloat1
 #define light_waveFrequency gpFloat2
 #define light_rotorCenter gpFloat3
-#define light_discoVerticalSpeed gpFloat3
+#define light_discoVerticalTime gpFloat3
 
 #define light_type_point 0
 #define light_type_spot 1 << 6
@@ -160,23 +160,27 @@ struct DynamicLight
     // calculates the wave effect.
     float calculate_wave(float3 world)
     {
-        return 0.7 + 0.3 * sin((distance(position, world) - _Time.y * light_waveSpeed) * UNITY_PI * 2 * light_waveFrequency);
+        // [CPU] light_waveFrequency *= UNITY_PI * 2.0
+        return 0.7 + 0.3 * sin((distance(position, world) - light_waveTime) * light_waveFrequency);
     }
     
     // calculates the interference effect.
     float calculate_interference(float3 light_position_minus_world)
     {
+        // [CPU] light_waveFrequency *= UNITY_PI
+        // [CPU] light_waveTime *= UNITY_PI * 2.0
         float3x3 rot = look_at_matrix(forward, up);
         float3 world = mul(light_position_minus_world, rot);
-
-        float angle = atan2(sqrt((world.x * world.x) + (world.z * world.z)), world.y) * UNITY_PI * light_waveFrequency;
-        float scale = 0.5 + 0.5 * cos(angle - _Time.y * light_waveSpeed * UNITY_PI * 2.0);
+        
+        float angle = atan2(sqrt((world.x * world.x) + (world.z * world.z)), world.y) * light_waveFrequency;
+        float scale = 0.5 + 0.5 * cos(angle - light_waveTime);
         return scale;
     }
     
     // calculates the rotor effect.
     float calculate_rotor(float3 light_position_minus_world)
     {
+        // [CPU] light_waveTime *= UNITY_PI * 2.0
         float3x3 rot = look_at_matrix(forward, up);
         float3 world = mul(light_position_minus_world, rot);
 
@@ -189,7 +193,7 @@ struct DynamicLight
         // has been multiplied against the desired wave frequency creating multiple rotor blades as it
         // completes multiple oscillations in one circle. this angle is then offset by the current time
         // to create a rotation.
-        float scale = 0.5 + 0.5 * cos(angle + _Time.y * light_waveSpeed * UNITY_PI * 2.0);
+        float scale = 0.5 + 0.5 * cos(angle + light_waveTime);
         
         // near world.xz zero the light starts from a sharp center point. that doesn't look very nice so
         // add a blob of light or shadow in the center of the rotor to hide it.
@@ -215,23 +219,25 @@ struct DynamicLight
     float calculate_shock(float3 world)
     {
 	    float dist = light_waveFrequency * distance(position, world);
-	    float brightness = 0.9 + 0.1 * sin((dist * 2.0 - _Time.y * light_waveSpeed) * UNITY_PI * 2.0);
-	    brightness      *= 0.9 + 0.1 * cos((dist + _Time.y * light_waveSpeed) * UNITY_PI * 2.0);
-	    brightness      *= 0.9 + 0.1 * sin((dist / 2.0 - _Time.y * light_waveSpeed) * UNITY_PI * 2.0);
+	    float brightness = 0.9 + 0.1 * sin((dist * 2.0 - light_waveTime) * UNITY_PI * 2.0);
+	    brightness      *= 0.9 + 0.1 * cos((dist + light_waveTime) * UNITY_PI * 2.0);
+	    brightness      *= 0.9 + 0.1 * sin((dist / 2.0 - light_waveTime) * UNITY_PI * 2.0);
         return brightness;
     }
     
     // calculates the disco effect.
     float calculate_disco(float3 light_position_minus_world)
     {
+        // [CPU] light_waveTime *= UNITY_PI * 2.0
+        // [CPU] light_discoVerticalTime *= UNITY_PI * 2.0
         float3x3 rot = look_at_matrix(forward, up);
         float3 world = mul(light_position_minus_world, rot);
 
 	    float horizontal = light_waveFrequency * atan2(world.x, world.z);
 	    float vertical = light_waveFrequency * atan2(sqrt(world.x * world.x + world.z * world.z), world.y);
 
-	    float scale1 = 0.5 + 0.5 * cos(horizontal + _Time.y * light_waveSpeed * UNITY_PI * 2.0);
-	    float scale2 = 0.5 + 0.5 * cos(vertical - _Time.y * light_discoVerticalSpeed * UNITY_PI * 2.0);
+	    float scale1 = 0.5 + 0.5 * cos(horizontal + light_waveTime);
+	    float scale2 = 0.5 + 0.5 * cos(vertical - light_discoVerticalTime);
 
 	    float scale  = scale1 + scale2 - scale1 * scale2;
 

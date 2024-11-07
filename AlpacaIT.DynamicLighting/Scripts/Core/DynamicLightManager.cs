@@ -233,8 +233,12 @@ namespace AlpacaIT.DynamicLighting
         /// many pixels should cover a square meter. It can result in a 47x47 texture or 328x328,
         /// exactly the amount needed to cover all polygons with the same amount of shadow pixels.
         /// Higher details require more VRAM (exponentially)!
+        /// <para>
+        /// Tip: 32 works well for larger game worlds, providing softer, more realistic shadows. You
+        /// can increase the <see cref="runtimeQuality"/> field in C# to help reduce pixelated shadows.
+        /// </para>
         /// </summary>
-        [Tooltip("The desired pixel density (e.g. 128 for 128x128 per meter squared). This lighting system does not require \"power of two\" textures. You may have heard this term before because graphics cards can render textures in such sizes much faster. This system relies on binary data on the GPU using compute buffers and it's quite different. Without going into too much detail, this simply means that we can choose any texture size. An intelligent algorithm calculates the surface area of the meshes and determines exactly how many pixels are needed to cover them evenly with shadow pixels, regardless of the ray tracing resolution (unless it exceeds that maximum ray tracing resolution, of course, then those shadow pixels will start to increase in size). Here you can set how many pixels should cover a square meter. It can result in a 47x47 texture or 328x328, exactly the amount needed to cover all polygons with the same amount of shadow pixels. Higher details require more VRAM (exponentially)!")]
+        [Tooltip("The desired pixel density (e.g. 128 for 128x128 per meter squared). This lighting system does not require \"power of two\" textures. You may have heard this term before because graphics cards can render textures in such sizes much faster. This system relies on binary data on the GPU using compute buffers and it's quite different. Without going into too much detail, this simply means that we can choose any texture size. An intelligent algorithm calculates the surface area of the meshes and determines exactly how many pixels are needed to cover them evenly with shadow pixels, regardless of the ray tracing resolution (unless it exceeds that maximum ray tracing resolution, of course, then those shadow pixels will start to increase in size). Here you can set how many pixels should cover a square meter. It can result in a 47x47 texture or 328x328, exactly the amount needed to cover all polygons with the same amount of shadow pixels. Higher details require more VRAM (exponentially)!\n\nTip: 32 works well for larger game worlds, providing softer, more realistic shadows. You can increase the 'runtimeQuality' field in C# to help reduce pixelated shadows.")]
         [Min(1)]
         public int pixelDensityPerSquareMeter = 128;
 
@@ -1184,20 +1188,20 @@ namespace AlpacaIT.DynamicLighting
                     break;
 
                 case DynamicLightType.Wave:
-                    shaderLight->gpFloat1 = light.lightWaveSpeed;
-                    shaderLight->gpFloat2 = light.lightWaveFrequency;
+                    shaderLight->gpFloat1 = light.lightWaveOffset + timeTime * light.lightWaveSpeed;
+                    shaderLight->gpFloat2 = light.lightWaveFrequency * Mathf.PI * 2.0f;
                     break;
 
                 case DynamicLightType.Interference:
-                    shaderLight->gpFloat1 = light.lightWaveSpeed;
-                    shaderLight->gpFloat2 = light.lightWaveFrequency;
+                    shaderLight->gpFloat1 = (light.lightWaveOffset + timeTime * light.lightWaveSpeed) * Mathf.PI * 2.0f;
+                    shaderLight->gpFloat2 = light.lightWaveFrequency * Mathf.PI;
                     lightRotation = light.transform.rotation;
                     shaderLight->up = lightRotation * Vector3.up;
                     shaderLight->forward = lightRotation * Vector3.forward;
                     break;
 
                 case DynamicLightType.Rotor:
-                    shaderLight->gpFloat1 = light.lightWaveSpeed;
+                    shaderLight->gpFloat1 = (light.lightWaveOffset + timeTime * light.lightWaveSpeed) * Mathf.PI * 2.0f;
                     shaderLight->gpFloat2 = Mathf.Round(light.lightWaveFrequency);
                     shaderLight->gpFloat3 = light.lightRotorCenter;
                     lightRotation = light.transform.rotation;
@@ -1206,14 +1210,14 @@ namespace AlpacaIT.DynamicLighting
                     break;
 
                 case DynamicLightType.Shock:
-                    shaderLight->gpFloat1 = light.lightWaveSpeed;
+                    shaderLight->gpFloat1 = light.lightWaveOffset + timeTime * light.lightWaveSpeed;
                     shaderLight->gpFloat2 = light.lightWaveFrequency;
                     break;
 
                 case DynamicLightType.Disco:
-                    shaderLight->gpFloat1 = light.lightWaveSpeed;
+                    shaderLight->gpFloat1 = (light.lightWaveOffset + timeTime * light.lightWaveSpeed) * Mathf.PI * 2.0f;
                     shaderLight->gpFloat2 = Mathf.Round(light.lightWaveFrequency);
-                    shaderLight->gpFloat3 = light.lightDiscoVerticalSpeed;
+                    shaderLight->gpFloat3 = (light.lightWaveOffset + timeTime * light.lightDiscoVerticalSpeed) * Mathf.PI * 2.0f;
                     lightRotation = light.transform.rotation;
                     shaderLight->up = lightRotation * Vector3.up;
                     shaderLight->forward = lightRotation * Vector3.forward;
@@ -1273,7 +1277,7 @@ namespace AlpacaIT.DynamicLighting
                     break;
 
                 case DynamicLightEffect.Pulse:
-                    lightCache.intensity = Mathf.Lerp(light.lightEffectPulseModifier, 1.0f, (1f + Mathf.Sin(timeTime * Mathf.PI * 2f * light.lightEffectPulseSpeed)) * 0.5f);
+                    lightCache.intensity = Mathf.Lerp(light.lightEffectPulseModifier, 1.0f, (1f + Mathf.Sin((light.lightEffectPulseOffset + timeTime * light.lightEffectPulseSpeed) * Mathf.PI * 2f)) * 0.5f);
                     break;
             }
 
@@ -1312,19 +1316,6 @@ namespace AlpacaIT.DynamicLighting
             {
                 shaderLight->volumetricIntensity = light.lightVolumetricIntensity * lightCache.intensity;
             }
-        }
-
-        /// <summary>
-        /// Gets or sets a special graphics mode for underpowered laptops with integrated graphics.
-        /// You should add this option to your in-game settings menu.
-        /// <para>Disables support for real-time shadows.</para>
-        /// <para>Disables support for bounce lighting.</para>
-        /// <para>Uses very cheap bilinear filtering for shadows.</para>
-        /// </summary>
-        public bool integratedGraphicsModeEnabled
-        {
-            get => shadersKeywordIntegratedGraphicsEnabled;
-            set => shadersKeywordIntegratedGraphicsEnabled = value;
         }
 
         private void OnDrawGizmos()
@@ -1388,5 +1379,21 @@ namespace AlpacaIT.DynamicLighting
             if (!cancelled)
                 traceCompleted?.Invoke(this, new DynamicLightingTraceCompletedEventArgs(this));
         }
+
+        #region Obsolete Code
+
+        /// <summary>
+        /// Used to get or set a special graphics mode for underpowered laptops with integrated
+        /// graphics. Please use <see cref="runtimeQuality"/> instead.
+        /// <para>This property will be removed in 2025.</para>
+        /// </summary>
+        [Obsolete("Please use '" + nameof(DynamicLightManager) + "." + nameof(runtimeQuality) + "' instead.")]
+        public bool integratedGraphicsModeEnabled
+        {
+            get => runtimeQuality == DynamicLightingRuntimeQuality.IntegratedGraphics;
+            set => runtimeQuality = value ? DynamicLightingRuntimeQuality.IntegratedGraphics : runtimeQuality;
+        }
+
+        #endregion Obsolete Code
     }
 }
