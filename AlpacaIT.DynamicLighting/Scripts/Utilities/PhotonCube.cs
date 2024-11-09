@@ -72,7 +72,10 @@ namespace AlpacaIT.DynamicLighting
                     // compress the shader data.
                     for (int i = 0; i < colorsArraySize; i++)
                     {
-                        distancesPtr[i] = new ScaledAbsFloat16(shaderColorsPtr[i].distance, lightRadius);
+                        var distance = shaderColorsPtr[i].distance;
+                        if (distance == 0.0f) // when zero the pixel was not rendered (beyond the camera far clip distance).
+                            distance = lightRadius;
+                        distancesPtr[i] = new ScaledAbsFloat16(distance, lightRadius);
                         normalsPtr[i] = shaderColorsPtr[i].normal;
                     }
                 }
@@ -81,7 +84,10 @@ namespace AlpacaIT.DynamicLighting
                     // compress the shader data.
                     for (int i = 0; i < colorsArraySize; i++)
                     {
-                        distancesPtr[i] = new ScaledAbsFloat16(shaderColorsPtr[i].distance, lightRadius);
+                        var distance = shaderColorsPtr[i].distance;
+                        if (distance == 0.0f) // when zero the pixel was not rendered (beyond the camera far clip distance).
+                            distance = lightRadius;
+                        distancesPtr[i] = new ScaledAbsFloat16(distance, lightRadius);
                     }
                 }
             }

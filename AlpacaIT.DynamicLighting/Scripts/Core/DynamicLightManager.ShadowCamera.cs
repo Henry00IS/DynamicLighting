@@ -165,7 +165,7 @@ namespace AlpacaIT.DynamicLighting
             shadowCameraTransform.position = shaderLight->position;
 
             // we do not need shadows beyond the light radius.
-            shadowCamera.farClipPlane = light.lightRadius * 2f;
+            shadowCamera.farClipPlane = light.lightRadius * 3f;
             shadowCamera.cullingMask = realtimeShadowLayers;
 
             // render the 6 sides of the cubemap:

@@ -123,7 +123,7 @@ namespace AlpacaIT.DynamicLighting
             photonCameraTransform.position = lightPosition;
 
             // we do not need photons beyond the light radius.
-            photonCamera.farClipPlane = lightRadius * 2f;
+            photonCamera.farClipPlane = lightRadius * 3f;
             photonCamera.cullingMask = raycastLayermask;
 
             // render the 6 sides of the cubemap:
