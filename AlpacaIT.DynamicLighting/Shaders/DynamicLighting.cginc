@@ -638,8 +638,12 @@ struct DynamicTriangle
 #if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
     // fetches a bounce pixel at the specified uv coordinates from the bounce texture data.
     // note: requires 'uv -= bounds.xy' to be calculated up front.
-    float bounce_sample(uint index, uint bounceBpp, uint uintIndex, uint byteIndex, uint bounceMask)
+    float bounce_sample(uint index, uint bouncePixels, uint bounceBpp, uint bounceMask)
     {
+        // the bounce texture data is compressed with multiple pixels in one uint.
+        uint uintIndex = index / bouncePixels; // determine the index of the uint in the buffer.
+        uint byteIndex = index % bouncePixels; // find the byte position within the uint.
+        
         // read the uint from memory.
         uint value = dynamic_triangles[activeLightBounceDataOffset + uintIndex];
         
@@ -662,25 +666,18 @@ struct DynamicTriangle
         // offset the lightmap triangle uv to the top-left corner to read near zero, zero.
         pos_top_left -= bounds.xy;
         
+        // the bounce texture data is compressed with multiple pixels in one uint.
         uint bounceBpp = light.bounce_compression_level();
         uint bouncePixels = 32 / bounceBpp;
         uint bounceMask = (1 << bounceBpp) - 1; // the bitmask for the bits per pixel (e.g. 5 = 31).
         
-        // the bounce texture data is compressed with multiple pixels in one uint.
         uint index = pos_top_left.y * bounds.z + pos_top_left.x;
-        uint uintIndex = index / bouncePixels; // determine the index of the uint in the buffer.
-        uint byteIndex = index % bouncePixels; // find the byte position within the uint.
+        float tl   = bounce_sample(index    , bouncePixels, bounceBpp, bounceMask);
+        float tr   = bounce_sample(index + 1, bouncePixels, bounceBpp, bounceMask);
         
-        float tl   = bounce_sample(index    , bounceBpp, uintIndex, byteIndex, bounceMask);
-        float tr   = bounce_sample(index + 1, bounceBpp, uintIndex, byteIndex, bounceMask);
-        
-        // the bounce texture data is compressed with multiple pixels in one uint.
         index      = (pos_top_left.y + 1) * bounds.z + pos_top_left.x;
-        uintIndex = index / bouncePixels; // determine the index of the uint in the buffer.
-        byteIndex = index % bouncePixels; // find the byte position within the uint.
-        
-        float bl   = bounce_sample(index    , bounceBpp, uintIndex, byteIndex, bounceMask);
-        float br   = bounce_sample(index + 1, bounceBpp, uintIndex, byteIndex, bounceMask);
+        float bl   = bounce_sample(index    , bouncePixels, bounceBpp, bounceMask);
+        float br   = bounce_sample(index + 1, bouncePixels, bounceBpp, bounceMask);
         
         // bilinear interpolation (simd).
         float2 c = lerp(float2(tl, bl), float2(tr, br), f.x);
