@@ -251,13 +251,13 @@ struct DynamicLight
     //
     // returns: the multiplier for the shadow map.
     //
-    float calculate_watershimmer(float3 world, float modifier)
+    float calculate_watershimmer(float3 world)
     {
         // overlay the entire world with random blocks that never change between 0.0 and 1.0.
         float stablerng = rand(world);
 
         // use a sine wave to change the brightness of the stable random blocks.
-        return 1.0 - abs(sin(stablerng * _Time.w + _Time.x)) * (1.0 - modifier);
+        return 1.0 - abs(sin(stablerng * _Time.w + _Time.x)) * (1.0 - shimmerModifier);
     }
 
     #define GENERATE_FUNCTION_NAME calculate_watershimmer_bilinear
@@ -268,13 +268,13 @@ struct DynamicLight
     //
     // returns: the multiplier for the shadow map.
     //
-    float calculate_randomshimmer(float3 world, float modifier)
+    float calculate_randomshimmer(float3 world)
     {
         // overlay the entire world with random blocks that change at 30FPS between 0.0 and 1.0.
         float stablerng = rand(world + frac(floor(_Time.y * 30) * 0.001));
 
         // clamp the range down to change the intensity.
-        return modifier + (1.0 - modifier) * stablerng;
+        return shimmerModifier + (1.0 - shimmerModifier) * stablerng;
     }
     
     // special thanks to Nikita Lisitsa https://lisyarus.github.io/blog/posts/point-light-attenuation.html

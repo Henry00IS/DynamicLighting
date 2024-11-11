@@ -13,31 +13,27 @@ float GENERATE_FUNCTION_NAME(float3 world)
     world = floor(world);
 
     // sample the texture at the neighboring cells.
-    float modifier = shimmerModifier;
-    float topLeftFront = GENERATE_FUNCTION_CALL(world, modifier);
-    float topRightFront = GENERATE_FUNCTION_CALL(world + float3(1, 0, 0), modifier);
-    float bottomLeftFront = GENERATE_FUNCTION_CALL(world + float3(0, 1, 0), modifier);
-    float bottomRightFront = GENERATE_FUNCTION_CALL(world + float3(1, 1, 0), modifier);
-    float topLeftBack = GENERATE_FUNCTION_CALL(world + float3(0, 0, 1), modifier);
-    float topRightBack = GENERATE_FUNCTION_CALL(world + float3(1, 0, 1), modifier);
-    float bottomLeftBack = GENERATE_FUNCTION_CALL(world + float3(0, 1, 1), modifier);
-    float bottomRightBack = GENERATE_FUNCTION_CALL(world + float3(1, 1, 1), modifier);
+    float topLeftFront = GENERATE_FUNCTION_CALL(world);
+    float topRightFront = GENERATE_FUNCTION_CALL(world + float3(1, 0, 0));
+    float bottomLeftFront = GENERATE_FUNCTION_CALL(world + float3(0, 1, 0));
+    float bottomRightFront = GENERATE_FUNCTION_CALL(world + float3(1, 1, 0));
+    float topLeftBack = GENERATE_FUNCTION_CALL(world + float3(0, 0, 1));
+    float topRightBack = GENERATE_FUNCTION_CALL(world + float3(1, 0, 1));
+    float bottomLeftBack = GENERATE_FUNCTION_CALL(world + float3(0, 1, 1));
+    float bottomRightBack = GENERATE_FUNCTION_CALL(world + float3(1, 1, 1));
 
     // perform bilinear interpolation in the x direction.
-    float topFront = lerp(topLeftFront, topRightFront, weight.x);
-    float bottomFront = lerp(bottomLeftFront, bottomRightFront, weight.x);
-    float topBack = lerp(topLeftBack, topRightBack, weight.x);
-    float bottomBack = lerp(bottomLeftBack, bottomRightBack, weight.x);
-
+    float4 dx = lerp(float4(topLeftFront , bottomLeftFront , topLeftBack , bottomLeftBack),
+                     float4(topRightFront, bottomRightFront, topRightBack, bottomRightBack),
+                     weight.x);
+    
     // perform bilinear interpolation in the y direction.
-    float front = lerp(topFront, bottomFront, weight.y);
-    float back = lerp(topBack, bottomBack, weight.y);
+    float2 dy = lerp(float2(dx.x, dx.z),
+                     float2(dx.y, dx.w),
+                     weight.y);
 
     // perform bilinear interpolation in the z direction.
-    float result = lerp(front, back, weight.z);
-
-    // return the final interpolated value.
-    return result;
+    return lerp(dy.x, dy.y, weight.z);
 }
 
 #undef GENERATE_FUNCTION_NAME
