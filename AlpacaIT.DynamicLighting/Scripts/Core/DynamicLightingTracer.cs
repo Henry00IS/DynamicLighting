@@ -221,7 +221,7 @@ namespace AlpacaIT.DynamicLighting
                     bool storeNormals = false;
 
                     // computing transparency in raycasted shadows requires a photon cube.
-                    if (light.lightTransparency == DynamicLightTransparencyMode.Enabled)
+                    if (light.lightTransparency != DynamicLightTransparencyMode.Disabled)
                         requiresPhotonCube = true;
 
                     // check for the usage of bounce lighting in the scene.
@@ -636,11 +636,21 @@ namespace AlpacaIT.DynamicLighting
                         var lightDistanceToWorld = Mathf.Sqrt(lightDistanceToWorldSqr);
 
                         // when using alpha transparency we already did all the work on the graphics card.
-                        if (lightTransparency == DynamicLightTransparencyMode.Enabled)
+                        if (lightTransparency != DynamicLightTransparencyMode.Disabled)
                         {
-                            if (lightPhotonCube.SampleShadow(lightDirection, lightDistanceToWorld, triangleNormal))
+                            if (lightTransparency == DynamicLightTransparencyMode.EnabledMax)
                             {
-                                pixels_lightmap[xyPtr] |= (uint)1 << lightChannel;
+                                if (lightPhotonCube.SampleShadowMax(lightDirection, lightDistanceToWorld, triangleNormal))
+                                {
+                                    pixels_lightmap[xyPtr] |= (uint)1 << lightChannel;
+                                }
+                            }
+                            else
+                            {
+                                if (lightPhotonCube.SampleShadow(lightDirection, lightDistanceToWorld, triangleNormal))
+                                {
+                                    pixels_lightmap[xyPtr] |= (uint)1 << lightChannel;
+                                }
                             }
                         }
                         else

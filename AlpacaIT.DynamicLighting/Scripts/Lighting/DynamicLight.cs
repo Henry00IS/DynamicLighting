@@ -534,9 +534,21 @@ namespace AlpacaIT.DynamicLighting
                 Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingBounce.psd", true, white);
             }
 
-            if (lightTransparency == DynamicLightTransparencyMode.Enabled)
+            if (lightTransparency != DynamicLightTransparencyMode.Disabled)
             {
-                Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingTransparent.psd", true, white);
+                if (lightTransparency == DynamicLightTransparencyMode.EnabledMax)
+                {
+                    Color orange;
+                    orange.r = 1f;
+                    orange.g = 0.5f;
+                    orange.b = 0f;
+                    orange.a = 1f;
+                    Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingTransparent.psd", true, orange);
+                }
+                else
+                {
+                    Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingTransparent.psd", true, white);
+                }
             }
 
             switch (lightShimmer)

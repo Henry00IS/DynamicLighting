@@ -290,6 +290,24 @@ namespace AlpacaIT.DynamicLighting
             return faces[face].SampleDistance(uv);
         }
 
+        public float SampleMaxDistance(Vector3 direction)
+        {
+            var uv = GetFaceUvByDirection(direction, out var face1);
+
+            var uvl = GetFaceUvByDirection(GetDirectionByFaceUv(uv - new Vector2((2f / size), 0f), face1), out var face2);
+            var uvr = GetFaceUvByDirection(GetDirectionByFaceUv(uv + new Vector2((2f / size), 0f), face1), out var face3);
+            var uvu = GetFaceUvByDirection(GetDirectionByFaceUv(uv - new Vector2(0f, (2f / size)), face1), out var face4);
+            var uvd = GetFaceUvByDirection(GetDirectionByFaceUv(uv + new Vector2(0f, (2f / size)), face1), out var face5);
+
+            var a = faces[face1].SampleDistance(uv);
+            var b = faces[face2].SampleDistance(uvl);
+            var c = faces[face3].SampleDistance(uvr);
+            var d = faces[face4].SampleDistance(uvu);
+            var e = faces[face5].SampleDistance(uvd);
+
+            return Mathf.Max(a, b, c, d, e);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float SampleDistanceFast(PhotonCubeFace photonCubeFace, int photonCubeFaceIndex)
         {
@@ -387,9 +405,6 @@ namespace AlpacaIT.DynamicLighting
         /// <returns>True when the fragment position is in light else false.</returns>
         public unsafe bool SampleShadow(Vector3 lightDirection, float lightDistanceToWorld, Vector3 worldNormal)
         {
-            // calculate the square distance between the light source and the fragment.
-            float light_distanceSqr = lightDistanceToWorld * lightDistanceToWorld;
-
             // a simple dot product with the normal gives us diffusion.
             float NdotL = Mathf.Max(Vector3.Dot(worldNormal, lightDirection), 0);
 
@@ -402,6 +417,36 @@ namespace AlpacaIT.DynamicLighting
             // negative!
             UMath.Negate(&lightDirection);
             float shadow_mapping_distance = SampleDistance(lightDirection);
+
+            // when the fragment is occluded we can early out here.
+            if (light_distance - autobias > shadow_mapping_distance)
+                return false;
+
+            return true;
+        }
+
+        /// <summary>
+        /// Gets software rendered real-time shadows returning true when the given fragment by
+        /// direction and distance is in the light else false.
+        /// </summary>
+        /// <param name="lightDirection">The direction between the light source and the fragment.</param>
+        /// <param name="lightDistanceToWorld">The distance between the light source and the fragment.</param>
+        /// <param name="worldNormal">The normal of the fragment (e.g. triangle normal).</param>
+        /// <returns>True when the fragment position is in light else false.</returns>
+        public unsafe bool SampleShadowMax(Vector3 lightDirection, float lightDistanceToWorld, Vector3 worldNormal)
+        {
+            // a simple dot product with the normal gives us diffusion.
+            float NdotL = Mathf.Max(Vector3.Dot(worldNormal, lightDirection), 0);
+
+            // magic bias function! it is amazing!
+            float light_distance = lightDistanceToWorld;
+            float magic = 0.02f + 0.01f * light_distance;
+            float autobias = magic * Mathf.Tan(Mathf.Acos(1.0f - NdotL));
+            autobias = Mathf.Clamp(autobias, 0.0f, magic);
+
+            // negative!
+            UMath.Negate(&lightDirection);
+            float shadow_mapping_distance = SampleMaxDistance(lightDirection);
 
             // when the fragment is occluded we can early out here.
             if (light_distance - autobias > shadow_mapping_distance)
