@@ -46,6 +46,10 @@ namespace AlpacaIT.DynamicLighting
         [Tooltip("The compression level for bounce lighting data. Choosing a higher compression can reduce VRAM usage, but may result in reduced visual quality. For best results, adjust based on your VRAM availability and visual preferences.")]
         private DynamicBounceLightingDefaultCompressionMode bounceLightingCompression;
 
+        /// <inheritdoc cref="DynamicLightManager.lightTrackingMode"/>
+        [Tooltip("Dynamic light sources can be moved in the scene, where they will be treated as real-time lights without shadows. While this approach is easy to work with, it requires a background process to continuously track the positions of all light sources. This uses some computational power which may not be available in your project. Moving raytraced lights (with the intention to use them as real-time lights) also incurs a performance cost on the GPU compared to actual real-time light sources and is therefore not recommended. Alternatively, it is possible to only update all positions when required, such as a raytraced light (or the game object with a raytraced light) getting enabled in the scene. This relaxes the system and reduces the computational overhead. Note that volumetric fog that uses the game object scale will also not be updated. An exception is the light rotation which will always be updated no matter which mode is used.")]
+        private DynamicLightTrackingMode lightTrackingMode;
+
         /// <summary>
         /// Creates a new instance of the <see cref="DynamicLightingSettings"/> with default values.
         /// </summary>
@@ -63,6 +67,7 @@ namespace AlpacaIT.DynamicLighting
             realtimeShadowLayers = ~(4 | 16 | 32);
             pixelDensityPerSquareMeter = 128;
             bounceLightingCompression = DynamicBounceLightingDefaultCompressionMode.EightBitsPerPixel;
+            lightTrackingMode = DynamicLightTrackingMode.LiveTracking;
 
             TryApply();
         }
@@ -80,6 +85,7 @@ namespace AlpacaIT.DynamicLighting
             dynamicLightManager.realtimeShadowLayers = realtimeShadowLayers;
             dynamicLightManager.pixelDensityPerSquareMeter = pixelDensityPerSquareMeter;
             dynamicLightManager.bounceLightingCompression = bounceLightingCompression;
+            dynamicLightManager.lightTrackingMode = lightTrackingMode;
         }
 
         /// <summary>
@@ -99,6 +105,7 @@ namespace AlpacaIT.DynamicLighting
                 realtimeShadowLayers = dynamicLightManager.realtimeShadowLayers;
                 pixelDensityPerSquareMeter = dynamicLightManager.pixelDensityPerSquareMeter;
                 bounceLightingCompression = dynamicLightManager.bounceLightingCompression;
+                lightTrackingMode = dynamicLightManager.lightTrackingMode;
                 return true;
             }
             return false;

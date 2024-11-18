@@ -9,16 +9,20 @@ namespace AlpacaIT.DynamicLighting
     public partial class DynamicLightManager
     {
         /// <summary>Contains an array of <see cref="Transform"/> used with <see cref="GetTransformPositionsJob"/>.</summary>
-        [HideInInspector]
-        internal TransformAccessArray lightPositionsRaycastedLightTransforms;
+        private TransformAccessArray lightPositionsRaycastedLightTransforms;
 
         /// <summary>Contains an array of <see cref="Vector3"/> positions after <see cref="GetTransformPositionsJob"/>.</summary>
-        [HideInInspector]
-        internal Vector3[] lightPositionsRaycastedLightPositions;
+        private Vector3[] lightPositionsRaycastedLightPositions;
 
         /// <summary>Contains an array of <see cref="Vector3"/> scales after <see cref="GetTransformPositionsJob"/>.</summary>
-        [HideInInspector]
-        internal Vector3[] lightPositionsRaycastedLightScales;
+        private Vector3[] lightPositionsRaycastedLightScales;
+
+        /// <summary>
+        /// Used with <see cref="lightTrackingMode"/> when <see
+        /// cref="DynamicLightTrackingMode.RelaxedTracking"/> to only update light
+        /// positions and scales when necessary.
+        /// </summary>
+        private bool lightPositionsDirty;
 
         /// <summary>Initialization of the DynamicLightManager.LightPositions partial class.</summary>
         private void LightPositionsInitialize()
@@ -62,6 +66,13 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Called before the lights are iterated for updates.</summary>
         private unsafe void LightPositionsUpdate()
         {
+            // relax the workload when desired by only updating when necessary.
+            if (editorIsPlaying && lightTrackingMode == DynamicLightTrackingMode.RelaxedTracking)
+            {
+                if (!lightPositionsDirty) return;
+                lightPositionsDirty = false;
+            }
+
             // fetch all of the light positions using the unity job system:
             fixed (Vector3* lightPositionsRaycastedLightPositionsPtr = lightPositionsRaycastedLightPositions)
             {
@@ -87,6 +98,19 @@ namespace AlpacaIT.DynamicLighting
         private void LightPositionsOnRaycastedDynamicLightAvailable(int raycastedDynamicLightsIndex)
         {
             lightPositionsRaycastedLightTransforms[raycastedDynamicLightsIndex] = raycastedDynamicLights[raycastedDynamicLightsIndex].light.transform;
+            lightPositionsDirty = true;
+        }
+
+        /// <summary>
+        /// When using <see cref="DynamicLightTrackingMode.RelaxedTracking"/> this
+        /// will flag the system to perform a full light position and scale update when the <see
+        /// cref="DynamicLightManager"/> is updated. This update is as fast as the normal <see
+        /// cref="DynamicLightTrackingMode.LiveTracking"/> and can be called every frame.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RequestLightTrackingUpdate()
+        {
+            lightPositionsDirty = true;
         }
     }
 }

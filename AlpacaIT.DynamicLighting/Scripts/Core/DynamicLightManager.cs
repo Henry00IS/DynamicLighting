@@ -251,6 +251,23 @@ namespace AlpacaIT.DynamicLighting
         public DynamicBounceLightingDefaultCompressionMode bounceLightingCompression = DynamicBounceLightingDefaultCompressionMode.EightBitsPerPixel;
 
         /// <summary>
+        /// The tracking mode for dynamic light positions and scales. Dynamic light sources can be
+        /// moved in the scene, where they will be treated as real-time lights without shadows.
+        /// While this approach is easy to work with, it requires a background process to
+        /// continuously track the positions of all light sources. This uses some computational
+        /// power which may not be available in your project. Moving raytraced lights (with the
+        /// intention to use them as real-time lights) also incurs a performance cost on the GPU
+        /// compared to actual real-time light sources and is therefore not recommended.
+        /// Alternatively, it is possible to only update all positions when required, such as a
+        /// raytraced light (or the game object with a raytraced light) getting enabled in the
+        /// scene. This relaxes the system and reduces the computational overhead. Note that
+        /// volumetric fog that uses the game object scale will also not be updated. An exception is
+        /// the light rotation which will always be updated no matter which mode is used.
+        /// </summary>
+        [Tooltip("Dynamic light sources can be moved in the scene, where they will be treated as real-time lights without shadows. While this approach is easy to work with, it requires a background process to continuously track the positions of all light sources. This uses some computational power which may not be available in your project. Moving raytraced lights (with the intention to use them as real-time lights) also incurs a performance cost on the GPU compared to actual real-time light sources and is therefore not recommended. Alternatively, it is possible to only update all positions when required, such as a raytraced light (or the game object with a raytraced light) getting enabled in the scene. This relaxes the system and reduces the computational overhead. Note that volumetric fog that uses the game object scale will also not be updated. An exception is the light rotation which will always be updated no matter which mode is used.")]
+        public DynamicLightTrackingMode lightTrackingMode = DynamicLightTrackingMode.LiveTracking;
+
+        /// <summary>
         /// The runtime quality for Dynamic Lighting in the scene. These options should be available
         /// in your in-game settings menu to allow players to adjust lighting quality based on their
         /// hardware performance.
@@ -726,6 +743,9 @@ namespace AlpacaIT.DynamicLighting
         {
             if (sceneRealtimeLights != null)
             {
+                // if the light is not at the origin and we remove this light from the realtime
+                // lights collection, it will never get added back unless we reset this flag.
+                light.cache.movedFromOrigin = false;
                 sceneRealtimeLights.Remove(light);
                 activeRealtimeLights.Remove(light);
                 SetRaycastedDynamicLightAvailable(light, false);
