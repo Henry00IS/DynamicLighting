@@ -112,6 +112,10 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         public static event EventHandler<DynamicLightingPostUpdateEventArgs> postUpdate;
 
+#if !UNITY_EDITOR
+#pragma warning disable CS0067 // the event is never used outside of unity editor.
+#endif
+
         /// <summary>
         /// Called when the <see cref="DynamicLightManager"/> deletes the lighting data in the scene.
         /// <para>
@@ -121,6 +125,10 @@ namespace AlpacaIT.DynamicLighting
         /// </para>
         /// </summary>
         public static event EventHandler<DynamicLightingDeletedEventArgs> lightingDeleted;
+
+#if !UNITY_EDITOR
+#pragma warning restore CS0067
+#endif
 
         /// <summary>The light channel number used by realtime lights without baked shadows.</summary>
         public const int realtimeLightChannel = 32;

@@ -67,7 +67,11 @@ namespace AlpacaIT.DynamicLighting
         private unsafe void LightPositionsUpdate()
         {
             // relax the workload when desired by only updating when necessary.
+#if UNITY_EDITOR
             if (editorIsPlaying && lightTrackingMode == DynamicLightTrackingMode.RelaxedTracking)
+#else
+            if (lightTrackingMode == DynamicLightTrackingMode.RelaxedTracking)
+#endif
             {
                 if (!lightPositionsDirty) return;
                 lightPositionsDirty = false;
