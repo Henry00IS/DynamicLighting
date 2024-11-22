@@ -73,8 +73,9 @@ namespace AlpacaIT.DynamicLighting
             // this acts as the inner radius around the camera, which when objects clip inside, the
             // photons will visually glitch, so we keep it very small.
             photonCamera.nearClipPlane = 0.01f;
-            // we must render the skybox to prevent glitched distance data.
-            photonCamera.clearFlags = CameraClearFlags.Skybox;
+            // we must not render the skybox to prevent glitched distance data.
+            photonCamera.backgroundColor = Color.black;
+            photonCamera.clearFlags = CameraClearFlags.Color;
             // only useful in the editor previews, but programmers can filter by this category.
             photonCamera.cameraType = CameraType.Reflection;
             // we render depth using a special shader.
