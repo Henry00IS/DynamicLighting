@@ -1307,6 +1307,35 @@ namespace AlpacaIT.DynamicLighting
                 case DynamicLightEffect.Pulse:
                     lightCache.intensity = Mathf.Lerp(light.lightEffectPulseModifier, 1.0f, (1f + Mathf.Sin((light.lightEffectPulseOffset + timeTime * light.lightEffectPulseSpeed) * Mathf.PI * 2f)) * 0.5f);
                     break;
+
+                case DynamicLightEffect.FluorescentStarter:
+                    var sequence = (light.lightEffectPulseOffset + timeTime) % 3.3f;
+                    if (sequence < 0.5f)
+                        // initial flicker as the light tries to ignite.
+                        lightCache.intensity = (0.25f + Mathf.Sin(sequence * Mathf.PI * 50f) * 0.125f) * (1.0f - light.lightEffectPulseModifier); // 50hz electricity on the pre-heat ballast.
+                    else if (sequence > 2.95f)
+                        // sudden fade as the light fails, restarting the cycle.
+                        lightCache.intensity = Mathf.Lerp(1.0f, 0.0f, (sequence - 3.0f) * 20f);
+                    else
+                        // light stabilizes at full brightness for a moment.
+                        lightCache.intensity = 1.0f;
+                    break;
+
+                case DynamicLightEffect.FluorescentClicker:
+                    var sequenceTime = (light.lightEffectPulseOffset + timeTime) % 6.0f;
+                    if (sequenceTime < 0.3f)
+                        // initial faint flicker as the light tries to ignite.
+                        lightCache.intensity = (0.1f + Mathf.Sin(sequenceTime * Mathf.PI * 20f) * 0.05f);
+                    else if (sequenceTime < 1.5f)
+                        // sporadic flashes with brief pauses, mimicking the glow starter clicking.
+                        lightCache.intensity = (sequenceTime % 0.2f < 0.05f) ? 1.0f : 0.0f;
+                    else if (sequenceTime < 4.5f)
+                        // light stabilizes at full brightness for a moment.
+                        lightCache.intensity = 1.0f;
+                    else
+                        // sudden fade as the light fails, restarting the cycle.
+                        lightCache.intensity = Mathf.Lerp(1.0f, 0.0f, (sequenceTime - 4.5f) / 0.0625f);
+                    break;
             }
 
             // fixed timestep light effects:

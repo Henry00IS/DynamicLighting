@@ -40,5 +40,25 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         [Tooltip("The light randomly picks a number between 0 and 1. If the number is smaller than 0.5 the light will be fully dark otherwise it multiplies the fully bright intensity with the number. It does this every update of the configurable framerate independent fixed timestep frequency. This is similar to random intensity except that the light turns off more often giving that sense that the light is either broken or electricity is sparking etc.")]
         Flicker = 4,
+
+        /// <summary>
+        /// The fluorescent light flickers as it attempts to ignite. In the initial phase, the light
+        /// exhibits a rapid, low-intensity flicker resembling the 50Hz electrical hum of a preheat
+        /// ballast. After stabilizing briefly at full brightness, it suddenly dims and powers down
+        /// in a rapid fade, only to restart the cycle. This effect mimics the distinctive,
+        /// frustrating behavior of a failing fluorescent tube.
+        /// </summary>
+        [Tooltip("The fluorescent light flickers as it attempts to ignite. In the initial phase, the light exhibits a rapid, low-intensity flicker resembling the 50Hz electrical hum of a preheat ballast. After stabilizing briefly at full brightness, it suddenly dims and powers down in a rapid fade, only to restart the cycle. This effect mimics the distinctive, frustrating behavior of a failing fluorescent tube.")]
+        FluorescentStarter = 5,
+
+        /// <summary>
+        /// The fluorescent light struggles to start, producing faint, rapid flickers before
+        /// emitting sporadic, bright flashes interspersed with darkness. After stabilizing at full
+        /// brightness for a short period, the light abruptly dims, mimicking the cycle of a glow
+        /// switch starter. This effect captures the erratic and frustrating behavior of a failing
+        /// fluorescent light.
+        /// </summary>
+        [Tooltip("The fluorescent light struggles to start, producing faint, rapid flickers before emitting sporadic, bright flashes interspersed with darkness. After stabilizing at full brightness for a short period, the light abruptly dims, mimicking the cycle of a glow switch starter. This effect captures the erratic and frustrating behavior of a failing fluorescent light.")]
+        FluorescentClicker = 6,
     }
 }
