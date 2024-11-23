@@ -45,10 +45,10 @@ namespace AlpacaIT.DynamicLighting
         /// The fluorescent light flickers as it attempts to ignite. In the initial phase, the light
         /// exhibits a rapid, low-intensity flicker resembling the 50Hz electrical hum of a preheat
         /// ballast. After stabilizing briefly at full brightness, it suddenly dims and powers down
-        /// in a rapid fade, only to restart the cycle. This effect mimics the distinctive,
-        /// frustrating behavior of a failing fluorescent tube.
+        /// in a rapid fade, only to restart the cycle. This effect captures the erratic and
+        /// frustrating behavior of a failing fluorescent light.
         /// </summary>
-        [Tooltip("The fluorescent light flickers as it attempts to ignite. In the initial phase, the light exhibits a rapid, low-intensity flicker resembling the 50Hz electrical hum of a preheat ballast. After stabilizing briefly at full brightness, it suddenly dims and powers down in a rapid fade, only to restart the cycle. This effect mimics the distinctive, frustrating behavior of a failing fluorescent tube.")]
+        [Tooltip("The fluorescent light flickers as it attempts to ignite. In the initial phase, the light exhibits a rapid, low-intensity flicker resembling the 50Hz electrical hum of a preheat ballast. After stabilizing briefly at full brightness, it suddenly dims and powers down in a rapid fade, only to restart the cycle. This effect captures the erratic and frustrating behavior of a failing fluorescent light.")]
         FluorescentStarter = 5,
 
         /// <summary>
@@ -60,5 +60,14 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         [Tooltip("The fluorescent light struggles to start, producing faint, rapid flickers before emitting sporadic, bright flashes interspersed with darkness. After stabilizing at full brightness for a short period, the light abruptly dims, mimicking the cycle of a glow switch starter. This effect captures the erratic and frustrating behavior of a failing fluorescent light.")]
         FluorescentClicker = 6,
+
+        /// <summary>
+        /// The fluorescent light exhibits chaotic and unpredictable behavior, randomly alternating
+        /// between dimming, rapid flickers as it tries to ignite, and brief moments of full
+        /// brightness. This effect captures the erratic and frustrating behavior of a failing
+        /// fluorescent light.
+        /// </summary>
+        [Tooltip("The fluorescent light exhibits chaotic and unpredictable behavior, randomly alternating between dimming, rapid flickers as it tries to ignite, and brief moments of full brightness. This effect captures the erratic and frustrating behavior of a failing fluorescent light.")]
+        FluorescentRandom = 7,
     }
 }

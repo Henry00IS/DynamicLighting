@@ -28,6 +28,12 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         public bool strobeActive;
 
+        /// <summary>[<see cref="DynamicLightEffect.FluorescentRandom"/>] the current animation.</summary>
+        public int fluorescentRandomState;
+
+        /// <summary>[<see cref="DynamicLightEffect.FluorescentRandom"/>] next animation time.</summary>
+        public float fluorescentRandomTime;
+
         /// <summary>
         /// Used by raycasted lights to remember whether they already acted on changing the position
         /// away from the origin or back to the origin.
