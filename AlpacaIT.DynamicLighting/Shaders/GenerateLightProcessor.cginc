@@ -108,12 +108,15 @@ if (map != 0.0 || bounce != 0.0)
     // spot lights determine whether we are in the light cone or outside.
     if (light_type == light_type_spot)
     {
-        // anything outside of the spot light can and must be skipped.
+#if !defined(DYNAMIC_LIGHTING_BOUNCE) || defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
+        // anything outside of the spot light can be skipped.
         float2 spotlight = light.calculate_spotlight(light_direction);
-        if (spotlight.x <= light.light_outerCutoff || spotlight.x == 0.0) // prevent division by zero in light cookies.
+        if (spotlight.x <= light.light_outerCutoff)
             return;
         map *= spotlight.y;
-#if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
+#else
+        float2 spotlight = light.calculate_spotlight_bounce(light_direction);
+        map *= spotlight.x;
         bounce *= spotlight.y;
 #endif
         // when the light has a cookie texture we sample that.
@@ -126,12 +129,15 @@ if (map != 0.0 || bounce != 0.0)
     }
     else if (light_type == light_type_discoball)
     {
-        // anything outside of the spot lights can and must be skipped.
+#if !defined(DYNAMIC_LIGHTING_BOUNCE) || defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
+        // anything outside of the spot lights can be skipped.
         float2 spotlight = light.calculate_discoball(light_direction);
         if (spotlight.x <= light.light_outerCutoff)
             return;
         map *= spotlight.y;
-#if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
+#else
+        float2 spotlight = light.calculate_discoball_bounce(light_direction);
+        map *= spotlight.x;
         bounce *= spotlight.y;
 #endif
     }

@@ -1192,27 +1192,53 @@ namespace AlpacaIT.DynamicLighting
             switch (lightType)
             {
                 case DynamicLightType.Spot:
-                    shaderLight->gpFloat1 = Mathf.Cos(light.lightCutoff * Mathf.Deg2Rad);
-                    shaderLight->gpFloat2 = Mathf.Cos(light.lightOuterCutoff * Mathf.Deg2Rad);
-                    lightRotation = light.transform.rotation;
-                    shaderLight->forward = lightRotation * -Vector3.forward;
-
-                    if (light.lightCookieTexture)
                     {
-                        // -> a hint for the partial class DynamicLightManager.LightCookie so that
-                        //    we do not have to check for the light cookie texture again.
-                        shaderLight->cookieIndex = uint.MaxValue;
-                        shaderLight->up = lightRotation * Vector3.up;
-                        shaderLight->gpFloat3 = 0.5f * Mathf.Tan((90.0f - light.lightOuterCutoff) * Mathf.Deg2Rad);
+                        var lightCutoff = light.lightCutoff;
+                        var lightOuterCutoff = light.lightOuterCutoff;
+
+                        // the outer cutoff must be larger than the inner cutoff.
+                        if (lightOuterCutoff < lightCutoff || lightOuterCutoff == 0.0f)
+                        {
+                            shaderLight->radiusSqr = -1.0f;
+                        }
+                        else
+                        {
+                            shaderLight->gpFloat1 = Mathf.Cos(lightCutoff * Mathf.Deg2Rad);
+                            shaderLight->gpFloat2 = Mathf.Cos(lightOuterCutoff * Mathf.Deg2Rad);
+                            lightRotation = light.transform.rotation;
+                            shaderLight->forward = lightRotation * -Vector3.forward;
+
+                            if (light.lightCookieTexture)
+                            {
+                                // -> a hint for the partial class DynamicLightManager.LightCookie so that
+                                //    we do not have to check for the light cookie texture again.
+                                shaderLight->cookieIndex = uint.MaxValue;
+                                shaderLight->up = lightRotation * Vector3.up;
+                                shaderLight->gpFloat3 = 0.5f * Mathf.Tan((90.0f - light.lightOuterCutoff) * Mathf.Deg2Rad);
+                            }
+                        }
                     }
                     break;
 
                 case DynamicLightType.Discoball:
-                    shaderLight->gpFloat1 = Mathf.Cos(light.lightCutoff * Mathf.Deg2Rad);
-                    shaderLight->gpFloat2 = Mathf.Cos(light.lightOuterCutoff * Mathf.Deg2Rad);
-                    lightRotation = light.transform.rotation;
-                    shaderLight->up = lightRotation * Vector3.up;
-                    shaderLight->forward = lightRotation * Vector3.forward;
+                    {
+                        var lightCutoff = light.lightCutoff;
+                        var lightOuterCutoff = light.lightOuterCutoff;
+
+                        // the outer cutoff must be larger than the inner cutoff.
+                        if (lightOuterCutoff < lightCutoff || lightOuterCutoff == 0.0f)
+                        {
+                            shaderLight->radiusSqr = -1.0f;
+                        }
+                        else
+                        {
+                            shaderLight->gpFloat1 = Mathf.Cos(lightCutoff * Mathf.Deg2Rad);
+                            shaderLight->gpFloat2 = Mathf.Cos(lightOuterCutoff * Mathf.Deg2Rad);
+                            lightRotation = light.transform.rotation;
+                            shaderLight->up = lightRotation * Vector3.up;
+                            shaderLight->forward = lightRotation * Vector3.forward;
+                        }
+                    }
                     break;
 
                 case DynamicLightType.Wave:

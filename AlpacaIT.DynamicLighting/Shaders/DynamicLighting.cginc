@@ -118,7 +118,7 @@ struct DynamicLight
     // 
     // example:
     // 
-    //    // anything outside of the spot light can and must be skipped.
+    //    // anything outside of the spot light can be skipped.
     //    float2 spotlight = light_calculate_spotlight(light, light_direction);
     //    if (spotlight.x <= light.outerCutoff)
     //        continue;
@@ -132,6 +132,22 @@ struct DynamicLight
         return float2(theta, intensity);
     }
     
+    // calculates the spotlight effect when bounce lighting is available.
+    //
+    // returns:
+    // x: the direct lighting intensity for a smooth transition.
+    // y: the bounce lighting intensity for a smooth transition.
+    //
+    float2 calculate_spotlight_bounce(float3 light_direction)
+    {
+        float theta = dot(light_direction, forward);
+        float2 epsilon = float2(light_cutoff - light_outerCutoff, light_cutoff + 1.0);
+        float2 intensity = saturate(float2(theta - light_outerCutoff, theta + 1.0) / epsilon);
+        // compute the bounce size factor based on the cutoff angle.
+        float spot_size_factor = min(1.0, 1.0 - light_outerCutoff);
+        return float2(intensity.x, intensity.y * spot_size_factor);
+    }
+    
     // calculates the discoball spotlights effect.
     //
     // returns:
@@ -140,7 +156,7 @@ struct DynamicLight
     // 
     // example:
     // 
-    //    // anything outside of the spot lights can and must be skipped.
+    //    // anything outside of the spot lights can be skipped.
     //    float2 spotlight = light_calculate_spotlight(light, light_direction);
     //    if (spotlight.x <= light.outerCutoff)
     //        continue;
@@ -155,6 +171,25 @@ struct DynamicLight
         float epsilon = light_cutoff - light_outerCutoff;
         float intensity = saturate((theta - light_outerCutoff) / epsilon);
         return float2(theta, intensity);
+    }
+    
+    // calculates the discoball spotlights effect.
+    //
+    // returns:
+    // x: the direct lighting intensity for a smooth transition.
+    // y: the bounce lighting intensity for a smooth transition.
+    //
+    float2 calculate_discoball_bounce(float3 light_direction)
+    {
+        float3x3 rot = look_at_matrix(forward, up);
+
+        float3 rotated_direction = mul(light_direction, rot);
+        float theta = dot(snap_direction(rotated_direction), rotated_direction);
+        float2 epsilon = float2(light_cutoff - light_outerCutoff, light_cutoff - 0.75);
+        float2 intensity = saturate(float2(theta - light_outerCutoff, theta - 0.75) / epsilon);
+        // compute the bounce size factor based on the cutoff angle.
+        float spot_size_factor = min(1.0, (1.0 - light_outerCutoff) * 10.0);
+        return float2(intensity.x, intensity.y * spot_size_factor);
     }
     
     // calculates the wave effect.
