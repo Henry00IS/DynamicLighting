@@ -575,27 +575,55 @@ namespace AlpacaIT.DynamicLighting
 
         private void OnDrawGizmosSelected()
         {
-            Gizmos.color = lightColorAdjusted;
-
-            Gizmos.DrawWireSphere(cache.transformPosition, largestLightRadius);
+            var lightColor = lightColorAdjusted;
 
             switch (lightType)
             {
                 case DynamicLightType.Spot:
-                    GizmosDrawArrow(true, lightCookieTexture, false);
+                    var lightColorDarker25 = lightColor * 0.25f;
+                    Gizmos.color = lightColorDarker25;
+                    Gizmos.DrawWireSphere(cache.transformPosition, largestLightRadius);
+                    if (lightOuterCutoff >= lightCutoff)
+                    {
+                        var lightColorDarker75 = lightColor * 0.75f;
+                        Gizmos.color = lightColor;
+                        GizmosEx.DrawWireSpot(cache.transformPosition, lightRadius, lightOuterCutoff, transform.forward, transform.up);
+                        Gizmos.color = lightColorDarker75;
+                        GizmosEx.DrawWireSpot(cache.transformPosition, lightRadius, lightCutoff, transform.forward, transform.up);
+                    }
+                    else
+                    {
+                        Gizmos.color = Color.red;
+                        GizmosEx.DrawWireSpot(cache.transformPosition, lightRadius, lightOuterCutoff, transform.forward, transform.up);
+                        Gizmos.color = lightColorDarker25;
+                        GizmosEx.DrawWireSpot(cache.transformPosition, lightRadius, lightCutoff, transform.forward, transform.up);
+                    }
+                    if (lightOuterCutoff < 90f && lightCookieTexture)
+                        GizmosDrawArrow(true, true, false);
                     break;
 
                 case DynamicLightType.Discoball:
+                    Gizmos.color = lightColor;
+                    Gizmos.DrawWireSphere(cache.transformPosition, largestLightRadius);
                     GizmosDrawArrow(true, true, true);
                     break;
 
                 case DynamicLightType.Interference:
+                    Gizmos.color = lightColor;
+                    Gizmos.DrawWireSphere(cache.transformPosition, largestLightRadius);
                     GizmosDrawArrow(false, false, true);
                     break;
 
                 case DynamicLightType.Rotor:
                 case DynamicLightType.Disco:
+                    Gizmos.color = lightColor;
+                    Gizmos.DrawWireSphere(cache.transformPosition, largestLightRadius);
                     GizmosDrawArrow(false, true, true);
+                    break;
+
+                default:
+                    Gizmos.color = lightColor;
+                    Gizmos.DrawWireSphere(cache.transformPosition, largestLightRadius);
                     break;
             }
         }
