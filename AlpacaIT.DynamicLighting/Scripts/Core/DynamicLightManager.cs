@@ -1337,6 +1337,14 @@ namespace AlpacaIT.DynamicLighting
                     ComputeLightEffectPulse(lightCache, light);
                     break;
 
+                case DynamicLightEffect.Pulsar:
+                    ComputeLightEffectPulsar(lightCache, light);
+                    break;
+
+                case DynamicLightEffect.Candle:
+                    ComputeLightEffectCandle(lightCache, light);
+                    break;
+
                 case DynamicLightEffect.FluorescentStarter:
                     ComputeLightEffectFluorescentStarter(lightCache, light);
                     break;
@@ -1347,10 +1355,6 @@ namespace AlpacaIT.DynamicLighting
 
                 case DynamicLightEffect.FluorescentRandom:
                     ComputeLightEffectFluorescentRandom(lightCache, light);
-                    break;
-
-                case DynamicLightEffect.Candle:
-                    ComputeLightEffectCandle(lightCache, light);
                     break;
             }
 

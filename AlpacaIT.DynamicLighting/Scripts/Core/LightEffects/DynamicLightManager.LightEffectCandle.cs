@@ -17,7 +17,7 @@ namespace AlpacaIT.DynamicLighting
             float baseFlicker = Mathf.PerlinNoise(flickerTime * 0.5f, 0f); // slowly varying baseline flicker.
             float randomDip = Mathf.PerlinNoise(flickerTime * 2.0f, 10f); // faster smaller-scale variations.
 
-            // Scale and combine base flicker and random dips to create the final intensity.
+            // scale and combine base flicker and random dips to create the final intensity.
             var targetIntensity = Mathf.Lerp(
                 lightEffectPulseModifier, // minimum intensity during a dip.
                 1.0f, // maximum intensity.

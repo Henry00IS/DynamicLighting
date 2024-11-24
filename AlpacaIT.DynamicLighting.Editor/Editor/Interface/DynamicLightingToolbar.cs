@@ -289,9 +289,11 @@ namespace AlpacaIT.DynamicLighting.Editor
             genericMenu.AddSeparator("");
 
             addItem(SpecialLight.SpecialPulsatingLight);
+            addItem(SpecialLight.SpecialPulsarLight);
             addItem(SpecialLight.SpecialRandomLight);
             addItem(SpecialLight.SpecialStrobeLight);
             addItem(SpecialLight.SpecialFlickeringLight);
+            addItem(SpecialLight.SpecialCandleLight);
 
             genericMenu.AddSeparator("");
 
@@ -307,7 +309,6 @@ namespace AlpacaIT.DynamicLighting.Editor
             genericMenu.AddSeparator("");
 
             addItem(SpecialLight.SpecialRotaryWarningLight);
-            addItem(SpecialLight.SpecialCandleLight);
 
             return; // local methods
 
