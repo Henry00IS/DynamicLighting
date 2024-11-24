@@ -83,6 +83,15 @@ namespace AlpacaIT.DynamicLighting
                 // recycle the channel to store the volumetric type.
                 volumetricLight->channel = (uint)light.lightVolumetricType;
 
+                switch (light.lightType)
+                {
+                    case DynamicLightType.Spot:
+                        // due to a shader optimization the forward vector is negated on the light
+                        // source and we must undo that negation here.
+                        volumetricLight->forward = -volumetricLight->forward;
+                        break;
+                }
+
                 switch (light.lightVolumetricType)
                 {
                     // recycle general purpose floats and shimmer scale for the box scale.
