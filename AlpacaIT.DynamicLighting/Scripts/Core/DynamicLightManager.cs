@@ -322,6 +322,9 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Stores the 6 camera frustum planes, for the non-alloc version of <see cref="GeometryUtility.CalculateFrustumPlanes"/>.</summary>
         private Plane[] cameraFrustumPlanes = new Plane[6];
 
+        /// <summary>The interval in seconds from the last frame to the current one (<see cref="Time.deltaTime"/>).</summary>
+        private float deltaTime;
+
         /// <summary>Stores the time since the beginning of the frame (<see cref="Time.time"/>).</summary>
         private float timeTime;
 
@@ -818,7 +821,7 @@ namespace AlpacaIT.DynamicLighting
             preUpdate?.Invoke(this, dynamicLightingPreUpdateEventArgs);
 
             // get the time values once as they are expensive native calls.
-            var deltaTime = Time.deltaTime;
+            deltaTime = Time.deltaTime;
             timeTime = Time.time;
 
             // try to find the main camera in the scene.
@@ -1331,64 +1334,23 @@ namespace AlpacaIT.DynamicLighting
                     break;
 
                 case DynamicLightEffect.Pulse:
-                    lightCache.intensity = Mathf.Lerp(light.lightEffectPulseModifier, 1.0f, (1f + Mathf.Sin((light.lightEffectPulseOffset + timeTime * light.lightEffectPulseSpeed) * Mathf.PI * 2f)) * 0.5f);
+                    ComputeLightEffectPulse(lightCache, light);
                     break;
 
                 case DynamicLightEffect.FluorescentStarter:
-                    var sequence = (light.lightEffectPulseOffset + timeTime) % 3.3f;
-                    if (sequence < 0.5f)
-                        // initial flicker as the light tries to ignite.
-                        lightCache.intensity = (0.25f + Mathf.Sin(sequence * Mathf.PI * 50f) * 0.125f) * (1.0f - light.lightEffectPulseModifier); // 50hz electricity on the pre-heat ballast.
-                    else if (sequence > 2.95f)
-                        // sudden fade as the light fails, restarting the cycle.
-                        lightCache.intensity = Mathf.Lerp(1.0f, 0.0f, (sequence - 3.0f) * 20f);
-                    else
-                        // light stabilizes at full brightness for a moment.
-                        lightCache.intensity = 1.0f;
+                    ComputeLightEffectFluorescentStarter(lightCache, light);
                     break;
 
                 case DynamicLightEffect.FluorescentClicker:
-                    var sequenceTime = (light.lightEffectPulseOffset + timeTime) % 6.0f;
-                    if (sequenceTime < 0.3f)
-                        // initial faint flicker as the light tries to ignite.
-                        lightCache.intensity = (0.1f + Mathf.Sin(sequenceTime * Mathf.PI * 20f) * 0.05f);
-                    else if (sequenceTime < 1.5f)
-                        // sporadic flashes with brief pauses, mimicking the glow starter clicking.
-                        lightCache.intensity = (sequenceTime % 0.2f < 0.05f) ? 1.0f : 0.0f;
-                    else if (sequenceTime < 4.5f)
-                        // light stabilizes at full brightness for a moment.
-                        lightCache.intensity = 1.0f;
-                    else
-                        // sudden fade as the light fails, restarting the cycle.
-                        lightCache.intensity = Mathf.Lerp(1.0f, 0.0f, (sequenceTime - 4.5f) / 0.0625f);
+                    ComputeLightEffectFluorescentClicker(lightCache, light);
                     break;
 
                 case DynamicLightEffect.FluorescentRandom:
-                    // pick a random state at random intervals:
-                    if (timeTime > lightCache.fluorescentRandomTime)
-                    {
-                        lightCache.fluorescentRandomState = Random.Range(0, 3);
-                        lightCache.fluorescentRandomTime = timeTime + Random.value;
-                    }
+                    ComputeLightEffectFluorescentRandom(lightCache, light);
+                    break;
 
-                    // the current behaviour changes depending on the random state:
-                    switch (lightCache.fluorescentRandomState)
-                    {
-                        case 0:
-                            // the light dims or fails.
-                            lightCache.intensity = light.lightEffectPulseModifier;
-                            break;
-
-                        case 1:
-                            // initial flicker as the light tries to ignite.
-                            lightCache.intensity = (0.25f + Mathf.Sin(timeTime * Mathf.PI * 50f) * 0.125f) * (1.0f - light.lightEffectPulseModifier); // 50hz electricity on the pre-heat ballast.
-                            break;
-
-                        case 2:
-                            // light stabilizes at full brightness for a moment.
-                            lightCache.intensity = 1.0f;
-                            break;
-                    }
+                case DynamicLightEffect.Candle:
+                    ComputeLightEffectCandle(lightCache, light);
                     break;
             }
 

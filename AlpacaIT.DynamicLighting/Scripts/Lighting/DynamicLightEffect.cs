@@ -69,5 +69,14 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         [Tooltip("The fluorescent light exhibits chaotic and unpredictable behavior, randomly alternating between dimming, rapid flickers as it tries to ignite, and brief moments of full brightness. This effect captures the erratic and frustrating behavior of a failing fluorescent light.")]
         FluorescentRandom = 7,
+
+        /// <summary>
+        /// Simulates the gentle, natural flicker of a candle flame. The light intensity varies
+        /// smoothly with subtle oscillations and occasional sharper dips, creating a realistic
+        /// effect. Rare, dramatic flickers simulate the impact of a gust of air or a sudden shift
+        /// in the flame.
+        /// </summary>
+        [Tooltip("Simulates the gentle, natural flicker of a candle flame. The light intensity varies smoothly with subtle oscillations and occasional sharper dips, creating a realistic effect. Rare, dramatic flickers simulate the impact of a gust of air or a sudden shift in the flame.")]
+        Candle = 8,
     }
 }
