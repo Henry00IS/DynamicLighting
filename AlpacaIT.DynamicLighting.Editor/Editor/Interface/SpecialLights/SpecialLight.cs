@@ -18,6 +18,7 @@ namespace AlpacaIT.DynamicLighting.Editor
         public static SpecialStrobeLight SpecialStrobeLight = new SpecialStrobeLight();
         public static SpecialFlickeringLight SpecialFlickeringLight = new SpecialFlickeringLight();
         public static SpecialCandleLight SpecialCandleLight = new SpecialCandleLight();
+        public static SpecialFireLight SpecialFireLight = new SpecialFireLight();
 
         public static SpecialFluorescentStarterLight SpecialFluorescentStarterLight = new SpecialFluorescentStarterLight();
         public static SpecialFluorescentClickerLight SpecialFluorescentClickerLight = new SpecialFluorescentClickerLight();

@@ -61,6 +61,14 @@ namespace AlpacaIT.DynamicLighting
         [Tooltip("Simulates the gentle, natural flicker of a candle flame. The light intensity varies smoothly with subtle oscillations and occasional sharper dips, creating a realistic effect. Rare, dramatic flickers simulate the impact of a gust of air or a sudden shift in the flame.")]
         Candle = 8,
 
+        /// <summary>
+        /// The light mimics the dynamic and lively behavior of a bonfire or torch, with smooth
+        /// oscillations and chaotic variations. Periodic bursts of intensity simulate flames
+        /// leaping higher.
+        /// </summary>
+        [Tooltip("The light mimics the dynamic and lively behavior of a bonfire or torch, with smooth oscillations and chaotic variations. Periodic bursts of intensity simulate flames leaping higher.")]
+        Fire = 10,
+
         /// <summary>These entries are menu separators in Unity Editor and not intended for use.</summary>
         [InspectorName(" ")]
         ᐅ_2 = int.MaxValue,

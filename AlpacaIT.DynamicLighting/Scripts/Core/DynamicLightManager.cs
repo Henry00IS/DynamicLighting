@@ -1345,6 +1345,10 @@ namespace AlpacaIT.DynamicLighting
                     ComputeLightEffectCandle(lightCache, light);
                     break;
 
+                case DynamicLightEffect.Fire:
+                    ComputeLightEffectFire(lightCache, light);
+                    break;
+
                 case DynamicLightEffect.FluorescentStarter:
                     ComputeLightEffectFluorescentStarter(lightCache, light);
                     break;

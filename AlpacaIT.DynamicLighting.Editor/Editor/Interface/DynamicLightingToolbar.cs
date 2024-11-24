@@ -294,6 +294,7 @@ namespace AlpacaIT.DynamicLighting.Editor
             addItem(SpecialLight.SpecialStrobeLight);
             addItem(SpecialLight.SpecialFlickeringLight);
             addItem(SpecialLight.SpecialCandleLight);
+            addItem(SpecialLight.SpecialFireLight);
 
             genericMenu.AddSeparator("");
 
