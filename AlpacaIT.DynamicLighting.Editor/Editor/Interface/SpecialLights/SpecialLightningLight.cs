@@ -13,7 +13,6 @@ namespace AlpacaIT.DynamicLighting.Editor
             light.lightIntensity = 4f;
             light.lightColor = new Color(0.886f, 0.424f, 1.0f);
             light.lightEffectPulseModifier = 0f;
-            light.lightEffectPulseSpeed = 3f;
         }
     }
 }

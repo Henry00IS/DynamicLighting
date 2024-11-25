@@ -52,9 +52,10 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>
         /// The light simulates sudden and unpredictable flashes of light, mimicking the behavior of
         /// natural lightning. The light intensity remains low during non-flash periods and randomly
-        /// spikes to full brightness.
+        /// spikes up to full brightness. The <see cref="DynamicLight.lightEffectPulseSpeed"/> can
+        /// be set to 1, 2 or 3 for up to 3 layers of thunder.
         /// </summary>
-        [Tooltip("The light simulates sudden and unpredictable flashes of light, mimicking the behavior of natural lightning. The light intensity remains low during non-flash periods and randomly spikes to full brightness.")]
+        [Tooltip("The light simulates sudden and unpredictable flashes of light, mimicking the behavior of natural lightning. The light intensity remains low during non-flash periods and randomly spikes up to full brightness. The 'Light Effect Pulse Speed' can be set to 1, 2 or 3 for up to 3 layers of thunder.")]
         Lightning = 12,
 
         /// <summary>
