@@ -50,6 +50,14 @@ namespace AlpacaIT.DynamicLighting
         Generator = 11,
 
         /// <summary>
+        /// The light simulates sudden and unpredictable flashes of light, mimicking the behavior of
+        /// natural lightning. The light intensity remains low during non-flash periods and randomly
+        /// spikes to full brightness.
+        /// </summary>
+        [Tooltip("The light simulates sudden and unpredictable flashes of light, mimicking the behavior of natural lightning. The light intensity remains low during non-flash periods and randomly spikes to full brightness.")]
+        Lightning = 12,
+
+        /// <summary>
         /// The light pulses rhythmically, mimicking the behavior of an astronomical pulsar.
         /// Intensity smoothly cycles between dim phases and sharp, focused bursts of brightness.
         /// </summary>

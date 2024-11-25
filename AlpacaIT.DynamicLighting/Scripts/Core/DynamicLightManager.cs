@@ -1345,6 +1345,10 @@ namespace AlpacaIT.DynamicLighting
                     ComputeLightEffectGenerator(lightCache, light);
                     break;
 
+                case DynamicLightEffect.Lightning:
+                    ComputeLightEffectLightning(lightCache, light);
+                    break;
+
                 case DynamicLightEffect.Pulsar:
                     ComputeLightEffectPulsar(lightCache, light);
                     break;

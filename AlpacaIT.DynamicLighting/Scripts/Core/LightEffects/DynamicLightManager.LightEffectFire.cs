@@ -11,7 +11,7 @@ namespace AlpacaIT.DynamicLighting
         private void ComputeLightEffectFire(DynamicLightCache lightCache, DynamicLight light)
         {
             var lightEffectPulseModifier = light.lightEffectPulseModifier;
-            var flickerTime = light.lightEffectPulseOffset * 100f + timeTime;
+            var flickerTime = light.lightEffectPulseOffset + timeTime;
 
             // smooth oscillation using perlin noise for randomness.
             float baseFlicker = Mathf.PerlinNoise(flickerTime * 0.5f, 0f); // slowly varying baseline flicker.

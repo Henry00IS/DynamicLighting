@@ -292,6 +292,7 @@ namespace AlpacaIT.DynamicLighting.Editor
             addItem(SpecialLight.SpecialFireLight);
             addItem(SpecialLight.SpecialFlickeringLight);
             addItem(SpecialLight.SpecialGeneratorLight);
+            addItem(SpecialLight.SpecialLightningLight);
             addItem(SpecialLight.SpecialPulsarLight);
             addItem(SpecialLight.SpecialPulsatingLight);
             addItem(SpecialLight.SpecialRandomLight);
