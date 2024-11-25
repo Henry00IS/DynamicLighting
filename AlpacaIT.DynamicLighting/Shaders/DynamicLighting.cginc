@@ -138,14 +138,14 @@ struct DynamicLight
     // x: the direct lighting intensity for a smooth transition.
     // y: the bounce lighting intensity for a smooth transition.
     //
-    float2 calculate_spotlight_bounce(float3 light_direction)
+    float3 calculate_spotlight_bounce(float3 light_direction)
     {
         float theta = dot(light_direction, forward);
         float2 epsilon = float2(light_cutoff - light_outerCutoff, light_cutoff + 1.0);
         float2 intensity = saturate(float2(theta - light_outerCutoff, theta + 1.0) / epsilon);
         // compute the bounce size factor based on the cutoff angle.
         float spot_size_factor = min(1.0, 1.0 - light_outerCutoff);
-        return float2(intensity.x, intensity.y * spot_size_factor);
+        return float3(theta, intensity.x, intensity.y * spot_size_factor);
     }
     
     // calculates the discoball spotlights effect.

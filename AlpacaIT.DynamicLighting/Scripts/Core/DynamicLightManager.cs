@@ -1333,20 +1333,24 @@ namespace AlpacaIT.DynamicLighting
                     lightCache.intensity = 1.0f;
                     break;
 
-                case DynamicLightEffect.Pulse:
-                    ComputeLightEffectPulse(lightCache, light);
-                    break;
-
-                case DynamicLightEffect.Pulsar:
-                    ComputeLightEffectPulsar(lightCache, light);
-                    break;
-
                 case DynamicLightEffect.Candle:
                     ComputeLightEffectCandle(lightCache, light);
                     break;
 
                 case DynamicLightEffect.Fire:
                     ComputeLightEffectFire(lightCache, light);
+                    break;
+
+                case DynamicLightEffect.Generator:
+                    ComputeLightEffectGenerator(lightCache, light);
+                    break;
+
+                case DynamicLightEffect.Pulsar:
+                    ComputeLightEffectPulsar(lightCache, light);
+                    break;
+
+                case DynamicLightEffect.Pulse:
+                    ComputeLightEffectPulse(lightCache, light);
                     break;
 
                 case DynamicLightEffect.FluorescentStarter:
@@ -1370,16 +1374,16 @@ namespace AlpacaIT.DynamicLighting
 
                 switch (light.lightEffect)
                 {
-                    case DynamicLightEffect.Random:
-                        lightCache.intensity = Mathf.Lerp(light.lightEffectPulseModifier, 1.0f, Random.value);
-                        break;
-
                     case DynamicLightEffect.Flicker:
                         var random = Random.value;
                         if (random < 0.5f)
                             lightCache.intensity = 0.0f;
                         else
                             lightCache.intensity = Mathf.Lerp(light.lightEffectPulseModifier, 1.0f, Random.value);
+                        break;
+
+                    case DynamicLightEffect.Random:
+                        lightCache.intensity = Mathf.Lerp(light.lightEffectPulseModifier, 1.0f, Random.value);
                         break;
 
                     case DynamicLightEffect.Strobe:

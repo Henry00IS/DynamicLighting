@@ -288,13 +288,14 @@ namespace AlpacaIT.DynamicLighting.Editor
 
             genericMenu.AddSeparator("");
 
-            addItem(SpecialLight.SpecialPulsatingLight);
-            addItem(SpecialLight.SpecialPulsarLight);
-            addItem(SpecialLight.SpecialRandomLight);
-            addItem(SpecialLight.SpecialStrobeLight);
-            addItem(SpecialLight.SpecialFlickeringLight);
             addItem(SpecialLight.SpecialCandleLight);
             addItem(SpecialLight.SpecialFireLight);
+            addItem(SpecialLight.SpecialFlickeringLight);
+            addItem(SpecialLight.SpecialGeneratorLight);
+            addItem(SpecialLight.SpecialPulsarLight);
+            addItem(SpecialLight.SpecialPulsatingLight);
+            addItem(SpecialLight.SpecialRandomLight);
+            addItem(SpecialLight.SpecialStrobeLight);
 
             genericMenu.AddSeparator("");
 

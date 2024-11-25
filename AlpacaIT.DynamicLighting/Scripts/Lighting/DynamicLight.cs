@@ -251,34 +251,35 @@ namespace AlpacaIT.DynamicLighting
         [Range(0f, 1f)]
         public float lightShimmerModifier = 0.8f;
 
-        /// <summary>The effect applied to this dynamic light.</summary>
+        /// <summary>The light intensity effect applied to this dynamic light.</summary>
         [Header("Intensity Effects:")]
-        [Tooltip("The effect applied to this dynamic light.")]
+        [Tooltip("The light intensity effect applied to this dynamic light.")]
         public DynamicLightEffect lightEffect = DynamicLightEffect.Steady;
 
         /// <summary>
-        /// When using the 'Pulse' or 'Pulsar' light effect, this specifies how many times per
-        /// second the light should pulse (as a multiplier), where 1 means once per second.
+        /// When using the 'Pulse', 'Pulsar' or 'Generator' light effect, this specifies how many
+        /// times per second the light should pulse (as a multiplier), where 1 means once per
+        /// second; or controls the speed of the animation.
         /// </summary>
-        [Tooltip("When using the 'Pulse' or 'Pulsar' light effect, this specifies how many times per second the light should pulse (as a multiplier), where 1 means once per second.")]
+        [Tooltip("When using the 'Pulse', 'Pulsar' or 'Generator' light effect, this specifies how many times per second the light should pulse (as a multiplier), where 1 means once per second; or controls the speed of the animation.")]
         public float lightEffectPulseSpeed = 1.0f;
 
         /// <summary>
-        /// When using the 'Pulse', 'Pulsar', 'Random', 'Strobe', 'Flicker', 'Candle', 'Fire',
-        /// 'FluorescentStarter' or 'FluorescentRandom' light effect, this specifies how dim the
-        /// light can become per pulse, where 0 is completely off and 1 does nothing.
+        /// When using the 'Pulse', 'Pulsar', 'Fire', 'Flicker', 'Generator', 'Random', 'Strobe',
+        /// 'Candle', 'FluorescentStarter' or 'FluorescentRandom' light effect, this specifies how
+        /// dim the light can become per pulse, where 0 is completely off and 1 does nothing.
         /// </summary>
-        [Tooltip("When using the 'Pulse', 'Pulsar', 'Random', 'Strobe', 'Flicker', 'Candle', 'Fire', 'FluorescentStarter' or 'FluorescentRandom' light effect, this specifies how dim the light can become per pulse, where 0 is completely off and 1 does nothing.")]
+        [Tooltip("When using the 'Pulse', 'Pulsar', 'Fire', 'Flicker', 'Generator', 'Random', 'Strobe', 'Candle', 'FluorescentStarter' or 'FluorescentRandom' light effect, this specifies how dim the light can become per pulse, where 0 is completely off and 1 does nothing.")]
         [Range(0f, 1f)]
         public float lightEffectPulseModifier = 0.25f;
 
         /// <summary>
-        /// When using the 'Pulse', 'Pulsar', 'Candle', 'Fire', 'FluorescentStarter' or
+        /// When using the 'Pulse', 'Pulsar', 'Candle', 'Fire', 'Generator', 'FluorescentStarter' or
         /// 'FluorescentClicker' light effect, this changes the time offset of the pulses. This
         /// prevents lights from pulsing in sync and can also be used to programatically control the
         /// pulse animation.
         /// </summary>
-        [Tooltip("When using the 'Pulse', 'Pulsar', 'Candle', 'Fire', 'FluorescentStarter' or 'FluorescentClicker' light effect, this changes the time offset of the pulses. This prevents lights from pulsing in sync and can also be used to programatically control the pulse animation.")]
+        [Tooltip("When using the 'Pulse', 'Pulsar', 'Candle', 'Fire', 'Generator', 'FluorescentStarter' or 'FluorescentClicker' light effect, this changes the time offset of the pulses. This prevents lights from pulsing in sync and can also be used to programatically control the pulse animation.")]
         [Range(0f, 1f)]
         public float lightEffectPulseOffset = 0f;
 

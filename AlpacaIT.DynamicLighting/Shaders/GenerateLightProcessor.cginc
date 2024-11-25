@@ -115,9 +115,9 @@ if (map != 0.0 || bounce != 0.0)
             return;
         map *= spotlight.y;
 #else
-        float2 spotlight = light.calculate_spotlight_bounce(light_direction);
-        map *= spotlight.x;
-        bounce *= spotlight.y;
+        float3 spotlight = light.calculate_spotlight_bounce(light_direction);
+        map *= spotlight.y;
+        bounce *= spotlight.z;
 #endif
         // when the light has a cookie texture we sample that.
         if (light.is_cookie_available())

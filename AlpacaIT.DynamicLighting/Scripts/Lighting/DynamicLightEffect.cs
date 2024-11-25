@@ -2,7 +2,7 @@
 
 namespace AlpacaIT.DynamicLighting
 {
-    /// <summary>The different effects that can be applied to a dynamic light.</summary>
+    /// <summary>The different light intensity effects that can be applied to a dynamic light.</summary>
     public enum DynamicLightEffect
     {
         /// <summary>The light is stable and consistent without any effects (default)</summary>
@@ -12,45 +12,6 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>These entries are menu separators in Unity Editor and not intended for use.</summary>
         [InspectorName("")]
         ᐅ_1 = int.MaxValue,
-
-        /// <summary>
-        /// The light smoothly pulses between fully bright and dark over time using a sine wave. How
-        /// dim the light will become and how many times per second the light will pulse can be configured.
-        /// </summary>
-        [Tooltip("The light smoothly pulses between fully bright and dark over time. How dim the light will become and how many times per second the light will pulse can be configured.")]
-        Pulse = 1,
-
-        /// <summary>
-        /// The light pulses rhythmically, mimicking the behavior of an astronomical pulsar.
-        /// Intensity smoothly cycles between dim phases and sharp, focused bursts of brightness.
-        /// </summary>
-        [Tooltip("The light pulses rhythmically, mimicking the behavior of an astronomical pulsar. Intensity smoothly cycles between dim phases and sharp, focused bursts of brightness.")]
-        Pulsar = 9,
-
-        /// <summary>
-        /// The light randomly picks an intensity between fully bright and fully dark every update
-        /// of the configurable framerate independent fixed timestep frequency.
-        /// </summary>
-        [Tooltip("The light randomly picks an intensity between fully bright and fully dark every update of the configurable framerate independent fixed timestep frequency.")]
-        Random = 2,
-
-        /// <summary>
-        /// The light randomly toggles the intensity between fully bright and fully dark every
-        /// update of the configurable framerate independent fixed timestep frequency to simulate a
-        /// strobe light.
-        /// </summary>
-        [Tooltip("The light randomly toggles the intensity between fully bright and fully dark every update of the configurable framerate independent fixed timestep frequency to simulate a strobe light.")]
-        Strobe = 3,
-
-        /// <summary>
-        /// The light randomly picks a number between 0 and 1. If the number is smaller than 0.5 the
-        /// light will be fully dark otherwise it multiplies the fully bright intensity with the
-        /// number. It does this every update of the configurable framerate independent fixed
-        /// timestep frequency. This is similar to random intensity except that the light turns off
-        /// more often giving that sense that the light is either broken or electricity is sparking etc.
-        /// </summary>
-        [Tooltip("The light randomly picks a number between 0 and 1. If the number is smaller than 0.5 the light will be fully dark otherwise it multiplies the fully bright intensity with the number. It does this every update of the configurable framerate independent fixed timestep frequency. This is similar to random intensity except that the light turns off more often giving that sense that the light is either broken or electricity is sparking etc.")]
-        Flicker = 4,
 
         /// <summary>
         /// Simulates the gentle, natural flicker of a candle flame. The light intensity varies
@@ -68,6 +29,55 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         [Tooltip("The light mimics the dynamic and lively behavior of a bonfire or torch, with smooth oscillations and chaotic variations. Periodic bursts of intensity simulate flames leaping higher.")]
         Fire = 10,
+
+        /// <summary>
+        /// The light randomly picks a number between 0 and 1. If the number is smaller than 0.5 the
+        /// light will be fully dark otherwise it multiplies the fully bright intensity with the
+        /// number. It does this every update of the configurable framerate independent fixed
+        /// timestep frequency. This is similar to random intensity except that the light turns off
+        /// more often giving that sense that the light is either broken or electricity is sparking etc.
+        /// </summary>
+        [Tooltip("The light randomly picks a number between 0 and 1. If the number is smaller than 0.5 the light will be fully dark otherwise it multiplies the fully bright intensity with the number. It does this every update of the configurable framerate independent fixed timestep frequency. This is similar to random intensity except that the light turns off more often giving that sense that the light is either broken or electricity is sparking etc.")]
+        [InspectorName("Flickering")]
+        Flicker = 4,
+
+        /// <summary>
+        /// The light simulates the behavior of a faulty voltage controller on a generator, causing
+        /// smooth but unpredictable dimming of the light. This effect is often seen in mine shafts
+        /// or other underground settings.
+        /// </summary>
+        [Tooltip("The light simulates the behavior of a faulty voltage controller on a generator, causing smooth but unpredictable dimming of the light. This effect is often seen in mine shafts or other underground settings.")]
+        Generator = 11,
+
+        /// <summary>
+        /// The light pulses rhythmically, mimicking the behavior of an astronomical pulsar.
+        /// Intensity smoothly cycles between dim phases and sharp, focused bursts of brightness.
+        /// </summary>
+        [Tooltip("The light pulses rhythmically, mimicking the behavior of an astronomical pulsar. Intensity smoothly cycles between dim phases and sharp, focused bursts of brightness.")]
+        Pulsar = 9,
+
+        /// <summary>
+        /// The light smoothly pulses between fully bright and dark over time using a sine wave. How
+        /// dim the light will become and how many times per second the light will pulse can be configured.
+        /// </summary>
+        [Tooltip("The light smoothly pulses between fully bright and dark over time. How dim the light will become and how many times per second the light will pulse can be configured.")]
+        [InspectorName("Pulsating")]
+        Pulse = 1,
+
+        /// <summary>
+        /// The light randomly picks an intensity between fully bright and fully dark every update
+        /// of the configurable framerate independent fixed timestep frequency.
+        /// </summary>
+        [Tooltip("The light randomly picks an intensity between fully bright and fully dark every update of the configurable framerate independent fixed timestep frequency.")]
+        Random = 2,
+
+        /// <summary>
+        /// The light randomly toggles the intensity between fully bright and fully dark every
+        /// update of the configurable framerate independent fixed timestep frequency to simulate a
+        /// strobe light.
+        /// </summary>
+        [Tooltip("The light randomly toggles the intensity between fully bright and fully dark every update of the configurable framerate independent fixed timestep frequency to simulate a strobe light.")]
+        Strobe = 3,
 
         /// <summary>These entries are menu separators in Unity Editor and not intended for use.</summary>
         [InspectorName(" ")]
