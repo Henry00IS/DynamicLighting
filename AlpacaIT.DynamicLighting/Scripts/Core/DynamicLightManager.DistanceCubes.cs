@@ -12,23 +12,25 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Initialization of the DynamicLightManager.DistanceCubes partial class.</summary>
         private void DistanceCubesInitialize()
         {
-            int size = 32;
+            if (dynamicGeometryLightingModeInCurrentScene == DynamicGeometryLightingMode.DistanceCubes)
+            {
+                // create a cubemap with a single floating-point channel.
+                distanceCubesLookupTexture32 = new Cubemap(DynamicLightingTracer.distanceCubesResolution, TextureFormat.RFloat, false);
+                distanceCubesLookupTexture32.filterMode = FilterMode.Point;
 
-            // create a cubemap with a single floating-point channel.
-            distanceCubesLookupTexture32 = new Cubemap(size, TextureFormat.RFloat, false);
-            distanceCubesLookupTexture32.filterMode = FilterMode.Point;
+                // build the lookup texture.
+                DistanceCubesBuild(DynamicLightingTracer.distanceCubesResolution);
 
-            // build the lookup texture.
-            DistanceCubesBuild(size);
-
-            // set the global texture for use in shaders.
-            ShadersSetGlobalDynamicLightsDistanceCubesLookup32(distanceCubesLookupTexture32);
+                // set the global texture for use in shaders.
+                ShadersSetGlobalDynamicLightsDistanceCubesLookup32(distanceCubesLookupTexture32);
+            }
         }
 
         /// <summary>Cleanup of the DynamicLightManager.DistanceCubes partial class.</summary>
         private void DistanceCubesCleanup()
         {
-            DestroyImmediate(distanceCubesLookupTexture32);
+            if (distanceCubesLookupTexture32)
+                DestroyImmediate(distanceCubesLookupTexture32);
             distanceCubesLookupTexture32 = null;
         }
 

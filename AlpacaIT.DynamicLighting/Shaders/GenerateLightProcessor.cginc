@@ -19,6 +19,7 @@ float3 light_position_minus_world = light_direction;
 light_direction = normalize(light_direction);
 
 float NdotL = dot(GENERATE_NORMAL, light_direction);
+#ifndef DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISABLED
 if (lightmap_resolution > 0)
 {
     // static geometry:
@@ -31,6 +32,11 @@ else
     // pull the dot product all the way around for half lambert diffusion.
     NdotL = pow(0.5 + NdotL * 0.5, 2.0);
 }
+#else
+    // static geometry:
+    // a simple dot product with the normal gives us diffusion.
+    NdotL = max(NdotL, 0);
+#endif
 
 #if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
 // check whether bounce texture data is available on this triangle.
