@@ -24,6 +24,9 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         public DynamicLightingTracerFlags tracerFlags = DynamicLightingTracerFlags.None;
 
+        /// <summary>The lighting mode for dynamic geometry that was not raytraced.</summary>
+        public DynamicGeometryLightingMode dynamicGeometryLightingMode = DynamicGeometryLightingMode.DistanceCubes;
+
         /// <summary>Called when this tracer instance has been cancelled.</summary>
 #pragma warning disable CS0067
 
@@ -44,6 +47,7 @@ namespace AlpacaIT.DynamicLighting
         private ulong vramLegacyTotal = 0;
         private ulong vramDynamicTrianglesTotal = 0;
         private ulong vramBvhTotal = 0;
+        private ulong vramDistanceCubesTotal = 0;
         private DynamicLight[] pointLights;
         private CachedLightData[] pointLightsCache;
         private ShadowRaycastProcessor raycastProcessor;
@@ -97,6 +101,7 @@ namespace AlpacaIT.DynamicLighting
             vramLegacyTotal = 0;
             vramDynamicTrianglesTotal = 0;
             vramBvhTotal = 0;
+            vramDistanceCubesTotal = 0;
             lightmapSizeMin1 = lightmapSize - 1;
             raycastLayermask = dynamicLightManager.raytraceLayers;
             pixelDensityPerSquareMeter = dynamicLightManager.pixelDensityPerSquareMeter;
@@ -188,6 +193,7 @@ namespace AlpacaIT.DynamicLighting
                 // try to remember the version used.
                 dynamicLightManager.version = 3;
                 dynamicLightManager.activateBounceLightingInCurrentScene = false;
+                dynamicLightManager.dynamicGeometryLightingModeInCurrentScene = dynamicGeometryLightingMode;
 
                 // find all light sources and calculate the bounding volume hierarchy.
                 CreateDynamicLightsBvh();
@@ -266,6 +272,12 @@ namespace AlpacaIT.DynamicLighting
 #endif
                 }
 
+                if (dynamicGeometryLightingMode == DynamicGeometryLightingMode.DistanceCubes)
+                {
+                    // build distance cubes for dynamic mesh lighting.
+                    vramDistanceCubesTotal += DistanceCubesGenerate();
+                }
+
                 // stop measuring the total time here as the asset database refresh is slow.
                 totalTime.Stop();
 
@@ -285,7 +297,8 @@ namespace AlpacaIT.DynamicLighting
                 log.AppendLine("--------------------------------");
                 log.Append("VRAM Dynamic Triangles: ").Append(MathEx.BytesToUnitString(vramDynamicTrianglesTotal)).Append(" (Legacy: ").Append(MathEx.BytesToUnitString(vramLegacyTotal)).AppendLine(")");
                 log.Append("VRAM Bounding Volume Hierarchy: ").AppendLine(MathEx.BytesToUnitString(vramBvhTotal));
-                log.Insert(0, $"The lighting requires {MathEx.BytesToUnitString(vramDynamicTrianglesTotal + vramBvhTotal)} VRAM on the graphics card to render the current scene ({totalTime}).{System.Environment.NewLine}");
+                log.Append("VRAM Distance Cubes: ").AppendLine(MathEx.BytesToUnitString(vramDistanceCubesTotal));
+                log.Insert(0, $"The lighting requires {MathEx.BytesToUnitString(vramDynamicTrianglesTotal + vramBvhTotal + vramDistanceCubesTotal)} VRAM on the graphics card to render the current scene ({totalTime}).{System.Environment.NewLine}");
 
                 Debug.Log(log.ToString());
 #if UNITY_EDITOR

@@ -171,6 +171,11 @@ namespace AlpacaIT.DynamicLighting
         [HideInInspector]
         internal bool activateBounceLightingInCurrentScene;
 
+        /// <summary>The dynamic geometry lighting mode that was used during the tracing of the scene.</summary>
+        [SerializeField]
+        [HideInInspector]
+        internal DynamicGeometryLightingMode dynamicGeometryLightingModeInCurrentScene = DynamicGeometryLightingMode.LightingOnly;
+
         /// <summary>
         /// The settings of the dynamic light manager can be shared across several scenes by
         /// assigning a template here. The values are copied from the template to this instance
@@ -276,6 +281,16 @@ namespace AlpacaIT.DynamicLighting
         public DynamicLightTrackingMode lightTrackingMode = DynamicLightTrackingMode.LiveTracking;
 
         /// <summary>
+        /// The lighting mode for dynamic geometry that was not raytraced.
+        /// <para>
+        /// Note that any adjustments to this setting require raytracing the scene again for the
+        /// changes to take effect.
+        /// </para>
+        /// </summary>
+        [Tooltip("The lighting mode for dynamic geometry that was not raytraced.\n\nNote that any adjustments to this setting require raytracing the scene again for the changes to take effect.")]
+        public DynamicGeometryLightingMode dynamicGeometryLightingMode = DynamicGeometryLightingMode.DistanceCubes;
+
+        /// <summary>
         /// The runtime quality for Dynamic Lighting in the scene. These options should be available
         /// in your in-game settings menu to allow players to adjust lighting quality based on their
         /// hardware performance.
@@ -314,6 +329,8 @@ namespace AlpacaIT.DynamicLighting
         private List<DynamicLight> activeRealtimeLights;
         private ShaderDynamicLight[] shaderDynamicLights;
         private ComputeBuffer dynamicLightsBuffer;
+
+        private ComputeBuffer dynamicLightsDistanceCubesBuffer;
 
         /// <summary>The memory size in bytes of the <see cref="BvhLightNode"/> struct.</summary>
         private int dynamicLightsBvhNodeStride;
@@ -570,6 +587,9 @@ namespace AlpacaIT.DynamicLighting
             // -> partial class DynamicLightManager.LightPositions initialize.
             LightPositionsInitialize();
 
+            // -> partial class DynamicLightManager.DistanceCubes initialize.
+            DistanceCubesInitialize();
+
             ShadersSetGlobalDynamicLights(dynamicLightsBuffer);
             ShadersSetGlobalDynamicLightsCount(0);
             ShadersSetGlobalRealtimeLightsCount(0);
@@ -648,6 +668,18 @@ namespace AlpacaIT.DynamicLighting
                     shadersKeywordBvhEnabled = true;
                 }
                 else Debug.LogError("Unable to read the dynamic lights bounding volume hierarchy file! Probably because you upgraded from an older version. Please raytrace your scene again.");
+
+                if (dynamicGeometryLightingModeInCurrentScene == DynamicGeometryLightingMode.DistanceCubes)
+                {
+                    // assign the dynamic lights distance cubes to a global buffer.
+                    if (raycastedScene && raycastedScene.dynamicLightsDistanceCubes.Read(out uint[] distanceCubesData))
+                    {
+                        dynamicLightsDistanceCubesBuffer = new ComputeBuffer(distanceCubesData.Length, sizeof(uint), ComputeBufferType.Default);
+                        dynamicLightsDistanceCubesBuffer.SetData(distanceCubesData);
+                        ShadersSetGlobalDynamicLightsDistanceCubes(dynamicLightsDistanceCubesBuffer);
+                    }
+                    else Debug.LogError("Unable to read the dynamic lights distance cubes file! Probably because you upgraded from an older version. Please raytrace your scene again.");
+                }
             }
 
             // callback for third-party developers.
@@ -675,6 +707,12 @@ namespace AlpacaIT.DynamicLighting
             {
                 dynamicLightsBvhBuffer.Release();
                 dynamicLightsBvhBuffer = null;
+            }
+
+            if (dynamicLightsDistanceCubesBuffer != null && dynamicLightsDistanceCubesBuffer.IsValid())
+            {
+                dynamicLightsDistanceCubesBuffer.Release();
+                dynamicLightsDistanceCubesBuffer = null;
             }
 
             // always disable the bounding volume hierarchy in the shader as it's dangerous now.
@@ -705,6 +743,9 @@ namespace AlpacaIT.DynamicLighting
 
             // -> partial class DynamicLightManager.LightPositions cleanup.
             LightPositionsCleanup();
+
+            // -> partial class DynamicLightManager.DistanceCubes cleanup.
+            DistanceCubesCleanup();
 
             // callback for third-party developers.
             uninitialized?.Invoke(this, new DynamicLightingUninitializedEventArgs(this));
@@ -1454,6 +1495,7 @@ namespace AlpacaIT.DynamicLighting
             tracer.maximumLightmapSize = maximumLightmapSize;
             tracer.bounceLightingDefaultCompression = bounceLightingCompression;
             tracer.tracerFlags = dynamicLightingTracerFlags;
+            tracer.dynamicGeometryLightingMode = dynamicGeometryLightingMode;
 
             // callback for third-party developers.
             bool cancelled = false;

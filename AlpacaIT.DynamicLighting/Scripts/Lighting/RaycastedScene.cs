@@ -107,6 +107,11 @@ namespace AlpacaIT.DynamicLighting
         [HideInInspector]
         internal CompressedUInt32 dynamicLightsBvh;
 
+        /// <summary>The distance cubes for all raycasted light sources.</summary>
+        [SerializeField]
+        [HideInInspector]
+        internal CompressedUInt32 dynamicLightsDistanceCubes;
+
         /// <summary>
         /// Attempts to store the given dynamic triangles data structure and returns the unique
         /// identifier to the data.

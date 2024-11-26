@@ -32,6 +32,7 @@ Shader "Dynamic Lighting/Metallic"
             #pragma multi_compile __ DYNAMIC_LIGHTING_LIT
             #pragma multi_compile __ DYNAMIC_LIGHTING_BVH
             #pragma multi_compile __ DYNAMIC_LIGHTING_BOUNCE
+            #pragma multi_compile __ DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES
             #pragma multi_compile multi_compile_fwdbase
             #pragma shader_feature METALLIC_TEXTURE_UNASSIGNED
 

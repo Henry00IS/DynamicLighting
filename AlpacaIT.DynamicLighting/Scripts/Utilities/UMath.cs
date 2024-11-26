@@ -330,5 +330,13 @@ namespace AlpacaIT.DynamicLighting
             sRGB->y = y * (y * (y * 0.305306011f + 0.682171111f) + 0.012522878f);
             sRGB->z = z * (z * (z * 0.305306011f + 0.682171111f) + 0.012522878f);
         }
+
+        /// <summary>Interprets the bit pattern of <paramref name="value"/> as an unsigned integer.</summary>
+        /// <param name="value">The floating-point value.</param>
+        /// <returns>The input interpreted as an unsigned integer.</returns>
+        public static unsafe uint AsUInt32(this float value)
+        {
+            return *(uint*)&value;
+        }
     }
 }

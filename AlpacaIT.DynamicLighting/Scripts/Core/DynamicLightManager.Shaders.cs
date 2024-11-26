@@ -70,6 +70,9 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Stores the <see cref="GlobalKeyword"/> of "DYNAMIC_LIGHTING_QUALITY_HIGH".</summary>
         private GlobalKeyword shadersGlobalKeywordQualityHigh;
 
+        /// <summary>Stores the <see cref="GlobalKeyword"/> of "DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES".</summary>
+        private GlobalKeyword shadersGlobalKeywordDynamicGeometryDistanceCubes;
+
         /// <summary>Global <see cref="Shader.PropertyToID"/> for buffer "dynamic_lights".</summary>
         private int shadersGlobalPropertyIdDynamicLights;
 
@@ -84,6 +87,12 @@ namespace AlpacaIT.DynamicLighting
 
         /// <summary>Global <see cref="Shader.PropertyToID"/> for buffer "dynamic_lights_bvh".</summary>
         private int shadersGlobalPropertyIdDynamicLightsBvh;
+
+        /// <summary>Global <see cref="Shader.PropertyToID"/> for buffer "dynamic_lights_distance_cubes".</summary>
+        private int shadersGlobalPropertyIdDynamicLightsDistanceCubes;
+
+        /// <summary>Global <see cref="Shader.PropertyToID"/> for texture "dynamic_lights_distance_cubes_lookup32".</summary>
+        private int shadersGlobalPropertyIdDynamicLightsDistanceCubesLookup32;
 
         /// <summary>Stores the value last assigned with <see cref="ShadersSetGlobalDynamicLightsCount"/>.</summary>
         private int shadersLastDynamicLightsCount;
@@ -137,6 +146,13 @@ namespace AlpacaIT.DynamicLighting
         {
             get => Shader.IsKeywordEnabled(shadersGlobalKeywordQualityHigh);
             set => ShadersSetGlobalKeyword(ref shadersGlobalKeywordQualityHigh, value);
+        }
+
+        /// <summary>Gets or sets whether global shader keyword "DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES" is enabled.</summary>
+        private bool shadersKeywordDynamicGeometryDistanceCubesEnabled
+        {
+            get => Shader.IsKeywordEnabled(shadersGlobalKeywordDynamicGeometryDistanceCubes);
+            set => ShadersSetGlobalKeyword(ref shadersGlobalKeywordDynamicGeometryDistanceCubes, value);
         }
 
         /// <summary>Gets or sets the global shader integer property "dynamic_lights_count".</summary>
@@ -237,6 +253,18 @@ namespace AlpacaIT.DynamicLighting
             Shader.SetGlobalBuffer(shadersGlobalPropertyIdDynamicLightsBvh, buffer);
         }
 
+        /// <summary>Sets the global shader buffer property "dynamic_lights_distance_cubes".</summary>
+        private void ShadersSetGlobalDynamicLightsDistanceCubes(ComputeBuffer buffer)
+        {
+            Shader.SetGlobalBuffer(shadersGlobalPropertyIdDynamicLightsDistanceCubes, buffer);
+        }
+
+        /// <summary>Sets the global shader texture property "dynamic_lights_distance_cubes_lookup32".</summary>
+        private void ShadersSetGlobalDynamicLightsDistanceCubesLookup32(Cubemap texture)
+        {
+            Shader.SetGlobalTexture(shadersGlobalPropertyIdDynamicLightsDistanceCubesLookup32, texture);
+        }
+
         /// <summary>
         /// Initialization of shader related variables in the DynamicLightManager.Shaders partial class.
         /// </summary>
@@ -248,12 +276,15 @@ namespace AlpacaIT.DynamicLighting
             shadersGlobalKeywordIntegratedGraphics = GlobalKeyword.Create("DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS");
             shadersGlobalKeywordQualityLow = GlobalKeyword.Create("DYNAMIC_LIGHTING_QUALITY_LOW");
             shadersGlobalKeywordQualityHigh = GlobalKeyword.Create("DYNAMIC_LIGHTING_QUALITY_HIGH");
+            shadersGlobalKeywordDynamicGeometryDistanceCubes = GlobalKeyword.Create("DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES");
 
             shadersGlobalPropertyIdDynamicLights = Shader.PropertyToID("dynamic_lights");
             shadersGlobalPropertyIdDynamicLightsCount = Shader.PropertyToID("dynamic_lights_count");
             shadersGlobalPropertyIdRealtimeLightsCount = Shader.PropertyToID("realtime_lights_count");
             shadersGlobalPropertyIdDynamicAmbientColor = Shader.PropertyToID("dynamic_ambient_color");
             shadersGlobalPropertyIdDynamicLightsBvh = Shader.PropertyToID("dynamic_lights_bvh");
+            shadersGlobalPropertyIdDynamicLightsDistanceCubes = Shader.PropertyToID("dynamic_lights_distance_cubes");
+            shadersGlobalPropertyIdDynamicLightsDistanceCubesLookup32 = Shader.PropertyToID("dynamic_lights_distance_cubes_lookup32");
 
             // upon startup (or level transitions):
 
@@ -265,6 +296,9 @@ namespace AlpacaIT.DynamicLighting
 
             // enable the bounce lighting code when used in the scene during raytracing.
             shadersKeywordBounceEnabled = activateBounceLightingInCurrentScene;
+
+            // enable the dynamic geometry lighting mode used in the scene during raytracing.
+            shadersKeywordDynamicGeometryDistanceCubesEnabled = dynamicGeometryLightingModeInCurrentScene == DynamicGeometryLightingMode.DistanceCubes;
 
             // switch to the default medium quality mode.
             ShadersSetRuntimeQuality(runtimeQuality);

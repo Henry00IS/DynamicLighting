@@ -38,7 +38,6 @@ namespace AlpacaIT.DynamicLighting
 
         /// <summary>Temporary render texture used by the photon camera to render the scene.</summary>
         private RenderTexture photonCameraRenderTexture;
-
         private const int photonCameraResolution = 1024;
 
         /// <summary>Initialization of the DynamicLightingTracer.PhotonCamera partial class.</summary>
@@ -85,13 +84,7 @@ namespace AlpacaIT.DynamicLighting
             photonCamera.scene = temporaryScene.scene;
 #endif
             // create photon cubemap array.
-            photonCameraCubemaps = new RenderTexture(photonCameraRenderTextureDescriptor);
-            photonCameraCubemaps.dimension = TextureDimension.Cube;
-            photonCameraCubemaps.useMipMap = false;
-            photonCameraCubemaps.autoGenerateMips = false;
-            photonCameraCubemaps.volumeDepth = 6;
-            photonCameraCubemaps.filterMode = FilterMode.Point;
-            photonCameraCubemaps.Create();
+            PhotonCameraRecreateCubemapArray();
         }
 
         /// <summary>Cleanup of the DynamicLightingTracer.PhotonCamera partial class.</summary>
@@ -105,12 +98,37 @@ namespace AlpacaIT.DynamicLighting
             photonCameraCubemaps = null;
         }
 
+        private void PhotonCameraRecreateCubemapArray()
+        {
+            if (photonCameraCubemaps != null)
+            {
+                photonCameraCubemaps.Release();
+                photonCameraCubemaps = null;
+            }
+
+            photonCameraCubemaps = new RenderTexture(photonCameraRenderTextureDescriptor);
+            photonCameraCubemaps.dimension = TextureDimension.Cube;
+            photonCameraCubemaps.useMipMap = false;
+            photonCameraCubemaps.autoGenerateMips = false;
+            photonCameraCubemaps.volumeDepth = 6;
+            photonCameraCubemaps.filterMode = FilterMode.Point;
+            photonCameraCubemaps.Create();
+        }
+
         /// <summary>Renders the photon camera for a light source.</summary>
         /// <param name="lightPosition">The world position of the light.</param>
         /// <param name="lightRadius">The radius of the light.</param>
         /// <param name="storeNormals">Whether the world-space normals should be stored.</param>
-        private PhotonCube PhotonCameraRender(Vector3 lightPosition, float lightRadius, bool storeNormals)
+        private PhotonCube PhotonCameraRender(Vector3 lightPosition, float lightRadius, bool storeNormals, int resolution = 1024)
         {
+            // switch resolution if desired.
+            if (photonCameraRenderTextureDescriptor.width != resolution)
+            {
+                photonCameraRenderTextureDescriptor.width = resolution;
+                photonCameraRenderTextureDescriptor.height = resolution;
+                PhotonCameraRecreateCubemapArray();
+            }
+
             // get a temporary render texture.
             photonCameraRenderTexture = RenderTexture.GetTemporary(photonCameraRenderTextureDescriptor);
             photonCameraRenderTexture.filterMode = FilterMode.Point;

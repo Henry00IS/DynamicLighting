@@ -136,7 +136,7 @@ namespace AlpacaIT.DynamicLighting
         }
 
         /// <summary>The six faces of the photon cube.</summary>
-        private readonly PhotonCubeFace[] faces = new PhotonCubeFace[6];
+        internal readonly PhotonCubeFace[] faces = new PhotonCubeFace[6];
 
         /// <summary>The width and height of each face of the photon cube in pixels.</summary>
         private readonly int size;

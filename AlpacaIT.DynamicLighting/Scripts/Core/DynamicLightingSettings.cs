@@ -51,6 +51,11 @@ namespace AlpacaIT.DynamicLighting
         [Tooltip("Dynamic light sources can be moved in the scene, where they will be treated as real-time lights without shadows. While this approach is easy to work with, it requires a background process to continuously track the positions of all light sources. This uses some computational power which may not be available in your project. Moving raytraced lights (with the intention to use them as real-time lights) also incurs a performance cost on the GPU compared to actual real-time light sources and is therefore not recommended. Alternatively, it is possible to only update all positions when required, such as a raytraced light (or the game object with a raytraced light) getting enabled in the scene. This relaxes the system and reduces the computational overhead. Note that volumetric fog that uses the game object scale will also not be updated. An exception is the light rotation which will always be updated no matter which mode is used.")]
         private DynamicLightTrackingMode lightTrackingMode;
 
+        /// <inheritdoc cref="DynamicLightManager.dynamicGeometryLightingMode"/>
+        [SerializeField]
+        [Tooltip("The lighting mode for dynamic geometry that was not raytraced.")]
+        private DynamicGeometryLightingMode dynamicGeometryLightingMode;
+
         /// <summary>
         /// Creates a new instance of the <see cref="DynamicLightingSettings"/> with default values.
         /// </summary>
@@ -69,6 +74,7 @@ namespace AlpacaIT.DynamicLighting
             pixelDensityPerSquareMeter = 128;
             bounceLightingCompression = DynamicBounceLightingDefaultCompressionMode.EightBitsPerPixel;
             lightTrackingMode = DynamicLightTrackingMode.LiveTracking;
+            dynamicGeometryLightingMode = DynamicGeometryLightingMode.DistanceCubes;
 
             TryApply();
         }
@@ -87,6 +93,7 @@ namespace AlpacaIT.DynamicLighting
             dynamicLightManager.pixelDensityPerSquareMeter = pixelDensityPerSquareMeter;
             dynamicLightManager.bounceLightingCompression = bounceLightingCompression;
             dynamicLightManager.lightTrackingMode = lightTrackingMode;
+            dynamicLightManager.dynamicGeometryLightingMode = dynamicGeometryLightingMode;
         }
 
         /// <summary>
@@ -107,6 +114,7 @@ namespace AlpacaIT.DynamicLighting
                 pixelDensityPerSquareMeter = dynamicLightManager.pixelDensityPerSquareMeter;
                 bounceLightingCompression = dynamicLightManager.bounceLightingCompression;
                 lightTrackingMode = dynamicLightManager.lightTrackingMode;
+                dynamicGeometryLightingMode = dynamicLightManager.dynamicGeometryLightingMode;
                 return true;
             }
             return false;

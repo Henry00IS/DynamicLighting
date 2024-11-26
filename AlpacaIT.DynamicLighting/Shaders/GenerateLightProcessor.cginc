@@ -18,8 +18,19 @@ float3 light_position_minus_world = light_direction;
 // properly normalize the direction between the light source and the fragment.
 light_direction = normalize(light_direction);
 
-// a simple dot product with the normal gives us diffusion.
-float NdotL = max(dot(GENERATE_NORMAL, light_direction), 0);
+float NdotL = dot(GENERATE_NORMAL, light_direction);
+if (lightmap_resolution > 0)
+{
+    // static geometry:
+    // a simple dot product with the normal gives us diffusion.
+    NdotL = max(NdotL, 0);
+}
+else
+{
+    // dynamic geometry:
+    // pull the dot product all the way around for half lambert diffusion.
+    NdotL = pow(0.5 + NdotL * 0.5, 2.0);
+}
 
 #if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
 // check whether bounce texture data is available on this triangle.
@@ -59,7 +70,11 @@ float map = 1.0;
 #if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
 float bounce = 0.0;
 #endif
+#ifndef DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISABLED
 if (lightmap_resolution > 0 && light.is_dynamic())
+#else
+if (light.is_dynamic())
+#endif
 {
 #if defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
     // retrieve the shadow bit at this position with basic sampling.
@@ -92,6 +107,13 @@ if (lightmap_resolution > 0 && light.is_dynamic())
     if (map == 0.0) return;
 #endif
 }
+#ifdef DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES
+// dynamic geometry drawn using the bounding volume hierarchy sample distance cubemaps.
+else if (bvhLightIndex != -1)
+{
+    map = sample_distance_cube_bilinear(bvhLightIndex, i.world, light.position, i.normal);
+}
+#endif
 
 #if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
 // whenever the fragment is fully in shadow we can skip work.
