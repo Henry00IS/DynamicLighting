@@ -14,6 +14,12 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>The reference renderer in the scene that this metadata is for.</summary>
         public MeshRenderer renderer;
 
+        /// <summary>The sub mesh at the time of raytracing.</summary>
+        public int subMeshCount;
+
+        /// <summary>The sub mesh index start offsets at the time of raytracing.</summary>
+        public int[] subMeshIndexStartOffsets;
+
         /// <summary>The unique identifier used to find the binary data files on disk.</summary>
         public int identifier;
 

@@ -1,4 +1,5 @@
 using AlpacaIT.DynamicLighting.Internal;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 using Unity.Mathematics;
@@ -62,6 +63,7 @@ namespace AlpacaIT.DynamicLighting
         private DynamicLightManager dynamicLightManager;
         private StringBuilder log;
         private static RaycastCommand raycastCommand;
+        private List<Material> materialsScratchMemory;
 
 #if UNITY_EDITOR
         private bool progressBarCancel = false;
@@ -105,6 +107,7 @@ namespace AlpacaIT.DynamicLighting
             lightmapSizeMin1 = lightmapSize - 1;
             raycastLayermask = dynamicLightManager.raytraceLayers;
             pixelDensityPerSquareMeter = dynamicLightManager.pixelDensityPerSquareMeter;
+            materialsScratchMemory = new List<Material>();
 
             // prepare a raycast command that is recycled for raytracing.
 #if UNITY_2021_2_OR_NEWER && !UNITY_2021_2_17 && !UNITY_2021_2_16 && !UNITY_2021_2_15 && !UNITY_2021_2_14 && !UNITY_2021_2_13 && !UNITY_2021_2_12 && !UNITY_2021_2_11 && !UNITY_2021_2_10 && !UNITY_2021_2_9 && !UNITY_2021_2_8 && !UNITY_2021_2_7 && !UNITY_2021_2_6 && !UNITY_2021_2_5 && !UNITY_2021_2_4 && !UNITY_2021_2_3 && !UNITY_2021_2_2 && !UNITY_2021_2_1 && !UNITY_2021_2_0
@@ -494,6 +497,21 @@ namespace AlpacaIT.DynamicLighting
             var lightmap = new RaycastedMeshRenderer();
             lightmap.renderer = meshFilter.GetComponent<MeshRenderer>();
             lightmap.resolution = lightmapSize;
+
+            // static batching requires us to have access to the original sub-mesh start index values.
+            {
+                var meshRenderer = lightmap.renderer;
+                var mesh = meshFilter.sharedMesh;
+
+                // unity api oversight: cannot get material count as it's a private method, so to
+                // prevent allocations on the garbage collector we recycle a list here.
+                meshRenderer.GetSharedMaterials(materialsScratchMemory);
+                lightmap.subMeshCount = System.Math.Min(mesh.subMeshCount - meshRenderer.subMeshStartIndex, materialsScratchMemory.Count);
+                lightmap.subMeshIndexStartOffsets = new int[lightmap.subMeshCount];
+                for (int j = 0; j < lightmap.subMeshCount; j++)
+                    lightmap.subMeshIndexStartOffsets[j] = (int)(mesh.GetIndexStart(j) / 3);
+            }
+
             lightmap.identifier = dynamicLightManager.raycastedScene.StoreDynamicTriangles(dynamic_triangles32);
             if (lightmap.identifier == -1)
                 Debug.LogError($"Unable to compress the dynamic lighting data for '" + meshFilter.name + "'!");

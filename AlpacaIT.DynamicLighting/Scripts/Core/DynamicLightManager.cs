@@ -630,10 +630,21 @@ namespace AlpacaIT.DynamicLighting
                     lightmap.buffer = new ComputeBuffer(triangles.Length, 4);
                     lightmap.buffer.SetData(triangles);
 
+                    // in the editor due to a manual reload or in builds:
+                    var meshRendererIsPartOfStaticBatch = meshRenderer.isPartOfStaticBatch;
+                    if (meshRendererIsPartOfStaticBatch)
+                    {
+                        // combined meshes still want original submesh data.
+                        lightmap.activeSubMeshCount = lightmap.subMeshCount;
+                    }
+                    else
+                    {
+                        meshRenderer.GetSharedMaterials(materialsScratchMemory);
+                        lightmap.activeSubMeshCount = Math.Min(mesh.subMeshCount - meshRenderer.subMeshStartIndex, materialsScratchMemory.Count);
+                    }
+
                     // assign the material property block to each submesh.
                     var hasPropertyBlock = meshRenderer.HasPropertyBlock(); // unity api oversight: cannot differentiate between submesh blocks and normal ones.
-                    meshRenderer.GetSharedMaterials(materialsScratchMemory);
-                    lightmap.activeSubMeshCount = Math.Min(mesh.subMeshCount - meshRenderer.subMeshStartIndex, materialsScratchMemory.Count);
                     for (int j = 0; j < lightmap.activeSubMeshCount; j++)
                     {
                         var materialPropertyBlock = new MaterialPropertyBlock();
@@ -647,7 +658,12 @@ namespace AlpacaIT.DynamicLighting
                         materialPropertyBlock.SetVector("dynamic_lighting_unity_LightmapST", new Vector4(lightmap.resolution, lightmap.resolution, 0f, 0f)); // identity.
 
                         // add a triangle offset to fix sv_primitiveid starting at zero.
-                        materialPropertyBlock.SetInteger("triangle_index_submesh_offset", (int)(mesh.GetIndexStart(j) / 3));
+                        // combined meshes still want original submesh data.
+                        if (meshRendererIsPartOfStaticBatch)
+                            materialPropertyBlock.SetInteger("triangle_index_submesh_offset", lightmap.subMeshIndexStartOffsets[j]);
+                        else
+                            materialPropertyBlock.SetInteger("triangle_index_submesh_offset", (int)(mesh.GetIndexStart(j) / 3));
+
                         meshRenderer.SetPropertyBlock(materialPropertyBlock, j);
                     }
                 }
