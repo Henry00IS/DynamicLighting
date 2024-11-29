@@ -224,6 +224,16 @@ float texture_alpha_sample_gaussian5(sampler2D tex, float2 texelsize, float2 uv)
     return map / 256.0; // normalize by the sum of the weights.
 }
 
+float linstep(float min, float max, float v)
+{
+    return clamp((v - min) / (max - min), 0, 1);
+}
+float ReduceLightBleeding(float p_max, float amount)
+{
+    // Remove the [0, amount] tail and linearly rescale (amount, 1].
+    return linstep(amount, 1, p_max);
+}
+
 // special thanks to https://learnopengl.com/PBR/Lighting
 
 // normal distribution function: approximates the amount the surface's

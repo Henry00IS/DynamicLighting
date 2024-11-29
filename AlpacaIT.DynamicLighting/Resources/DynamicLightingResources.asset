@@ -16,3 +16,4 @@ MonoBehaviour:
   dynamicLightingPostProcessingMaterial: {fileID: 2100000, guid: 7c7fe9e515cc0be4886168d3c1a785d6, type: 2}
   shadowCameraDepthShader: {fileID: 4800000, guid: 1a9ff03cd330c124c93337f9e5edac79, type: 3}
   photonCubeShader: {fileID: 4800000, guid: 936f5b5fed8dc6b4eb706ae05d7bbb4e, type: 3}
+  guassianBlurMaterial: {fileID: 2100000, guid: ef0b5938293b80541b19a8a0c1e5b8f7, type: 2}

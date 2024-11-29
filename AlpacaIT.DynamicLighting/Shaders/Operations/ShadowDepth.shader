@@ -28,6 +28,8 @@ Shader "Hidden/Dynamic Lighting/ShadowDepth"
                 float3 world : TEXCOORD1;
             };
 
+            float dynamic_lighting_shadow_depth_light_radius;
+
             v2f vert (appdata v)
             {
                 v2f o;
@@ -36,9 +38,10 @@ Shader "Hidden/Dynamic Lighting/ShadowDepth"
                 return o;
             }
 
-            float frag (v2f i) : SV_Target
+            float2 frag (v2f i) : SV_Target
             {
-                return distance(_WorldSpaceCameraPos, i.world);
+                float dist = distance(_WorldSpaceCameraPos, i.world) / dynamic_lighting_shadow_depth_light_radius;
+                return float2(dist, dist * dist);
             }
 
             ENDCG
@@ -73,6 +76,7 @@ Shader "Hidden/Dynamic Lighting/ShadowDepth"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
+            float dynamic_lighting_shadow_depth_light_radius;
             
             v2f vert (appdata v)
             {
@@ -83,17 +87,18 @@ Shader "Hidden/Dynamic Lighting/ShadowDepth"
                 return o;
             }
 
-            float frag (v2f i) : SV_Target
+            float2 frag (v2f i) : SV_Target
             {
                 fixed4 col = tex2D(_MainTex, i.uv0);
                 if (col.a > 0.5)
                 {
-                    return distance(_WorldSpaceCameraPos, i.world);
+                    float dist = distance(_WorldSpaceCameraPos, i.world) / dynamic_lighting_shadow_depth_light_radius;
+                    return float2(dist, dist * dist);
                 }
                 else
                 {
                     discard;
-                    return 0.0; // hlsl compiler wants us to return something- never gets executed.
+                    return float2(0.0, 0.0); // hlsl compiler wants us to return something- never gets executed.
                 }
             }
 
@@ -129,6 +134,7 @@ Shader "Hidden/Dynamic Lighting/ShadowDepth"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
+            float dynamic_lighting_shadow_depth_light_radius;
             
             v2f vert (appdata v)
             {
@@ -139,17 +145,18 @@ Shader "Hidden/Dynamic Lighting/ShadowDepth"
                 return o;
             }
 
-            float frag (v2f i) : SV_Target
+            float2 frag (v2f i) : SV_Target
             {
                 fixed4 col = tex2D(_MainTex, i.uv0);
                 if (col.a > 0.5)
                 {
-                    return distance(_WorldSpaceCameraPos, i.world);
+                    float dist = distance(_WorldSpaceCameraPos, i.world) / dynamic_lighting_shadow_depth_light_radius;
+                    return float2(dist, dist * dist);
                 }
                 else
                 {
                     discard;
-                    return 0.0; // hlsl compiler wants us to return something- never gets executed.
+                    return float2(0.0, 0.0); // hlsl compiler wants us to return something- never gets executed.
                 }
             }
 
