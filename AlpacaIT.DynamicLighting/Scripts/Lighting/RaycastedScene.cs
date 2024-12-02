@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting
@@ -21,38 +22,58 @@ namespace AlpacaIT.DynamicLighting
             /// <summary>The compressed <see cref="uint"/> data as an array of bytes.</summary>
             public byte[] bytes;
 
+            /// <summary>The decompressed original length of <see cref="bytes"/>.</summary>
+            public int length;
+
             /// <summary>Decompresses the serialized bytes and returns the <see cref="uint[]"/>-array.</summary>
             /// <param name="result">The decompressed <see cref="uint"/>-array.</param>
             /// <returns>True on success else false.</returns>
-            public readonly bool Read(out uint[] result)
+            public readonly bool Read(out NativeArrayStream<uint> result)
             {
+                result = default;
+
                 // this can happen when the scriptable object has not been fully initialized.
                 if (bytes == null || bytes.Length == 0)
                 {
-                    result = default;
                     return false;
+                }
+
+                // legacy compressed data from an old version of dynamic lighting:
+                if (length == 0)
+                {
+                    try
+                    {
+                        using (var decompressed = new MemoryStream())
+                        {
+                            using (var compressed = new NativeArrayStream<byte>(bytes))
+                            using (var gzip = new GZipStream(compressed, CompressionMode.Decompress))
+                            {
+                                gzip.CopyTo(decompressed);
+                            }
+                            result = new NativeArrayStream<uint>(MemoryMarshal.Cast<byte, uint>(decompressed.ToArray()).ToArray());
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError(ex);
+                        result = default;
+                        return false;
+                    }
                 }
 
                 try
                 {
-                    byte[] decompressedBytes;
-                    using (var memory = new MemoryStream(bytes))
-                    using (var decompressed = new MemoryStream())
-                    using (var gzip = new GZipStream(memory, CompressionMode.Decompress))
+                    result = new NativeArrayStream<uint>(length);
+                    using (var compressed = new NativeArrayStream<byte>(bytes))
+                    using (var gzip = new GZipStream(compressed, CompressionMode.Decompress))
                     {
-                        gzip.CopyTo(decompressed);
-                        gzip.Close();
-                        decompressedBytes = decompressed.ToArray();
+                        gzip.CopyTo(result);
                     }
-
-                    uint[] uintArray = new uint[decompressedBytes.Length / 4];
-                    Buffer.BlockCopy(decompressedBytes, 0, uintArray, 0, decompressedBytes.Length);
-                    result = uintArray;
-
                     return true;
                 }
                 catch (Exception ex)
                 {
+                    result?.Dispose();
                     Debug.LogError(ex);
                     result = default;
                     return false;
@@ -70,22 +91,21 @@ namespace AlpacaIT.DynamicLighting
 
                 try
                 {
-                    byte[] byteArray = new byte[input.Length * 4];
-                    Buffer.BlockCopy(input, 0, byteArray, 0, input.Length * 4);
-
-                    using (var memory = new MemoryStream(byteArray))
+                    length = input.Length * sizeof(uint);
+                    using (var memory = new NativeArrayStream<uint>(input))
                     using (var compressed = new MemoryStream())
-                    using (var gzip = new GZipStream(compressed, System.IO.Compression.CompressionLevel.Optimal))
                     {
-                        memory.CopyTo(gzip);
-                        gzip.Close();
+                        using (var gzip = new GZipStream(compressed, System.IO.Compression.CompressionLevel.Optimal))
+                        {
+                            memory.CopyTo(gzip);
+                        }
                         bytes = compressed.ToArray();
                     }
-
                     return true;
                 }
                 catch (Exception ex)
                 {
+                    length = 0;
                     Debug.LogError(ex);
                     return false;
                 }
@@ -95,7 +115,7 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>The version number of this scriptable object data.</summary>
         [SerializeField]
         [HideInInspector]
-        internal int version = 1;
+        internal int version = 2; // v1 was with length == 0 and without native array stream.
 
         /// <summary>The collection of dynamic triangles data structures used by raycasted meshes.</summary>
         [SerializeField]
@@ -142,7 +162,7 @@ namespace AlpacaIT.DynamicLighting
         /// The dynamic triangles data that can be uploaded to the graphics card.
         /// </param>
         /// <returns>True on success else false (such as an invalid index).</returns>
-        public bool ReadDynamicTriangles(int index, out uint[] dynamicTriangles)
+        public bool ReadDynamicTriangles(int index, out NativeArrayStream<uint> dynamicTriangles)
         {
             if (index < 0 || index >= this.dynamicTriangles.Count)
             {

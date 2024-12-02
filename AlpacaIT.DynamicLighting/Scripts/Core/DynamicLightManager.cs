@@ -625,10 +625,11 @@ namespace AlpacaIT.DynamicLighting
                 }
 #endif
                 // assign the dynamic triangles data to the material property block.
-                if (raycastedScene != null && raycastedScene.ReadDynamicTriangles(lightmap.identifier, out uint[] triangles))
+                if (raycastedScene != null && raycastedScene.ReadDynamicTriangles(lightmap.identifier, out var triangles))
                 {
-                    lightmap.buffer = new ComputeBuffer(triangles.Length, 4);
-                    lightmap.buffer.SetData(triangles);
+                    lightmap.buffer = new ComputeBuffer(triangles.length / sizeof(uint), sizeof(uint));
+                    lightmap.buffer.SetData(triangles.GetNativeArray());
+                    triangles.Dispose();
 
                     // in the editor due to a manual reload or in builds:
                     var meshRendererIsPartOfStaticBatch = meshRenderer.isPartOfStaticBatch;
@@ -674,10 +675,11 @@ namespace AlpacaIT.DynamicLighting
             if (raycastedDynamicLights.Count > 0)
             {
                 // assign the dynamic lights bounding volume hierarchy to a global buffer.
-                if (raycastedScene && raycastedScene.dynamicLightsBvh.Read(out uint[] bvhData))
+                if (raycastedScene && raycastedScene.dynamicLightsBvh.Read(out var bvhData))
                 {
-                    dynamicLightsBvhBuffer = new ComputeBuffer(bvhData.Length / 8, dynamicLightsBvhNodeStride, ComputeBufferType.Default);
-                    dynamicLightsBvhBuffer.SetData(bvhData);
+                    dynamicLightsBvhBuffer = new ComputeBuffer(bvhData.length / dynamicLightsBvhNodeStride, dynamicLightsBvhNodeStride, ComputeBufferType.Default);
+                    dynamicLightsBvhBuffer.SetData(bvhData.GetNativeArray());
+                    bvhData.Dispose();
                     ShadersSetGlobalDynamicLightsBvh(dynamicLightsBvhBuffer);
 
                     // enable the bounding volume hierarchy processing in the shader.
@@ -688,10 +690,11 @@ namespace AlpacaIT.DynamicLighting
                 if (dynamicGeometryLightingModeInCurrentScene == DynamicGeometryLightingMode.DistanceCubes)
                 {
                     // assign the dynamic lights distance cubes to a global buffer.
-                    if (raycastedScene && raycastedScene.dynamicLightsDistanceCubes.Read(out uint[] distanceCubesData))
+                    if (raycastedScene && raycastedScene.dynamicLightsDistanceCubes.Read(out var distanceCubesData))
                     {
-                        dynamicLightsDistanceCubesBuffer = new ComputeBuffer(distanceCubesData.Length, sizeof(uint), ComputeBufferType.Default);
-                        dynamicLightsDistanceCubesBuffer.SetData(distanceCubesData);
+                        dynamicLightsDistanceCubesBuffer = new ComputeBuffer(distanceCubesData.length / sizeof(uint), sizeof(uint), ComputeBufferType.Default);
+                        dynamicLightsDistanceCubesBuffer.SetData(distanceCubesData.GetNativeArray());
+                        distanceCubesData.Dispose();
                         ShadersSetGlobalDynamicLightsDistanceCubes(dynamicLightsDistanceCubesBuffer);
                     }
                     else Debug.LogError("Unable to read the dynamic lights distance cubes file! Probably because you upgraded from an older version. Please raytrace your scene again.");
