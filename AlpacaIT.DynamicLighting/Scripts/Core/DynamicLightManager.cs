@@ -600,6 +600,7 @@ namespace AlpacaIT.DynamicLighting
 
             // prepare the scene for dynamic lighting.
             var raycastedMeshRenderersCount = raycastedMeshRenderers.Count;
+            var decompressionHandles = new List<(DecompressGZipStreamHandle<uint> decompression, Action finished)>(raycastedMeshRenderersCount);
             for (int i = 0; i < raycastedMeshRenderersCount; i++)
             {
                 // for every game object that requires a lightmap:
@@ -624,51 +625,72 @@ namespace AlpacaIT.DynamicLighting
                     lightmap.lastMeshHash = mesh.GetFastHash();
                 }
 #endif
-                // assign the dynamic triangles data to the material property block.
-                if (raycastedScene != null && raycastedScene.ReadDynamicTriangles(lightmap.identifier, out var triangles))
+                if (raycastedScene != null)
                 {
-                    lightmap.buffer = new ComputeBuffer(triangles.length / sizeof(uint), sizeof(uint));
-                    lightmap.buffer.SetData(triangles.GetNativeArray());
-                    triangles.Dispose();
-
-                    // in the editor due to a manual reload or in builds:
-                    var meshRendererIsPartOfStaticBatch = meshRenderer.isPartOfStaticBatch;
-                    if (meshRendererIsPartOfStaticBatch)
+                    // assign the dynamic triangles data to the material property block.
+                    if (raycastedScene.ReadDynamicTriangles(lightmap.identifier, out var triangles))
                     {
-                        // combined meshes still want original submesh data.
-                        lightmap.activeSubMeshCount = lightmap.subMeshCount;
+                        // schedule the decompression work on the unity job system.
+                        triangles.Schedule();
+
+                        // this is the code we want to execute once decompression is done:
+                        decompressionHandles.Add((triangles, () =>
+                        {
+                            lightmap.buffer = new ComputeBuffer(triangles.length / sizeof(uint), sizeof(uint));
+                            lightmap.buffer.SetData(triangles.GetNativeArray());
+                            triangles.Dispose();
+
+                            // in the editor due to a manual reload or in builds:
+                            var meshRendererIsPartOfStaticBatch = meshRenderer.isPartOfStaticBatch;
+                            if (meshRendererIsPartOfStaticBatch)
+                            {
+                                // combined meshes still want original submesh data.
+                                lightmap.activeSubMeshCount = lightmap.subMeshCount;
+                            }
+                            else
+                            {
+                                meshRenderer.GetSharedMaterials(materialsScratchMemory);
+                                lightmap.activeSubMeshCount = Math.Min(mesh.subMeshCount - meshRenderer.subMeshStartIndex, materialsScratchMemory.Count);
+                            }
+
+                            // assign the material property block to each submesh.
+                            var hasPropertyBlock = meshRenderer.HasPropertyBlock(); // unity api oversight: cannot differentiate between submesh blocks and normal ones.
+                            for (int j = 0; j < lightmap.activeSubMeshCount; j++)
+                            {
+                                var materialPropertyBlock = new MaterialPropertyBlock();
+
+                                // play nice with other scripts.
+                                if (hasPropertyBlock)
+                                    meshRenderer.GetPropertyBlock(materialPropertyBlock, j);
+
+                                materialPropertyBlock.SetBuffer("dynamic_triangles", lightmap.buffer);
+                                materialPropertyBlock.SetInteger("lightmap_resolution", lightmap.resolution);
+                                materialPropertyBlock.SetVector("dynamic_lighting_unity_LightmapST", new Vector4(lightmap.resolution, lightmap.resolution, 0f, 0f)); // identity.
+
+                                // add a triangle offset to fix sv_primitiveid starting at zero.
+                                // combined meshes still want original submesh data.
+                                if (meshRendererIsPartOfStaticBatch)
+                                    materialPropertyBlock.SetInteger("triangle_index_submesh_offset", lightmap.subMeshIndexStartOffsets[j]);
+                                else
+                                    materialPropertyBlock.SetInteger("triangle_index_submesh_offset", (int)(mesh.GetIndexStart(j) / 3));
+
+                                meshRenderer.SetPropertyBlock(materialPropertyBlock, j);
+                            }
+                        }
+                        ));
                     }
-                    else
-                    {
-                        meshRenderer.GetSharedMaterials(materialsScratchMemory);
-                        lightmap.activeSubMeshCount = Math.Min(mesh.subMeshCount - meshRenderer.subMeshStartIndex, materialsScratchMemory.Count);
-                    }
-
-                    // assign the material property block to each submesh.
-                    var hasPropertyBlock = meshRenderer.HasPropertyBlock(); // unity api oversight: cannot differentiate between submesh blocks and normal ones.
-                    for (int j = 0; j < lightmap.activeSubMeshCount; j++)
-                    {
-                        var materialPropertyBlock = new MaterialPropertyBlock();
-
-                        // play nice with other scripts.
-                        if (hasPropertyBlock)
-                            meshRenderer.GetPropertyBlock(materialPropertyBlock, j);
-
-                        materialPropertyBlock.SetBuffer("dynamic_triangles", lightmap.buffer);
-                        materialPropertyBlock.SetInteger("lightmap_resolution", lightmap.resolution);
-                        materialPropertyBlock.SetVector("dynamic_lighting_unity_LightmapST", new Vector4(lightmap.resolution, lightmap.resolution, 0f, 0f)); // identity.
-
-                        // add a triangle offset to fix sv_primitiveid starting at zero.
-                        // combined meshes still want original submesh data.
-                        if (meshRendererIsPartOfStaticBatch)
-                            materialPropertyBlock.SetInteger("triangle_index_submesh_offset", lightmap.subMeshIndexStartOffsets[j]);
-                        else
-                            materialPropertyBlock.SetInteger("triangle_index_submesh_offset", (int)(mesh.GetIndexStart(j) / 3));
-
-                        meshRenderer.SetPropertyBlock(materialPropertyBlock, j);
-                    }
+                    else Debug.LogError("Unable to read the dynamic lighting data file! Probably because you upgraded from an older version. Please raytrace your scene again.");
                 }
-                else Debug.LogError("Unable to read the dynamic lighting data file! Probably because you upgraded from an older version. Please raytrace your scene again.");
+            }
+
+            // wait on decompression to finish on the job system (oldest to newest).
+            var decompressionHandlesCount = decompressionHandles.Count;
+            for (int i = 0; i < decompressionHandlesCount; i++)
+            {
+                decompressionHandles[i].decompression.Complete();
+
+                // immediately upload data to the graphics card whenever we can.
+                decompressionHandles[i].finished();
             }
 
             // the scene may not have lights which would not be an error:
