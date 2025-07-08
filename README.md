@@ -6,19 +6,18 @@ It is inspired by Tim Sweeney's lighting system in Unreal Gold and Unreal Tourna
 
 ![Showcasing Dynamic Lighting in Unity with a classic Unreal map the Vortex Rikers](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/demo-vortex2-unity.gif)
 
-This lighting technique precomputes unique shadows for each light source, allowing dynamic adjustments such as color changes, flickering, or even water refraction. This level of realtime customization is not possible with Unity's baked lighting alone. It utilizes straightforward custom shaders similar to Unity's Standard shader and is compatible with the built-in render pipeline. The minimum Unity Editor requirement is 2021.2.18f1 up to and including Unity 6.
+This lighting technique precomputes unique shadows for each light source, allowing dynamic adjustments such as color changes, flickering, volumetric effects, rotating spot lights, animated cookies, or even water refraction; all after baking the scene has already finished. This level of realtime customization is not possible with Unity's baked lighting alone (mixing the Progressive Lightmapper and this technique is supported). It utilizes straightforward custom shaders similar to Unity's Standard shader and is compatible with the built-in render pipeline. The minimum Unity Editor requirement is 2021.2.18f1 up to and including Unity 6.
 
 To raytrace the scene, game objects must be marked as static.
 
-| High Quality Shadows | Volumetric Fog |
-:---: | :---:
-| ![Higher shadow quality than Unreal](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/demo-shadow-detail.png) | ![Volumetric fog surrounding light sources](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/demo-volumetric-fog.png) |
-| **Bounce Lighting** | **Transparency** |
-| ![Bounce lighting demo in Sponza](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/demo-bounce-2.png) | ![Transparent texture raytracing demo with a works on my machine funny texture](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/demo-transparency.png) |
-| **Metallic PBR** | **Mixable with Progressive Lightmapper** |
-| ![Metallic PBR workflow support](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/demo-rendering-pbr.png) | ![Progressive Lightmapper using Dynamic Lighting](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/demo-mixed-lighting.gif) |
+![High Shadow Quality](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/home-01.png)
+![Bounce Lighting](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/home-02.png)
+![Transparency](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/home-03.png)
+![Volumetric Fog](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/home-04.png)
+![Physically Based Rendering](https://raw.githubusercontent.com/wiki/Henry00IS/DynamicLighting/images/home/home-05.png)
 
 #### Cons
+
 The main limitation of this technique is that lights with shadows cannot change their position. If they have to move, they become real-time lights that cast no shadows and can potentially shine through walls, if their radius allows for it. Depending on the use case and level design, this may never be a problem at all.
 
 However, real-time shadows are supported and can be used sparingly to overcome this limitation.
