@@ -22,7 +22,7 @@ namespace AlpacaIT.DynamicLighting
         {
             lightCookieTextureIndices = new Dictionary<Texture, uint>();
 
-            lightCookieTextures = new RenderTexture(1024, 1024, 0, RenderTextureFormat.R8, 0);
+            lightCookieTextures = new RenderTexture(1024, 1024, 0, RenderTextureFormat.RHalf, 0);
             lightCookieTextures.dimension = TextureDimension.Tex2DArray;
             lightCookieTextures.volumeDepth = lightCookieTextureBudget;
             lightCookieTextures.Create();
