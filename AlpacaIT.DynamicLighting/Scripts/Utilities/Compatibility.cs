@@ -1,10 +1,10 @@
 ﻿using System.Runtime.CompilerServices;
 using UnityEngine;
 
-namespace AlpacaIT.DynamicLighting
+namespace AlpacaIT.DynamicLighting.Internal
 {
     /// <summary>Compatibility layer for Unity functions that were deprecated.</summary>
-    internal static class Compatibility
+    public static class Compatibility
     {
         /// <summary>
         /// Returns the first active loaded object of <typeparamref name="T"/> type.

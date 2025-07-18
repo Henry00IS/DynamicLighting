@@ -26,7 +26,7 @@ namespace AlpacaIT.DynamicLighting.Editor
             if (!DynamicLightManager.hasInstance)
             {
                 // try finding an existing instance in the scene.
-                var instance = Object.FindObjectOfType<DynamicLightManager>();
+                var instance = Internal.Compatibility.FindObjectOfType<DynamicLightManager>();
 
                 // ignoring the silly hasInstance state; we know the preview should be visually correct.
                 if (instance) return;
