@@ -1,6 +1,7 @@
 ﻿#if UNITY_EDITOR
 
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace AlpacaIT.DynamicLighting
 {
@@ -33,7 +34,12 @@ namespace AlpacaIT.DynamicLighting
 
         /// <summary>Executes before a camera starts rendering.</summary>
         /// <param name="camera">The camera that is about to render.</param>
+#if UNITY_PIPELINE_URP
+
+        private void EditorOnPreRenderCallback(ScriptableRenderContext scriptableRenderContext, Camera camera)
+#else
         private void EditorOnPreRenderCallback(Camera camera)
+#endif
         {
             // we require that we are fully initialized.
             if (!isInitialized) return;
@@ -75,7 +81,12 @@ namespace AlpacaIT.DynamicLighting
 
         /// <summary>Executes after a camera stops rendering.</summary>
         /// <param name="camera">The camera that has finished rendering.</param>
+#if UNITY_PIPELINE_URP
+
+        private void EditorOnPostRenderCallback(ScriptableRenderContext scriptableRenderContext, Camera camera)
+#else
         private void EditorOnPostRenderCallback(Camera camera)
+#endif
         {
             // we require that we are fully initialized.
             if (!isInitialized) return;

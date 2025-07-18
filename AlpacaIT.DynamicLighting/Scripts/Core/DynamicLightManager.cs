@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.Serialization;
 using Random = UnityEngine.Random;
 
@@ -552,8 +553,13 @@ namespace AlpacaIT.DynamicLighting
             editorIsPlaying = Application.isPlaying;
 
             // in the editor, subscribe to the camera rendering functions to repair preview cameras.
+#if UNITY_PIPELINE_URP
+            RenderPipelineManager.beginCameraRendering += EditorOnPreRenderCallback;
+            RenderPipelineManager.endCameraRendering += EditorOnPostRenderCallback;
+#else
             Camera.onPreRender += EditorOnPreRenderCallback;
             Camera.onPostRender += EditorOnPostRenderCallback;
+#endif
 #endif
             // -> partial class DynamicLightManager.Shaders initialize.
             ShadersInitialize();
@@ -734,8 +740,13 @@ namespace AlpacaIT.DynamicLighting
 
 #if UNITY_EDITOR
             // in the editor, unsubscribe from the camera rendering functions that repair preview cameras.
+#if UNITY_PIPELINE_URP
+            RenderPipelineManager.beginCameraRendering -= EditorOnPreRenderCallback;
+            RenderPipelineManager.endCameraRendering -= EditorOnPostRenderCallback;
+#else
             Camera.onPreRender -= EditorOnPreRenderCallback;
             Camera.onPostRender -= EditorOnPostRenderCallback;
+#endif
 #endif
 
             if (dynamicLightsBuffer != null && dynamicLightsBuffer.IsValid())
