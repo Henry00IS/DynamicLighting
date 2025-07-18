@@ -208,7 +208,7 @@ namespace AlpacaIT.DynamicLighting
                 pointLightsCache = new CachedLightData[pointLights.Length];
 
                 // iterate over all compatible mesh filters and build a temporary scene with them.
-                var meshFilters = Object.FindObjectsOfType<MeshFilter>();
+                var meshFilters = Compatibility.FindObjectsOfType<MeshFilter>();
                 var goodFilters = new bool[meshFilters.Length];
                 for (int i = 0; i < meshFilters.Length; i++)
                     goodFilters[i] = TemporarySceneAdd(meshFilters[i]);

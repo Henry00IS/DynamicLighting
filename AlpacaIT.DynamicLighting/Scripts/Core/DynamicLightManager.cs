@@ -149,7 +149,7 @@ namespace AlpacaIT.DynamicLighting
                 if (s_Instance) return s_Instance;
 
                 // C# hot reloading support: try finding an existing instance in the scene.
-                s_Instance = FindObjectOfType<DynamicLightManager>();
+                s_Instance = Compatibility.FindObjectOfType<DynamicLightManager>();
 
                 // otherwise create a new instance in scene.
                 if (!s_Instance)
@@ -506,7 +506,7 @@ namespace AlpacaIT.DynamicLighting
         /// <returns>The collection of dynamic lights in the scene.</returns>
         internal static List<DynamicLight> FindDynamicLightsInScene()
         {
-            var dynamicPointLights = new List<DynamicLight>(FindObjectsOfType<DynamicLight>());
+            var dynamicPointLights = new List<DynamicLight>(Compatibility.FindObjectsOfType<DynamicLight>());
 
             // remove all of the realtime lights from our collection.
             var dynamicPointLightsCount = dynamicPointLights.Count;
@@ -521,7 +521,7 @@ namespace AlpacaIT.DynamicLighting
         /// <returns>The collection of dynamic lights in the scene.</returns>
         internal List<DynamicLight> FindRealtimeLightsInScene()
         {
-            var dynamicPointLights = new List<DynamicLight>(FindObjectsOfType<DynamicLight>());
+            var dynamicPointLights = new List<DynamicLight>(Compatibility.FindObjectsOfType<DynamicLight>());
 
             // remove all of the raycasted lights from our collection.
             var dynamicPointLightsCount = dynamicPointLights.Count;
