@@ -42,7 +42,7 @@ namespace AlpacaIT.DynamicLighting
                 if (!raycastedDynamicLight.lightAvailable)
                 {
                     // add invalid transform to the native array to keep the indices correct:
-                    lightPositionsRaycastedLightTransforms.Add(null);
+                    lightPositionsRaycastedLightTransforms.Add(transform); // null causes 'slow performance' warning >= unity 6.
                 }
                 else
                 {
