@@ -301,7 +301,7 @@ namespace AlpacaIT.DynamicLighting
                 log.Append("VRAM Dynamic Triangles: ").Append(MathEx.BytesToUnitString(vramDynamicTrianglesTotal)).Append(" (Legacy: ").Append(MathEx.BytesToUnitString(vramLegacyTotal)).AppendLine(")");
                 log.Append("VRAM Bounding Volume Hierarchy: ").AppendLine(MathEx.BytesToUnitString(vramBvhTotal));
                 log.Append("VRAM Distance Cubes: ").AppendLine(MathEx.BytesToUnitString(vramDistanceCubesTotal));
-                log.Insert(0, $"The lighting requires {MathEx.BytesToUnitString(vramDynamicTrianglesTotal + vramBvhTotal + vramDistanceCubesTotal)} VRAM on the graphics card to render the current scene ({totalTime}).{System.Environment.NewLine}");
+                log.Insert(0, $"The lighting uses {MathEx.BytesToUnitString(vramDynamicTrianglesTotal + vramBvhTotal + vramDistanceCubesTotal)} VRAM on the graphics card to render the current scene ({totalTime}).{System.Environment.NewLine}");
 
                 Debug.Log(log.ToString());
 #if UNITY_EDITOR
