@@ -375,6 +375,15 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         internal bool editorIsPlaying = false;
 
+        /// <summary>The internal Unity Editor type <see cref="UnityEditor.GameView"/>.</summary>
+        internal Type editorGameViewType = typeof(UnityEditor.EditorWindow).Assembly.GetType("UnityEditor.GameView");
+
+        /// <summary>
+        /// Tracks whether the <see cref="UnityEditor.EditorWindow.focusedWindow"/> was most
+        /// recently on a game view (true) or on a scene view (false).
+        /// </summary>
+        internal bool editorLastViewWasGame = false;
+
         /// <summary>
         /// Called by <see cref="DynamicLightingTracer"/> to properly free up the compute buffers
         /// before clearing the lightmaps collection. Then deletes all lightmap files from disk.
@@ -945,14 +954,31 @@ namespace AlpacaIT.DynamicLighting
                 var sceneView = UnityEditor.SceneView.lastActiveSceneView;
                 if (sceneView)
                 {
+                    // check the focused editor window to determine whether it was most recently a
+                    // game view (true) or a scene view (false).
+                    var focusedWindow = UnityEditor.EditorWindow.focusedWindow;
+                    if (focusedWindow != null)
+                    {
+                        var focusedWindowType = focusedWindow.GetType();
+                        if (focusedWindowType == editorGameViewType)
+                            editorLastViewWasGame = true;
+                        else if (focusedWindowType == typeof(UnityEditor.SceneView))
+                            editorLastViewWasGame = false;
+                    }
+
                     // apply the unlit rendering property.
                     if (renderUnlit)
                         ShadersSetKeywordLitEnabled(false);
+                    else if (editorLastViewWasGame)
+                        ShadersSetKeywordLitEnabled(true);
                     else
                         ShadersSetKeywordLitEnabled(sceneView.sceneLighting);
                 }
                 else
                 {
+                    // there is no scene view.
+                    editorLastViewWasGame = true;
+
                     // apply the unlit rendering property.
                     ShadersSetKeywordLitEnabled(!renderUnlit);
                 }
