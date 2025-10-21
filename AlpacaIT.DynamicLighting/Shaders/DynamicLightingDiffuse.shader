@@ -139,7 +139,6 @@ Shader "Dynamic Lighting/Diffuse"
 			Tags { "LightMode" = "ForwardAdd" }
 			Blend One One
 			ZWrite Off
-            ZTest LEqual
 
             CGPROGRAM
             #pragma target 3.0

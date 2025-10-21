@@ -109,7 +109,7 @@ Shader "Dynamic Lighting/Metallic"
             DYNLIT_FRAGMENT_FUNCTION
             {
                 // material parameters
-                float3 albedo = tex2D(_MainTex, i.uv0).rgb * _Color.rgb * i.color;
+                float3 albedo = tex2D(_MainTex, i.uv0).rgb * _Color.rgb * i.color.rgb;
                 
             #if METALLIC_TEXTURE_UNASSIGNED
                 float metallic = _Metallic;
@@ -247,6 +247,23 @@ Shader "Dynamic Lighting/Metallic"
                 DYNLIT_FRAGMENT_UNLIT
 
             #endif
+            ENDCG
+        }
+
+        Pass
+        {
+            Name "FORWARD_DELTA"
+			Tags { "LightMode" = "ForwardAdd" }
+			Blend One One
+			ZWrite Off
+
+            CGPROGRAM
+            #pragma target 3.0
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma multi_compile_fog
+            #pragma multi_compile_fwdadd_fullshadows
+            #include "GenerateForwardAddMetallic.cginc"
             ENDCG
         }
     }

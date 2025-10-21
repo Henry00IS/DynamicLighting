@@ -1,14 +1,12 @@
 #include "UnityCG.cginc"
 #include "UnityPBSLighting.cginc"
 #include "AutoLight.cginc"
-#include "DynamicLighting.cginc"
 
 struct appdata
 {
     float4 vertex : POSITION;
     float3 normal : NORMAL;
     float2 uv0 : TEXCOORD0;
-    float2 uv1 : TEXCOORD1;
     float4 color : COLOR;
 };
 
@@ -46,7 +44,7 @@ UnityLight CreateLight(v2f i) {
 	#if defined(POINT) || defined(POINT_COOKIE) || defined(SPOT)
 		light.dir = normalize(_WorldSpaceLightPos0 - i.world);
 	#else
-		light.dir = _WorldSpaceLightPos0;
+		light.dir = _WorldSpaceLightPos0.xyz;
 	#endif
 	UNITY_LIGHT_ATTENUATION(attenuation, i, i.world);
 	light.color = _LightColor0 * attenuation;
@@ -79,6 +77,32 @@ fixed4 frag (v2f i) : SV_Target
     // sample the main texture, multiply by the light and add vertex colors.
     float4 col = float4(_Color.rgb, 1) * brdf * i.color;
 
+    // apply fog.
+    UNITY_APPLY_FOG(i.fogCoord, col);
+
+    return col;
+}
+
+fixed4 frag_transparent (v2f i) : SV_Target
+{
+    float3 view_direction = normalize(_WorldSpaceCameraPos - i.world);
+    float4 color = tex2D(_MainTex, i.uv0);
+
+    float4 brdf = UNITY_BRDF_PBS(
+	    color, // albedo
+	    float3(0, 0, 0), // specular
+	    1, // oneMinusReflectivity
+	    0, // smoothness
+	    i.normal, // normal
+	    view_direction, // view direction
+	    CreateLight(i), // gi light
+	    CreateIndirectLight() // gi indirect
+    );
+
+    // compute lit color, then scale by all relevant alphas (texture + tint + vertex).
+    float4 col = float4(brdf.rgb, color.a) * _Color * i.color;
+    col.rgb *= col.a;
+    
     // apply fog.
     UNITY_APPLY_FOG(i.fogCoord, col);
 

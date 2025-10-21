@@ -136,6 +136,37 @@ Shader "Dynamic Lighting/Transparent"
             #endif
             ENDCG
         }
+        
+        Pass
+        {
+            Name "FORWARD_DELTA"
+			Tags { "LightMode" = "ForwardAdd" }
+			Blend One One
+			ZWrite Off
+
+            CGPROGRAM
+            #pragma target 3.0
+            #pragma vertex vert
+            #pragma fragment frag_transparent
+            #pragma multi_compile_fog
+            #pragma multi_compile_fwdadd_fullshadows
+            #include "GenerateForwardAdd.cginc"
+            ENDCG
+        }
+        
+		Pass
+        {
+			Name "ShadowCaster"
+			Tags { "LightMode" = "ShadowCaster" }
+
+			CGPROGRAM
+			#pragma target 3.0
+			#pragma vertex vert
+			#pragma fragment frag
+			#pragma multi_compile_shadowcaster
+            #include "GenerateShadowCaster.cginc"
+			ENDCG
+		}
     }
     Fallback "Legacy Shaders/Transparent/Diffuse"
 }
