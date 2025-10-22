@@ -4,6 +4,8 @@ Shader "Dynamic Lighting/Diffuse"
     {
         _Color("Main Color", Color) = (1,1,1,1)
         _MainTex("Base (RGB)", 2D) = "white" {}
+        [HDR] _EmissionColor("Emission Color", Color) = (0,0,0)
+        [NoScaleOffset] _EmissionMap("Emission (RGB)", 2D) = "white" {}
     }
 
     CustomEditor "AlpacaIT.DynamicLighting.Editor.DefaultShaderGUI"
@@ -25,6 +27,7 @@ Shader "Dynamic Lighting/Diffuse"
             #pragma multi_compile __ DYNAMIC_LIGHTING_BOUNCE
             #pragma multi_compile __ DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES
             #pragma multi_compile multi_compile_fwdbase
+            #pragma shader_feature _EMISSION
 
             #include "UnityCG.cginc"
             #include "DynamicLighting.cginc"
@@ -53,6 +56,11 @@ Shader "Dynamic Lighting/Diffuse"
             sampler2D _MainTex;
             float4 _MainTex_ST;
             float4 _Color;
+
+            #if _EMISSION
+                sampler2D _EmissionMap;
+                float4 _EmissionColor;
+            #endif
 
             v2f vert (appdata v)
             {
@@ -91,6 +99,11 @@ Shader "Dynamic Lighting/Diffuse"
                 // sample the main texture, multiply by the light and add vertex colors.
                 float4 col = tex2D(_MainTex, i.uv0) * float4(_Color.rgb, 1) * float4(light_final + unity_lightmap_color, 1) * i.color;
                 
+                // sample the emission map, add after lighting calculations.
+                #if _EMISSION
+                    col.rgb += tex2D(_EmissionMap, i.uv0).rgb * _EmissionColor.rgb;
+                #endif
+
                 // apply fog.
                 UNITY_APPLY_FOG(i.fogCoord, col);
                 

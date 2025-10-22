@@ -1,4 +1,6 @@
-﻿using UnityEditor;
+﻿using System.Collections.Generic;
+using System.Linq;
+using UnityEditor;
 using UnityEngine;
 
 namespace AlpacaIT.DynamicLighting.Editor
@@ -13,7 +15,34 @@ namespace AlpacaIT.DynamicLighting.Editor
         {
             SuggestPresenceOfDynamicLightManager();
 
-            base.OnGUI(materialEditor, properties);
+            var props = new List<MaterialProperty>(properties);
+            var propColor = FindProperty("_Color", properties, false);
+            var propMainTex = FindProperty("_MainTex", properties, false);
+            var propEmissionColor = FindProperty("_EmissionColor", properties, false);
+            var propEmissionMap = FindProperty("_EmissionMap", properties, false);
+
+            // known group: main texture with color.
+            if (propMainTex != null && propColor != null)
+            {
+                materialEditor.TexturePropertySingleLine(new GUIContent(propMainTex.displayName), propMainTex, propColor);
+                props = props.Except(new[] { propMainTex, propColor }).ToList();
+            }
+
+            // known group: emission texture with color.
+            if (propEmissionMap != null && propEmissionColor != null)
+            {
+                if (materialEditor.MaterialKeywordCheckbox("_EMISSION", "Emission"))
+                    materialEditor.TexturePropertyWithHDRColor(new GUIContent("Color"), propEmissionMap, propEmissionColor, false);
+                props = props.Except(new[] { propEmissionMap, propEmissionColor }).ToList();
+            }
+
+            // known group: main texture.
+            if (propMainTex != null && propColor != null)
+            {
+                materialEditor.TextureScaleOffsetProperty(propMainTex);
+            }
+
+            base.OnGUI(materialEditor, props.ToArray());
         }
 
         /// <summary>
