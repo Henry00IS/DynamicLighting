@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -16,32 +15,27 @@ namespace AlpacaIT.DynamicLighting.Editor
             SuggestPresenceOfDynamicLightManager();
 
             var props = new List<MaterialProperty>(properties);
-            var propColor = FindProperty("_Color", properties, false);
-            var propMainTex = FindProperty("_MainTex", properties, false);
-            var propEmissionColor = FindProperty("_EmissionColor", properties, false);
-            var propEmissionMap = FindProperty("_EmissionMap", properties, false);
+            var propColor = properties.Find("_Color");
+            var propMainTex = properties.Find("_MainTex");
+            var propEmissionColor = properties.Find("_EmissionColor");
+            var propEmissionMap = properties.Find("_EmissionMap");
 
-            // known group: main texture with color.
-            if (propMainTex != null && propColor != null)
-            {
-                materialEditor.TexturePropertySingleLine(new GUIContent(propMainTex.displayName), propMainTex, propColor);
-                props = props.Except(new[] { propMainTex, propColor }).ToList();
-            }
+            // combine main texture with color.
+            materialEditor.Combine(props, propMainTex, propColor);
 
-            // known group: emission texture with color.
-            if (propEmissionMap != null && propEmissionColor != null)
+            // combine emission texture with color.
+            materialEditor.Combine(props, propEmissionMap, propEmissionColor, () =>
             {
                 if (materialEditor.MaterialKeywordCheckbox("_EMISSION", "Emission"))
                     materialEditor.TexturePropertyWithHDRColor(new GUIContent("Color"), propEmissionMap, propEmissionColor, false);
-                props = props.Except(new[] { propEmissionMap, propEmissionColor }).ToList();
-            }
+            });
 
-            // known group: main texture.
-            if (propMainTex != null && propColor != null)
-            {
-                materialEditor.TextureScaleOffsetProperty(propMainTex);
-            }
+            // combine main texture only rendering scale and offset properties.
+            materialEditor.Combine(props, propMainTex, () =>
+                materialEditor.TextureScaleOffsetProperty(propMainTex)
+            );
 
+            // render everything else the default way.
             base.OnGUI(materialEditor, props.ToArray());
         }
 
