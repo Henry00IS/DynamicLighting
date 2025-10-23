@@ -34,7 +34,7 @@ v2f vert (appdata v)
     o.normal = UnityObjectToWorldNormal(v.normal);
     o.world = mul(unity_ObjectToWorld, v.vertex).xyz;
     UNITY_TRANSFER_FOG(o, o.pos);
-	UNITY_TRANSFER_SHADOW(o, v.uv1);
+	UNITY_TRANSFER_SHADOW(o, o.pos);
     return o;
 }
 
