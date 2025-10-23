@@ -34,24 +34,26 @@ Add the following line to your Unity Package Manager:
 
 After installing the package (via the Git URL in the Unity Package Manager), follow these steps to add and bake dynamic lights.
 
-1. **Add Dynamic Lights to Your Scene**  
-   From Unity's menu, go to **GameObject > Light** and select from the new options: **Dynamic Point Light**, **Dynamic Spot Light**, or **Dynamic Special Light**.  
-   This adds a customizable light source with precomputed shadows, inspired by classic Unreal lighting. Position it and adjust properties like color or intensity in the Inspector.  
-   (Mark relevant GameObjects as Static for accurate raytracing-required for shadows.)
-   
+1. **Add dynamic lights**  
+   From Unity’s menu: **GameObject > Light > Dynamic Point Light**, **Dynamic Spot Light**, **Dynamic Directional Light**, or **Dynamic Discoball Light**.  
+   Or press Space in the Scene view to open Overlays, enable the “Dynamic Lighting” overlay toolbar, and use the Point/Spot/Special buttons to add lights.  
+   (Mark relevant GameObjects as Static for accurate raytracing.)
+  
    ![GameObject Menu for Dynamic Lights](https://github.com/user-attachments/assets/c45df1c6-e3f1-41bf-8a14-05d029ec61e5)  
    *Select from Dynamic Lighting options under GameObject > Light.*
 
-2. **Enable the Scene Overlay and Preview**  
-   In the Scene view toolbar activate the **Dynamic Lighting Overlay** to visualize light coverage and shadows in real-time.  
-   
-   ![Dynamic Lighting Toolbar and Baking Panel](https://github.com/user-attachments/assets/f3587f1c-f5db-4448-98b9-0ccbd93b4c19)  
-   *Toolbar with Overlay/Preview/Bake buttons; baking panel for raytrace and bounce settings. Tip: Activate the scene overlay first.*
+2. **Bake the lights (no live coverage overlay)**  
+   Save your scene first.  
+   Use the “Dynamic Lighting” overlay toolbar: **Preview Bake** (quick bake without bounce lighting), **Bake** (full bake with current settings), and **Options** (set bake resolution, delete baked lightmaps, defaults for new lights like bounce/transparency).  
+   Alternatively use the main menu: **Dynamic Lighting > Raytrace Scene: <size>** or **Dynamic Lighting > Preview Scene > Skip Bounce Lighting: <size>**.  
+  
+   ![Dynamic Lighting Toolbar](https://github.com/user-attachments/assets/f3587f1c-f5db-4448-98b9-0ccbd93b4c19)  
+   *Overlay toolbar with Light/Preview/Bake/Options buttons. Tip: Press Space in Scene view to open Overlays and enable the toolbar.*
 
-3. **Bake the Lights**  
-   With the overlay active, click the **Bake** button in the toolbar or baking window.  
-   This precomputes unique shadows per light, enabling post-bake dynamics like flickering, color changes, or volumetric effects.
-   
+3. **Iterate**  
+   After baking, adjust light properties (color, intensity, effects, transparency, volumetrics) and re-run Preview/Bake as needed.  
+   The overlay does not visualize light/shadow coverage in real-time; results appear after a bake or preview bake.
+  
    ![Baking in Progress](https://github.com/user-attachments/assets/3c01df83-161d-4184-b01b-6afcf2f25e28)  
    *Click Bake to process shadows and effects.*
 
