@@ -6,7 +6,7 @@ namespace AlpacaIT.DynamicLighting
 
     internal partial class DynamicLightingTracer
     {
-        internal const int distanceCubesResolution = 32;
+        internal const int distanceCubesResolution = 64;
 
         private unsafe ulong DistanceCubesGenerate()
         {
