@@ -400,58 +400,60 @@ float sample_distance_cube_tiny(uint cubeDataOffset, float3 world, float3 lightP
     return (light_distance - autobias <= shadow_distance);
 }
 
-// Predefine Poisson disk offsets (normalized to unit disk; scale in func)
-static const float2 poissonDisk[9] = {
-    float2(-0.326, -0.406), float2(-0.840, -0.074), float2(-0.696, 0.457),
-    float2(-0.203, 0.621), float2(0.962, -0.195),   float2(0.473, -0.480),
-    float2(0.519, 0.767),  float2(0.185, -0.893),  float2(0.507, 0.064)
-};
-
-float sample_distance_cube_bilinear(uint dynamicLightIndex, float3 world, float3 lightPos, float3 normal, float penumbraScale = 1.0)
+float sample_distance_cube_bilinear(uint dynamicLightIndex, float light_distanceSqr, float3 light_direction, float3 world, float3 normal, float penumbraScale = 1.0)
 {
+    #define DYNLIT_ANGULAR_RADIUS 0.05
+    static const float2 poisson_disk[9] =
+    {
+        DYNLIT_ANGULAR_RADIUS * float2(-0.326, -0.406),
+        DYNLIT_ANGULAR_RADIUS * float2(-0.840, -0.074),
+        DYNLIT_ANGULAR_RADIUS * float2(-0.696, 0.457),
+        DYNLIT_ANGULAR_RADIUS * float2(-0.203, 0.621),
+        DYNLIT_ANGULAR_RADIUS * float2(0.962, -0.195),
+        DYNLIT_ANGULAR_RADIUS * float2(0.473, -0.480),
+        DYNLIT_ANGULAR_RADIUS * float2(0.519, 0.767),
+        DYNLIT_ANGULAR_RADIUS * float2(0.185, -0.893),
+        DYNLIT_ANGULAR_RADIUS * float2(0.507, 0.064)
+    };
+    #undef DYNLIT_ANGULAR_RADIUS
+    
     // calculate the cube data offset in memory.
     uint cubeDataOffset = dynamicLightIndex * 64 * 64 * 6;
+
+    float light_distance = sqrt(light_distanceSqr);
     
-    float3 light_center = lightPos - world;
-    float light_dist = length(light_center);
-    float3 light_dir = normalize(light_center);
+    // build tangent basis (orthonormal frame for disk sampling).
+    float3 dot_normal_light_direction = dot(normal, light_direction);
+    float3 up = abs(dot_normal_light_direction) > 0.999 ? float3(0, 1, 0) : normal; // fallback to avoid zero cross.
+    float3 tangent = normalize(cross(light_direction, up));
+    float3 bitangent = cross(light_direction, tangent);
+
+    float NdotL = max(dot_normal_light_direction, 0);
+        
+    // magic bias function! it is amazing!
+    float magic = 0.04 + 0.02 * light_distance;
+    float autobias = magic * tan(acos(1.0 - NdotL));
+    autobias = clamp(autobias, 0.0, magic);
     
-    // Build tangent basis (orthonormal frame for disk sampling)
-    float3 up = abs(dot(normal, light_dir)) > 0.999 ? float3(0, 1, 0) : normal;  // Fallback to avoid zero cross
-    float3 tangent = normalize(cross(light_dir, up));
-    float3 bitangent = cross(light_dir, tangent);
+    // pre-computer the light distance minus bias.
+    light_distance -= autobias;
     
-    float angularRadius = 0.05;//(1.0 / 64.0) * penumbraScale / max(light_dist, 0.1);  // Texel arc, dist-scaled for softness
     float num_samples = 9.0;
-    float accumulated = 0.0;  // Will hold avg occlusion or dist, depending on mode
-    
+    float accumulated = 0.0;
+
     [unroll]
-    for (int i = 0; i < 9; ++i) {
+    for (int i = 0; i < 9; ++i)
+    {
         float rng = (-0.5 + rand((i + 1) * world));
-        float2 disk_offset = poissonDisk[i] * rng * angularRadius;
-        
-        float3 offset_dir = normalize(light_dir + tangent * disk_offset.x + bitangent * disk_offset.y);
+        float2 disk_offset = poisson_disk[i] * rng;
+
+        float3 offset_dir = light_direction + tangent * disk_offset.x + bitangent * disk_offset.y;
         float sample_d = sample_distance_cube(cubeDataOffset, offset_dir);
-        
-        sample_d += (-0.5 + rand((i + 127) * world)) * 0.5;
-        
-        float NdotL = max(dot(normal, offset_dir), 0);
-    
-        // magic bias function! it is amazing!
-        float magic = 0.04 + 0.02 * sample_d;
-        float autobias = magic * tan(acos(1.0 - NdotL));
-        autobias = clamp(autobias, 0.0, magic);
-        
-        float sample_occlusion;
-        // PCF: Binary per sample, accumulate occlusions
-        sample_occlusion = (light_dist - autobias <= sample_d) ? 1.0 : 0.0;
-        accumulated += sample_occlusion;
+
+        accumulated += (light_distance <= sample_d + rng * 0.5);
     }
-    
-    float avg = accumulated / num_samples;
-    
-    // PCF mode: Direct avg occlusion [0,1]
-    return avg;
+
+    return accumulated / num_samples;
 }
 
 float sample_distance_cube_bilinear_old(uint dynamicLightIndex, float3 world, float3 lightPos, float3 normal)
