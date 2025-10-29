@@ -455,11 +455,20 @@ float sample_distance_cube_bilinear(uint dynamicLightIndex, float lightRadiusSqr
     // pre-compute the light distance minus bias.
     light_distance -= autobias;
     
-    float num_samples = 9.0;
     float accumulated = 0.0;
-
+    
+#if defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
+    const int num_samples = 2;
+#elif defined(DYNAMIC_LIGHTING_QUALITY_LOW)
+    const int num_samples = 4;
+#elif defined(DYNAMIC_LIGHTING_QUALITY_MEDIUM)
+    const int num_samples = 8;
+#else
+    const int num_samples = 10;
+#endif
+    
     [unroll]
-    for (int i = 1; i < 10; ++i)
+    for (int i = 1; i < num_samples; ++i)
     {
         // randomness guided by poisson disk.
         float rng = -0.5 + rand(i * world);
@@ -471,7 +480,7 @@ float sample_distance_cube_bilinear(uint dynamicLightIndex, float lightRadiusSqr
         accumulated += (light_distance <= sample_d + rng * 0.05);
     }
 
-    return accumulated / num_samples;
+    return accumulated / (num_samples - 1);
 }
 
 float sample_distance_cube_bilinear_old(uint dynamicLightIndex, float3 world, float3 lightPos, float3 normal)
