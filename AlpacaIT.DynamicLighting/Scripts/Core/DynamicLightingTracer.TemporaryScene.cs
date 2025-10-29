@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.Rendering;
 
 #if UNITY_EDITOR
 
@@ -60,6 +61,10 @@ namespace AlpacaIT.DynamicLighting
 
             // we only care about things we can actually render.
             if (!meshFilter.TryGetComponent<MeshRenderer>(out var meshRenderer))
+                return false;
+
+            // the mesh renderer must have shadow casting enabled.
+            if (meshRenderer.shadowCastingMode == ShadowCastingMode.Off)
                 return false;
 #if UNITY_EDITOR
             // get the transform of the original game object.
