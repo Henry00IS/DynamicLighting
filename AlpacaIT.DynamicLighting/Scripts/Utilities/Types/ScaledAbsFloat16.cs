@@ -53,5 +53,48 @@ namespace AlpacaIT.DynamicLighting
         {
             return ushortValue / (float)ushort.MaxValue * scale;
         }
+
+        #region Packing
+
+        /// <summary>Creates a new <see cref="ScaledAbsFloat16"/> from the given <see cref="ushort"/>.</summary>
+        /// <param name="ushortValue">The internal number representation.</param>
+        private ScaledAbsFloat16(ushort ushortValue)
+        {
+            this.ushortValue = ushortValue;
+        }
+
+        /// <summary>
+        /// Combines two <see cref="ScaledAbsFloat16"/> instances into a single 32-bit unsigned
+        /// integer. The <paramref name="left"/> instance's <see cref="ushortValue"/> is shifted
+        /// into the most significant 16 bits (leftmost), and the <paramref name="right"/>
+        /// instance's <see cref="ushortValue"/> is placed in the least significant 16 bits (rightmost).
+        /// </summary>
+        /// <param name="left">The <see cref="ScaledAbsFloat16"/> to place in the high 16 bits.</param>
+        /// <param name="right">The <see cref="ScaledAbsFloat16"/> to place in the low 16 bits.</param>
+        /// <returns>A <see cref="uint"/> with the combined 16-bit values.</returns>
+        public static uint Pack(ScaledAbsFloat16 left, ScaledAbsFloat16 right)
+        {
+            return ((uint)left.ushortValue << 16) | right.ushortValue;
+        }
+
+        /// <summary>
+        /// Splits a 32-bit unsigned integer into two <see cref="ScaledAbsFloat16"/> instances. The
+        /// most significant 16 bits (leftmost) are used to create the 'left' instance, and the
+        /// least significant 16 bits (rightmost) are used to create the 'right' instance. This is
+        /// the inverse operation of <see cref="Pack"/>.
+        /// </summary>
+        /// <param name="value">The <see cref="uint"/> containing the combined 16-bit values.</param>
+        /// <returns>
+        /// A tuple containing the left (leftmost bits) and right (rightmost bits) <see
+        /// cref="ScaledAbsFloat16"/> instances.
+        /// </returns>
+        public static (ScaledAbsFloat16 left, ScaledAbsFloat16 right) Unpack(uint value)
+        {
+            ushort leftUshort = (ushort)(value >> 16);
+            ushort rightUshort = (ushort)value;
+            return (new ScaledAbsFloat16(leftUshort), new ScaledAbsFloat16(rightUshort));
+        }
+
+        #endregion Packing
     }
 }

@@ -100,7 +100,7 @@ if (light.is_dynamic())
 else if (bvhLightIndex != -1)
 {
     //map = sample_distance_cube_bilinear_old(bvhLightIndex, i.world, light.position, i.normal);
-    map = sample_distance_cube_bilinear(bvhLightIndex, light_distanceSqr, light_direction, i.world, i.normal);
+    map = sample_distance_cube_bilinear(bvhLightIndex, light.radiusSqr, light_distanceSqr, light_direction, i.world, i.normal);
 }
 #endif
 

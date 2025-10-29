@@ -380,6 +380,21 @@ float sample_distance_cube(uint cubeDataOffset, float3 dir)
     return asfloat(dynamic_lights_distance_cubes[cubeDataOffset + index]);
 }
 
+float sample_distance_cube(uint cubeDataOffset, float lightRadius, float3 dir)
+{
+    // sample the cubemap lookup texture of array indices to avoid doing complex math.
+    uint index = dynamic_lights_distance_cubes_lookup32.SampleLevel(sampler_dynamic_lights_distance_cubes_lookup32, dir, 0);
+    
+    // unpack the distance values that are stored as two 16-bit scaled numbers.
+    uint packedSlot = index >> 1u;
+    uint packedValue = dynamic_lights_distance_cubes[cubeDataOffset + packedSlot];
+    
+    uint bitSelect = index & 1u;
+    uint packedUshort = (packedValue >> (bitSelect * 16u)) & 0xFFFFu;
+    
+    return packedUshort / (float)0xFFFFu * lightRadius;
+}
+
 float sample_distance_cube_tiny(uint cubeDataOffset, float3 world, float3 lightPos, float3 normal)
 {
     float3 light_direction = lightPos - world;
@@ -400,11 +415,12 @@ float sample_distance_cube_tiny(uint cubeDataOffset, float3 world, float3 lightP
     return (light_distance - autobias <= shadow_distance);
 }
 
-float sample_distance_cube_bilinear(uint dynamicLightIndex, float light_distanceSqr, float3 light_direction, float3 world, float3 normal, float penumbraScale = 1.0)
+float sample_distance_cube_bilinear(uint dynamicLightIndex, float lightRadiusSqr, float light_distanceSqr, float3 light_direction, float3 world, float3 normal)
 {
     #define DYNLIT_ANGULAR_RADIUS 0.05
-    static const float2 poisson_disk[9] =
+    static const float2 poisson_disk[10] =
     {
+        float2(0.0, 0.0), // dud to allow iterating from 1 for rand() - optimized away by compiler due to [unroll].
         DYNLIT_ANGULAR_RADIUS * float2(-0.326, -0.406),
         DYNLIT_ANGULAR_RADIUS * float2(-0.840, -0.074),
         DYNLIT_ANGULAR_RADIUS * float2(-0.696, 0.457),
@@ -418,9 +434,10 @@ float sample_distance_cube_bilinear(uint dynamicLightIndex, float light_distance
     #undef DYNLIT_ANGULAR_RADIUS
     
     // calculate the cube data offset in memory.
-    uint cubeDataOffset = dynamicLightIndex * 64 * 64 * 6;
+    uint cubeDataOffset = dynamicLightIndex * 64 * 64 * 3;
 
     float light_distance = sqrt(light_distanceSqr);
+    float lightRadius = sqrt(lightRadiusSqr);
     
     // build tangent basis (orthonormal frame for disk sampling).
     float3 dot_normal_light_direction = dot(normal, light_direction);
@@ -432,25 +449,26 @@ float sample_distance_cube_bilinear(uint dynamicLightIndex, float light_distance
         
     // magic bias function! it is amazing!
     float magic = 0.04 + 0.02 * light_distance;
-    float autobias = magic * tan(acos(1.0 - NdotL));
+    float autobias = magic * tan(acos(NdotL));
     autobias = clamp(autobias, 0.0, magic);
     
-    // pre-computer the light distance minus bias.
+    // pre-compute the light distance minus bias.
     light_distance -= autobias;
     
     float num_samples = 9.0;
     float accumulated = 0.0;
 
     [unroll]
-    for (int i = 0; i < 9; ++i)
+    for (int i = 1; i < 10; ++i)
     {
-        float rng = (-0.5 + rand((i + 1) * world));
+        // randomness guided by poisson disk.
+        float rng = -0.5 + rand(i * world);
         float2 disk_offset = poisson_disk[i] * rng;
 
         float3 offset_dir = light_direction + tangent * disk_offset.x + bitangent * disk_offset.y;
-        float sample_d = sample_distance_cube(cubeDataOffset, offset_dir);
+        float sample_d = sample_distance_cube(cubeDataOffset, lightRadius, offset_dir);
 
-        accumulated += (light_distance <= sample_d + rng * 0.5);
+        accumulated += (light_distance <= sample_d + rng * 0.05);
     }
 
     return accumulated / num_samples;
