@@ -120,5 +120,32 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         [Tooltip("The fluorescent light exhibits chaotic and unpredictable behavior, randomly alternating between dimming, rapid flickers as it tries to ignite, and brief moments of full brightness. This effect captures the erratic and frustrating behavior of a failing fluorescent light.")]
         FluorescentRandom = 7,
+
+        /// <summary>These entries are menu separators in Unity Editor and not intended for use.</summary>
+        [InspectorName("  ")]
+        ᐅ_3 = int.MaxValue,
+
+        /// <summary>
+        /// Simulates the mostly unobscured sunlight of a partly cloudy day, with long periods of
+        /// stable brightness interrupted by infrequent, transient dips in intensity. These brief
+        /// reductions mimic the passage of sparse, high-altitude clouds, maintaining an overall
+        /// sunny dominance while adding subtle natural variation. A nostalgic nod to childhood
+        /// summers spent focusing sunlight through a magnifying glass to spark flames- only for
+        /// that one pesky cloud to drift by and snuff out the fun just as things heat up.
+        /// </summary>
+        [Tooltip("Simulates the mostly unobscured sunlight of a partly cloudy day, with long periods of stable brightness interrupted by infrequent, transient dips in intensity. These brief reductions mimic the passage of sparse, high-altitude clouds, maintaining an overall sunny dominance while adding subtle natural variation. A nostalgic nod to childhood summers spent focusing sunlight through a magnifying glass to spark flames- only for that one pesky cloud to drift by and snuff out the fun just as things heat up.")]
+        Cloudy = 13,
+
+        /// <summary>
+        /// Simulates the diffused and variable illumination of an overcast sky with multiple
+        /// overlapping cloud layers. The light intensity fluctuates smoothly through cycles of
+        /// dimming and relative brightening, driven by the complex motion of dense cloud
+        /// formations, creating a consistently subdued yet dynamic atmospheric effect. A nostalgic
+        /// reminder of those childhood afternoons when mom banished you outside to play instead of
+        /// video games- only for the sky to thicken with clouds, darkening the day into a somber,
+        /// endless gray that matched your reluctant mood perfectly.
+        /// </summary>
+        [Tooltip("Simulates the diffused and variable illumination of an overcast sky with multiple overlapping cloud layers. The light intensity fluctuates smoothly through cycles of dimming and relative brightening, driven by the complex motion of dense cloud formations, creating a consistently subdued yet dynamic atmospheric effect. A nostalgic reminder of those childhood afternoons when mom banished you outside to play instead of video games- only for the sky to thicken with clouds, darkening the day into a somber, endless gray that matched your reluctant mood perfectly.")]
+        Overcast = 14,
     }
 }

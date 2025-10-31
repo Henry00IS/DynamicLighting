@@ -1487,6 +1487,14 @@ namespace AlpacaIT.DynamicLighting
                 case DynamicLightEffect.FluorescentRandom:
                     ComputeLightEffectFluorescentRandom(lightCache, light);
                     break;
+
+                case DynamicLightEffect.Overcast:
+                    ComputeLightEffectOvercast(lightCache, light);
+                    break;
+
+                case DynamicLightEffect.Cloudy:
+                    ComputeLightEffectCloudy(lightCache, light);
+                    break;
             }
 
             // fixed timestep light effects:

@@ -311,6 +311,11 @@ namespace AlpacaIT.DynamicLighting.Editor
 
             genericMenu.AddSeparator("");
 
+            addItem(SpecialLight.SpecialCloudyLight);
+            addItem(SpecialLight.SpecialOvercastLight);
+
+            genericMenu.AddSeparator("");
+
             addItem(SpecialLight.SpecialRotaryWarningLight);
 
             return; // local methods

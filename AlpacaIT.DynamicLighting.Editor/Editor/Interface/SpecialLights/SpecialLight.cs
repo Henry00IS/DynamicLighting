@@ -29,6 +29,9 @@ namespace AlpacaIT.DynamicLighting.Editor
         public static SpecialWaterShimmerLight SpecialWaterShimmerLight = new SpecialWaterShimmerLight();
         public static SpecialFireShimmerLight SpecialFireShimmerLight = new SpecialFireShimmerLight();
 
+        public static SpecialCloudyLight SpecialCloudyLight = new SpecialCloudyLight();
+        public static SpecialOvercastLight SpecialOvercastLight = new SpecialOvercastLight();
+
         public static SpecialRotaryWarningLight SpecialRotaryWarningLight = new SpecialRotaryWarningLight();
 
         public static SpecialLight LastSpecialLight = new SpecialDirectionalLight();
