@@ -222,8 +222,14 @@ namespace AlpacaIT.DynamicLighting
         /// leaving the layer checked in this list. Now you have a special shadow casting collision
         /// that nothing else can touch or interact with. These were just two example names, you can
         /// freely choose the names of the physics layers.
+        /// <para>
+        /// Alternatively, you can uncheck 'Contribute GI' in the static dropdown options on a
+        /// per-GameObject basis. You can also set 'Cast Shadows' to 'Off' on a Mesh Renderer. Note
+        /// that real-time shadows cast by a dynamic light source will ignore the 'Cast Shadows'
+        /// option, whereas a standard Unity real-time shadow casting light source respects it.
+        /// </para>
         /// </summary>
-        [Tooltip("The layer mask used while raytracing to determine which hits to ignore. There are many scenarios where you have objects that should collide with everything in the scene, but not cause shadows. You should consider creating a physics layer (click on 'Layer: Default' at the top of the Game Object Inspector -> Add Layer...) and naming it 'Collision'. You can then remove this layer from the list so it will be ignored by the raytracer. The rest of the scene will still have regular collisions with it. You can also do the opposite by creating a physics layer called 'Lighting' and disabling regular collisions with other colliders (in Edit -> Project Settings -> Physics), but leaving the layer checked in this list. Now you have a special shadow casting collision that nothing else can touch or interact with. These were just two example names, you can freely choose the names of the physics layers.")]
+        [Tooltip("The layer mask used while raytracing to determine which hits to ignore. There are many scenarios where you have objects that should collide with everything in the scene, but not cause shadows. You should consider creating a physics layer (click on 'Layer: Default' at the top of the Game Object Inspector -> Add Layer...) and naming it 'Collision'. You can then remove this layer from the list so it will be ignored by the raytracer. The rest of the scene will still have regular collisions with it. You can also do the opposite by creating a physics layer called 'Lighting' and disabling regular collisions with other colliders (in Edit -> Project Settings -> Physics), but leaving the layer checked in this list. Now you have a special shadow casting collision that nothing else can touch or interact with. These were just two example names, you can freely choose the names of the physics layers.\n\nAlternatively, you can uncheck 'Contribute GI' in the static dropdown options on a per-GameObject basis. You can also set 'Cast Shadows' to 'Off' on a Mesh Renderer. Note that real-time shadows cast by a dynamic light source will ignore the 'Cast Shadows' option, whereas a standard Unity real-time shadow casting light source respects it.")]
         public LayerMask raytraceLayers = ~0;
 
         /// <summary>
