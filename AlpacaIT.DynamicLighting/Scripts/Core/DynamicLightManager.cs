@@ -1404,7 +1404,7 @@ namespace AlpacaIT.DynamicLighting
             {
                 case DynamicLightShimmer.Water:
                     shaderLight->shimmerScale = light.lightShimmerScale;
-                    shaderLight->shimmerModifier = light.lightShimmerModifier;
+                    shaderLight->shimmerModifier = 1.0f - light.lightShimmerModifier;
                     break;
 
                 case DynamicLightShimmer.Random:

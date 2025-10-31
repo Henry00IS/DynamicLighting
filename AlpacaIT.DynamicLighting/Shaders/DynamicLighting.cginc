@@ -295,11 +295,13 @@ struct DynamicLight
     //
     float calculate_watershimmer(float3 world)
     {
+        // [CPU] shimmerModifier = 1.0 - shimmerModifier
+        
         // overlay the entire world with random blocks that never change between 0.0 and 1.0.
         float stablerng = rand(world);
 
         // use a sine wave to change the brightness of the stable random blocks.
-        return 1.0 - abs(sin(stablerng * _Time.w + _Time.x)) * (1.0 - shimmerModifier);
+        return 1.0 - abs(sin(stablerng * _Time.w + _Time.x)) * shimmerModifier;
     }
 
     #define GENERATE_FUNCTION_NAME calculate_watershimmer_bilinear
