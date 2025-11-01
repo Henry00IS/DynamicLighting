@@ -25,6 +25,10 @@ sampler2D _MainTex;
 float4 _MainTex_ST;
 float4 _Color;
 
+#ifdef _ALPHATEST_ON
+    float _Cutoff;
+#endif
+
 v2f vert (appdata v)
 {
     v2f o;
@@ -62,30 +66,6 @@ UnityIndirect CreateIndirectLight() {
 fixed4 frag (v2f i) : SV_Target
 {
     float3 view_direction = normalize(_WorldSpaceCameraPos - i.world);
-
-    float4 brdf = UNITY_BRDF_PBS(
-	    tex2D(_MainTex, i.uv0), // albedo
-	    float3(0, 0, 0), // specular
-	    1, // oneMinusReflectivity
-	    0, // smoothness
-	    i.normal, // normal
-	    view_direction, // view direction
-	    CreateLight(i), // gi light
-	    CreateIndirectLight() // gi indirect
-    );
-
-    // sample the main texture, multiply by the light and add vertex colors.
-    float4 col = float4(_Color.rgb, 1) * brdf * i.color;
-
-    // apply fog.
-    UNITY_APPLY_FOG(i.fogCoord, col);
-
-    return col;
-}
-
-fixed4 frag_transparent (v2f i) : SV_Target
-{
-    float3 view_direction = normalize(_WorldSpaceCameraPos - i.world);
     float4 color = tex2D(_MainTex, i.uv0);
 
     float4 brdf = UNITY_BRDF_PBS(
@@ -98,10 +78,20 @@ fixed4 frag_transparent (v2f i) : SV_Target
 	    CreateLight(i), // gi light
 	    CreateIndirectLight() // gi indirect
     );
-
-    // compute lit color, then scale by all relevant alphas (texture + tint + vertex).
-    float4 col = float4(brdf.rgb, color.a) * _Color * i.color;
-    col.rgb *= col.a;
+    
+    #if defined(_ALPHAPREMULTIPLY_ON) || defined(DYNAMIC_LIGHTING_LEGACY_TRANSPARENT_SHADER)
+        // compute lit color, then scale by all relevant alphas (texture + tint + vertex).
+        float4 col = float4(brdf.rgb, color.a) * _Color * i.color;
+        col.rgb *= col.a;
+    #elif defined(_ALPHATEST_ON)
+        // compute lit color, then scale by all relevant alphas (texture + tint + vertex).
+        float4 col = float4(brdf.rgb, color.a) * _Color * i.color;
+        col.rgb *= col.a;
+        clip(col.a - _Cutoff);
+    #else
+        // sample the main texture, multiply by the light and add vertex colors.
+        float4 col = float4(_Color.rgb, 1) * brdf * i.color;
+    #endif
     
     // apply fog.
     UNITY_APPLY_FOG(i.fogCoord, col);

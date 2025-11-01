@@ -160,9 +160,10 @@ Shader "Dynamic Lighting/Transparent"
             CGPROGRAM
             #pragma target 3.0
             #pragma vertex vert
-            #pragma fragment frag_transparent
+            #pragma fragment frag
             #pragma multi_compile_fog
             #pragma multi_compile_fwdadd_fullshadows
+            #define DYNAMIC_LIGHTING_LEGACY_TRANSPARENT_SHADER
             #include "GenerateForwardAdd.cginc"
             ENDCG
         }
@@ -177,6 +178,7 @@ Shader "Dynamic Lighting/Transparent"
 			#pragma vertex vert
 			#pragma fragment frag
 			#pragma multi_compile_shadowcaster
+            #define DYNAMIC_LIGHTING_LEGACY_TRANSPARENT_SHADER
             #include "GenerateShadowCaster.cginc"
 			ENDCG
 		}

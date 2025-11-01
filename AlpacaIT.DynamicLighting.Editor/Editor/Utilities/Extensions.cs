@@ -182,5 +182,56 @@ namespace AlpacaIT.DynamicLighting.Editor
                     return properties[i];
             return null;
         }
+
+        /// <summary>Displays an enumerator dropdown box (supports gaps between enum values).</summary>
+        /// <typeparam name="T">The type of the enumerator to be displayed.</typeparam>
+        /// <param name="materialEditor">Handle to the active material editor.</param>
+        /// <param name="property">The enum property to be displayed.</param>
+        /// <returns>
+        /// True when the property was updated (and <paramref name="property"/> was not null) else false.
+        /// </returns>
+        public static bool Dropdown<T>(this MaterialEditor materialEditor, List<MaterialProperty> properties, MaterialProperty property, out T selected) where T : Enum
+        {
+            selected = default(T);
+            if (property != null)
+            {
+                EditorGUI.showMixedValue = property.hasMixedValue;
+
+                string[] names = Enum.GetNames(typeof(T));
+                int[] values = (int[])Enum.GetValues(typeof(T));
+
+                int incoming = (int)property.floatValue;
+
+                // find the closest enum value, preferring higher values in case of ties.
+                int minDiff = int.MaxValue;
+                int closest = values[0];
+                for (int i = 0; i < values.Length; i++)
+                {
+                    int diff = Math.Abs(values[i] - incoming);
+                    if (diff < minDiff || (diff == minDiff && values[i] > closest))
+                    {
+                        minDiff = diff;
+                        closest = values[i];
+                    }
+                }
+
+                int index = Array.IndexOf(values, closest);
+
+                EditorGUI.BeginChangeCheck();
+                int newIndex = EditorGUILayout.Popup(property.displayName, index, names);
+                bool result = EditorGUI.EndChangeCheck();
+                if (result)
+                {
+                    materialEditor.RegisterPropertyChangeUndo(property.displayName);
+                    property.floatValue = values[newIndex];
+                }
+
+                EditorGUI.showMixedValue = false;
+                selected = (T)Enum.ToObject(typeof(T), values[newIndex]);
+                //properties.Remove(property);
+                return result;
+            }
+            return false;
+        }
     }
 }

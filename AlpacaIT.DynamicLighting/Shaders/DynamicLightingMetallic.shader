@@ -36,8 +36,8 @@ Shader "Dynamic Lighting/Metallic"
             #pragma multi_compile __ DYNAMIC_LIGHTING_BOUNCE
             #pragma multi_compile __ DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES
             #pragma multi_compile multi_compile_fwdbase
-            #pragma shader_feature METALLIC_TEXTURE_UNASSIGNED
-            #pragma shader_feature _EMISSION
+            #pragma shader_feature_local METALLIC_TEXTURE_UNASSIGNED
+            #pragma shader_feature_local _EMISSION
 
             #include "UnityCG.cginc"
             #include "DynamicLighting.cginc"

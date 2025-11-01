@@ -4,8 +4,14 @@ Shader "Dynamic Lighting/Diffuse"
     {
         _Color("Main Color", Color) = (1,1,1,1)
         _MainTex("Base (RGB)", 2D) = "white" {}
+        _Cutoff("Alpha Cutoff", Range(0,1)) = 0.5
         [HDR] _EmissionColor("Emission Color", Color) = (0,0,0)
         [NoScaleOffset] _EmissionMap("Emission (RGB)", 2D) = "white" {}
+
+        [HideInInspector] _Mode ("Rendering Mode", Float) = 0.0 // standard shader (0: opaque, 1: cutout, 2: fade, 3: transparent).
+        [HideInInspector] _SrcBlend ("__src", Float) = 1.0
+        [HideInInspector] _DstBlend ("__dst", Float) = 0.0
+        [HideInInspector] _ZWrite ("__zw", Float) = 1.0
     }
 
     CustomEditor "AlpacaIT.DynamicLighting.Editor.DefaultShaderGUI"
@@ -16,6 +22,9 @@ Shader "Dynamic Lighting/Diffuse"
 
         Pass
         {
+            Blend [_SrcBlend] [_DstBlend]
+            ZWrite [_ZWrite]
+
             CGPROGRAM
             #pragma target 4.5
             #pragma vertex vert
@@ -27,7 +36,8 @@ Shader "Dynamic Lighting/Diffuse"
             #pragma multi_compile __ DYNAMIC_LIGHTING_BOUNCE
             #pragma multi_compile __ DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES
             #pragma multi_compile multi_compile_fwdbase
-            #pragma shader_feature _EMISSION
+            #pragma shader_feature_local _EMISSION
+            #pragma shader_feature_local _ _ALPHATEST_ON _ALPHAPREMULTIPLY_ON
 
             #include "UnityCG.cginc"
             #include "DynamicLighting.cginc"
@@ -57,9 +67,13 @@ Shader "Dynamic Lighting/Diffuse"
             float4 _MainTex_ST;
             float4 _Color;
 
-            #if _EMISSION
+            #ifdef _EMISSION
                 sampler2D _EmissionMap;
                 float4 _EmissionColor;
+            #endif
+
+            #ifdef _ALPHATEST_ON
+                float _Cutoff;
             #endif
 
             v2f vert (appdata v)
@@ -97,10 +111,15 @@ Shader "Dynamic Lighting/Diffuse"
                 #endif
 
                 // sample the main texture, multiply by the light and add vertex colors.
-                float4 col = tex2D(_MainTex, i.uv0) * float4(_Color.rgb, 1) * float4(light_final + unity_lightmap_color, 1) * i.color;
+                float4 col = tex2D(_MainTex, i.uv0) * _Color * float4(light_final + unity_lightmap_color, 1) * i.color;
                 
+                // clip the fragments when cutout mode is active (leaves holes in color and depth buffers).
+                #ifdef _ALPHATEST_ON
+                    clip(col.a - _Cutoff);
+                #endif
+
                 // sample the emission map, add after lighting calculations.
-                #if _EMISSION
+                #ifdef _EMISSION
                     col.rgb += tex2D(_EmissionMap, i.uv0).rgb * _EmissionColor.rgb;
                 #endif
 
@@ -158,10 +177,26 @@ Shader "Dynamic Lighting/Diffuse"
             #pragma vertex vert
             #pragma fragment frag
             #pragma multi_compile_fog
+            #pragma shader_feature_local _ _ALPHATEST_ON _ALPHAPREMULTIPLY_ON
             #pragma multi_compile_fwdadd_fullshadows
             #include "GenerateForwardAdd.cginc"
             ENDCG
         }
+
+		Pass
+        {
+			Name "ShadowCaster"
+			Tags { "LightMode" = "ShadowCaster" }
+
+			CGPROGRAM
+			#pragma target 3.0
+			#pragma vertex vert
+			#pragma fragment frag
+            #pragma shader_feature_local _ _ALPHATEST_ON _ALPHAPREMULTIPLY_ON
+			#pragma multi_compile_shadowcaster
+            #include "GenerateShadowCaster.cginc"
+			ENDCG
+		}
     }
     Fallback "Diffuse"
 }
