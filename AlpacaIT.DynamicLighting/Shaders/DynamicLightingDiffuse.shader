@@ -36,6 +36,7 @@ Shader "Dynamic Lighting/Diffuse"
             #pragma multi_compile __ DYNAMIC_LIGHTING_BOUNCE
             #pragma multi_compile __ DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES
             #pragma multi_compile multi_compile_fwdbase
+            #pragma multi_compile_instancing
             #pragma shader_feature_local _EMISSION
             #pragma shader_feature_local _ _ALPHATEST_ON _ALPHAPREMULTIPLY_ON
 
@@ -49,6 +50,7 @@ Shader "Dynamic Lighting/Diffuse"
                 float2 uv0 : TEXCOORD0;
                 float2 uv1 : TEXCOORD1;
                 float4 color : COLOR;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct v2f
@@ -61,23 +63,31 @@ Shader "Dynamic Lighting/Diffuse"
                 float4 color : COLOR;
                 float3 world : TEXCOORD2;
                 float3 normal : TEXCOORD3;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
-            float4 _Color;
 
             #ifdef _EMISSION
                 sampler2D _EmissionMap;
-                float4 _EmissionColor;
             #endif
 
             #ifdef _ALPHATEST_ON
                 float _Cutoff;
             #endif
 
+            UNITY_INSTANCING_BUFFER_START(Props)
+            UNITY_DEFINE_INSTANCED_PROP(float4, _Color)
+            #ifdef _EMISSION
+                UNITY_DEFINE_INSTANCED_PROP(float4, _EmissionColor)
+            #endif
+            UNITY_INSTANCING_BUFFER_END(Props)
+
             v2f vert (appdata v)
             {
+                UNITY_SETUP_INSTANCE_ID(v);
+
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.uv0 = TRANSFORM_TEX(v.uv0, _MainTex);
@@ -88,6 +98,7 @@ Shader "Dynamic Lighting/Diffuse"
                 o.color = v.color;
                 o.normal = UnityObjectToWorldNormal(v.normal);
                 o.world = mul(unity_ObjectToWorld, v.vertex).xyz;
+                UNITY_TRANSFER_INSTANCE_ID(v,o);
                 UNITY_TRANSFER_FOG(o,o.vertex);
                 return o;
             }
@@ -99,6 +110,8 @@ Shader "Dynamic Lighting/Diffuse"
 
             DYNLIT_FRAGMENT_FUNCTION
             {
+                UNITY_SETUP_INSTANCE_ID(i);
+
                 float3 light_final = dynamic_ambient_color;
                 
                 DYNLIT_FRAGMENT_INTERNAL
@@ -111,7 +124,7 @@ Shader "Dynamic Lighting/Diffuse"
                 #endif
 
                 // sample the main texture, multiply by the light and add vertex colors.
-                float4 col = tex2D(_MainTex, i.uv0) * _Color * float4(light_final + unity_lightmap_color, 1) * i.color;
+                float4 col = tex2D(_MainTex, i.uv0) * UNITY_ACCESS_INSTANCED_PROP(Props, _Color) * float4(light_final + unity_lightmap_color, 1) * i.color;
                 
                 // clip the fragments when cutout mode is active (leaves holes in color and depth buffers).
                 #ifdef _ALPHATEST_ON
@@ -120,7 +133,7 @@ Shader "Dynamic Lighting/Diffuse"
 
                 // sample the emission map, add after lighting calculations.
                 #ifdef _EMISSION
-                    col.rgb += tex2D(_EmissionMap, i.uv0).rgb * _EmissionColor.rgb;
+                    col.rgb += tex2D(_EmissionMap, i.uv0).rgb * UNITY_ACCESS_INSTANCED_PROP(Props, _EmissionColor).rgb;
                 #endif
 
                 // apply fog.

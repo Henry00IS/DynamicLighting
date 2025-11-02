@@ -36,6 +36,7 @@ Shader "Dynamic Lighting/Metallic"
             #pragma multi_compile __ DYNAMIC_LIGHTING_BOUNCE
             #pragma multi_compile __ DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES
             #pragma multi_compile multi_compile_fwdbase
+            #pragma multi_compile_instancing
             #pragma shader_feature_local METALLIC_TEXTURE_UNASSIGNED
             #pragma shader_feature_local _EMISSION
 
@@ -50,6 +51,7 @@ Shader "Dynamic Lighting/Metallic"
                 float2 uv1 : TEXCOORD1;
                 float4 color : COLOR;
                 float4 tangent : TANGENT;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct v2f
@@ -65,11 +67,11 @@ Shader "Dynamic Lighting/Metallic"
                 float3 tspace0 : TEXCOORD4; // tangent.x, bitangent.x, normal.x
                 float3 tspace1 : TEXCOORD5; // tangent.y, bitangent.y, normal.y
                 float3 tspace2 : TEXCOORD6; // tangent.z, bitangent.z, normal.z
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
-            float4 _Color;
             sampler2D _MetallicGlossMap;
             float _Metallic;
             float _GlossMapScale;
@@ -80,11 +82,19 @@ Shader "Dynamic Lighting/Metallic"
 
             #if _EMISSION
                 sampler2D _EmissionMap;
-                float4 _EmissionColor;
             #endif
+
+            UNITY_INSTANCING_BUFFER_START(Props)
+            UNITY_DEFINE_INSTANCED_PROP(float4, _Color)
+            #ifdef _EMISSION
+                UNITY_DEFINE_INSTANCED_PROP(float4, _EmissionColor)
+            #endif
+            UNITY_INSTANCING_BUFFER_END(Props)
 
             v2f vert (appdata v)
             {
+                UNITY_SETUP_INSTANCE_ID(v);
+
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.uv0 = TRANSFORM_TEX(v.uv0, _MainTex);
@@ -105,6 +115,7 @@ Shader "Dynamic Lighting/Metallic"
                 o.tspace1 = float3(wTangent.y, wBitangent.y, o.normal.y);
                 o.tspace2 = float3(wTangent.z, wBitangent.z, o.normal.z);
 
+                UNITY_TRANSFER_INSTANCE_ID(v,o);
                 UNITY_TRANSFER_FOG(o,o.vertex);
                 return o;
             }
@@ -116,8 +127,10 @@ Shader "Dynamic Lighting/Metallic"
 
             DYNLIT_FRAGMENT_FUNCTION
             {
+                UNITY_SETUP_INSTANCE_ID(i);
+
                 // material parameters
-                float3 albedo = tex2D(_MainTex, i.uv0).rgb * _Color.rgb * i.color.rgb;
+                float3 albedo = tex2D(_MainTex, i.uv0).rgb * UNITY_ACCESS_INSTANCED_PROP(Props, _Color).rgb * i.color.rgb;
                 
             #if METALLIC_TEXTURE_UNASSIGNED
                 float metallic = _Metallic;
@@ -175,7 +188,7 @@ Shader "Dynamic Lighting/Metallic"
                 
                 // sample the emission map, add after lighting calculations.
                 #if _EMISSION
-                    color.rgb += tex2D(_EmissionMap, i.uv0).rgb * _EmissionColor.rgb;
+                    color.rgb += tex2D(_EmissionMap, i.uv0).rgb * UNITY_ACCESS_INSTANCED_PROP(Props, _EmissionColor).rgb;
                 #endif
 
                 // apply fog.
