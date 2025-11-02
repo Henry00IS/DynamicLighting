@@ -887,20 +887,20 @@ float4 dynamic_lighting_unity_LightmapST;
 
 #ifdef DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES
     #define DYNLIT_FRAGMENT_FUNCTION \
-    void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, int bvhLightIndex, inout DynamicLight light, inout DynamicTriangle dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS);\
+    void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, bool is_front_face:SV_IsFrontFace, int bvhLightIndex, inout DynamicLight light, inout DynamicTriangle dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS);\
     \
-    fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
+    fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID, bool is_front_face:SV_IsFrontFace) : SV_Target
     
-    #define DYNLIT_FRAG_LIGHT_CALL_BVH dynlit_frag_light(i, triangle_index, k, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);
-    #define DYNLIT_FRAG_LIGHT_CALL dynlit_frag_light(i, triangle_index, -1, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);
+    #define DYNLIT_FRAG_LIGHT_CALL_BVH dynlit_frag_light(i, triangle_index, is_front_face, k, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);
+    #define DYNLIT_FRAG_LIGHT_CALL dynlit_frag_light(i, triangle_index, is_front_face, -1, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);
 #else
     #define DYNLIT_FRAGMENT_FUNCTION \
-    void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, inout DynamicLight light, inout DynamicTriangle dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS);\
+    void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, bool is_front_face:SV_IsFrontFace, inout DynamicLight light, inout DynamicTriangle dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS);\
     \
-    fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID) : SV_Target
+    fixed4 frag (v2f i, uint triangle_index:SV_PrimitiveID, bool is_front_face:SV_IsFrontFace) : SV_Target
     
-    #define DYNLIT_FRAG_LIGHT_CALL_BVH dynlit_frag_light(i, triangle_index, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);
-    #define DYNLIT_FRAG_LIGHT_CALL dynlit_frag_light(i, triangle_index, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);
+    #define DYNLIT_FRAG_LIGHT_CALL_BVH dynlit_frag_light(i, triangle_index, is_front_face, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);
+    #define DYNLIT_FRAG_LIGHT_CALL dynlit_frag_light(i, triangle_index, is_front_face, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);
 #endif
 
 #ifdef DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISABLED
@@ -919,7 +919,7 @@ float4 dynamic_lighting_unity_LightmapST;
             dynamic_triangle.set_active_light_index(k);\
             DynamicLight light = dynamic_lights[dynamic_triangle.get_dynamic_light_index()];\
             \
-            dynlit_frag_light(i, triangle_index, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
+            dynlit_frag_light(i, triangle_index, is_front_face, light, dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS);\
         }\
     }
     
@@ -1032,9 +1032,9 @@ float4 dynamic_lighting_unity_LightmapST;
 #endif
 
 #ifdef DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES
-    #define DYNLIT_FRAGMENT_LIGHT void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, int bvhLightIndex, inout DynamicLight light, inout DynamicTriangle dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS)
+    #define DYNLIT_FRAGMENT_LIGHT void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, bool is_front_face:SV_IsFrontFace, int bvhLightIndex, inout DynamicLight light, inout DynamicTriangle dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS)
 #else
-    #define DYNLIT_FRAGMENT_LIGHT void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, inout DynamicLight light, inout DynamicTriangle dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS)
+    #define DYNLIT_FRAGMENT_LIGHT void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, bool is_front_face:SV_IsFrontFace, inout DynamicLight light, inout DynamicTriangle dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS)
 #endif
 
 #define DYNLIT_FRAGMENT_UNLIT \

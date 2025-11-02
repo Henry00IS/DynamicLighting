@@ -27,6 +27,7 @@ namespace AlpacaIT.DynamicLighting.Editor
             var propOcclusionStrength = properties.Find("_OcclusionStrength");
             var propEmissionColor = properties.Find("_EmissionColor");
             var propEmissionMap = properties.Find("_EmissionMap");
+            var propCull = properties.Find("_Cull");
 
             // combine main texture with color.
             materialEditor.Combine(props, propMainTex, propColor);
@@ -62,6 +63,14 @@ namespace AlpacaIT.DynamicLighting.Editor
             materialEditor.Combine(props, propMainTex, () =>
                 materialEditor.TextureScaleOffsetProperty(propMainTex)
             );
+
+            // display the supported cull modes.
+            bool changedCull = materialEditor.Dropdown<DefaultShaderGUI.CullMode>(props, propCull, out var selectedCull);
+
+            // update the cull mode parameters in the material when changed.
+            if (changedCull)
+                foreach (var target in propCull.targets)
+                    DefaultShaderGUI.SetupMaterialWithCullMode((Material)target, (DefaultShaderGUI.CullMode)((Material)target).GetFloat("_Cull"));
 
             // render everything else the default way.
             base.OnGUI(materialEditor, props.ToArray());

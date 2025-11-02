@@ -18,6 +18,14 @@ namespace AlpacaIT.DynamicLighting.Editor
             Transparent = 3,
         }
 
+        /// <summary>The supported cull modes as seen in Unity shaders.</summary>
+        public enum CullMode
+        {
+            Off = 0,
+            Front = 1,
+            Back = 2,
+        }
+
         public override void AssignNewShaderToMaterial(Material material, Shader oldShader, Shader newShader)
         {
             base.AssignNewShaderToMaterial(material, oldShader, newShader);
@@ -62,6 +70,7 @@ namespace AlpacaIT.DynamicLighting.Editor
             var propEmissionColor = properties.Find("_EmissionColor");
             var propEmissionMap = properties.Find("_EmissionMap");
             var propMode = properties.Find("_Mode");
+            var propCull = properties.Find("_Cull");
 
             // display the supported blend modes.
             bool changedMode = materialEditor.Dropdown<BlendMode>(props, propMode, out var selectedMode);
@@ -88,10 +97,18 @@ namespace AlpacaIT.DynamicLighting.Editor
                 materialEditor.TextureScaleOffsetProperty(propMainTex)
             );
 
+            // display the supported cull modes.
+            bool changedCull = materialEditor.Dropdown<CullMode>(props, propCull, out var selectedCull);
+
             // update the blend mode parameters in the material when changed.
             if (changedMode)
                 foreach (var target in propMode.targets)
                     SetupMaterialWithBlendMode((Material)target, (BlendMode)((Material)target).GetFloat("_Mode"));
+
+            // update the cull mode parameters in the material when changed.
+            if (changedCull)
+                foreach (var target in propCull.targets)
+                    SetupMaterialWithCullMode((Material)target, (CullMode)((Material)target).GetFloat("_Cull"));
 
             // render everything else the default way.
             base.OnGUI(materialEditor, props.ToArray());
@@ -132,6 +149,30 @@ namespace AlpacaIT.DynamicLighting.Editor
                     material.DisableKeyword("_ALPHATEST_ON");
                     material.EnableKeyword("_ALPHAPREMULTIPLY_ON");
                     material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+                    break;
+            }
+        }
+
+        /// <summary>Sets up the material to switch to one of the <see cref="CullMode"/>.</summary>
+        /// <param name="material">The material to be modified.</param>
+        /// <param name="cullMode">The cull mode to activate.</param>
+        public static void SetupMaterialWithCullMode(Material material, CullMode cullMode)
+        {
+            switch (cullMode)
+            {
+                case CullMode.Off:
+                    material.EnableKeyword("DYNAMIC_LIGHTING_CULL_OFF");
+                    material.DisableKeyword("DYNAMIC_LIGHTING_CULL_FRONT");
+                    break;
+
+                case CullMode.Front:
+                    material.DisableKeyword("DYNAMIC_LIGHTING_CULL_OFF");
+                    material.EnableKeyword("DYNAMIC_LIGHTING_CULL_FRONT");
+                    break;
+
+                case CullMode.Back:
+                    material.DisableKeyword("DYNAMIC_LIGHTING_CULL_OFF");
+                    material.DisableKeyword("DYNAMIC_LIGHTING_CULL_FRONT");
                     break;
             }
         }

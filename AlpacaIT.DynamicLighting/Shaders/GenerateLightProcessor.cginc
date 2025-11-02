@@ -18,7 +18,15 @@ float3 light_position_minus_world = light_direction;
 // properly normalize the direction between the light source and the fragment.
 light_direction = normalize(light_direction);
 
-float NdotL = dot(GENERATE_NORMAL, light_direction);
+// depending on the culling mode we flip the normal if we are rendering backsides.
+#if defined(DYNAMIC_LIGHTING_CULL_OFF)
+    float NdotL = dot(is_front_face ? GENERATE_NORMAL : -GENERATE_NORMAL, light_direction);
+#elif defined(DYNAMIC_LIGHTING_CULL_FRONT)
+    float NdotL = dot(-GENERATE_NORMAL, light_direction);
+#else
+    float NdotL = dot(GENERATE_NORMAL, light_direction);
+#endif
+
 #ifndef DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISABLED
 if (lightmap_resolution > 0)
 {

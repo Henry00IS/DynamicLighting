@@ -12,6 +12,7 @@ Shader "Dynamic Lighting/Diffuse"
         [HideInInspector] _SrcBlend ("__src", Float) = 1.0
         [HideInInspector] _DstBlend ("__dst", Float) = 0.0
         [HideInInspector] _ZWrite ("__zw", Float) = 1.0
+        [HideInInspector] _Cull("Culling Mode", Float) = 2.0
     }
 
     CustomEditor "AlpacaIT.DynamicLighting.Editor.DefaultShaderGUI"
@@ -24,6 +25,7 @@ Shader "Dynamic Lighting/Diffuse"
         {
             Blend [_SrcBlend] [_DstBlend]
             ZWrite [_ZWrite]
+            Cull [_Cull]
 
             CGPROGRAM
             #pragma target 4.5
@@ -39,6 +41,7 @@ Shader "Dynamic Lighting/Diffuse"
             #pragma multi_compile_instancing
             #pragma shader_feature_local _EMISSION
             #pragma shader_feature_local _ _ALPHATEST_ON _ALPHAPREMULTIPLY_ON
+            #pragma shader_feature_local _ DYNAMIC_LIGHTING_CULL_FRONT DYNAMIC_LIGHTING_CULL_OFF
 
             #include "UnityCG.cginc"
             #include "DynamicLighting.cginc"

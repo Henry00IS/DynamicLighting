@@ -15,6 +15,8 @@ Shader "Dynamic Lighting/Metallic"
         _OcclusionStrength("Occlusion strength", Range(0,1)) = 0.75
         [HDR] _EmissionColor("Emission Color", Color) = (0,0,0)
         [NoScaleOffset] _EmissionMap("Emission (RGB)", 2D) = "white" {}
+
+        [HideInInspector] _Cull("Culling Mode", Float) = 2.0
     }
     
     CustomEditor "AlpacaIT.DynamicLighting.Editor.MetallicShaderGUI"
@@ -25,6 +27,8 @@ Shader "Dynamic Lighting/Metallic"
 
         Pass
         {
+            Cull [_Cull]
+
             CGPROGRAM
             #pragma target 4.5
             #pragma vertex vert
@@ -39,6 +43,7 @@ Shader "Dynamic Lighting/Metallic"
             #pragma multi_compile_instancing
             #pragma shader_feature_local METALLIC_TEXTURE_UNASSIGNED
             #pragma shader_feature_local _EMISSION
+            #pragma shader_feature_local _ DYNAMIC_LIGHTING_CULL_FRONT DYNAMIC_LIGHTING_CULL_OFF
 
             #include "UnityCG.cginc"
             #include "DynamicLighting.cginc"
