@@ -6,6 +6,7 @@ Shader "Dynamic Lighting/Metallic"
     {
         _Color("Main Color", Color) = (1,1,1,1)
         _MainTex("Albedo", 2D) = "white" {}
+        _Cutoff("Alpha Cutoff", Range(0,1)) = 0.5
         [NoScaleOffset] _MetallicGlossMap("Metallic", 2D) = "black" {}
         _Metallic("Metallic (Fallback)", Range(0,1)) = 0
         _GlossMapScale("Smoothness", Range(0,1)) = 1
@@ -16,6 +17,10 @@ Shader "Dynamic Lighting/Metallic"
         [HDR] _EmissionColor("Emission Color", Color) = (0,0,0)
         [NoScaleOffset] _EmissionMap("Emission (RGB)", 2D) = "white" {}
 
+        [HideInInspector] _Mode ("Rendering Mode", Float) = 0.0 // standard shader (0: opaque, 1: cutout, 2: fade, 3: transparent).
+        [HideInInspector] _SrcBlend ("__src", Float) = 1.0
+        [HideInInspector] _DstBlend ("__dst", Float) = 0.0
+        [HideInInspector] _ZWrite ("__zw", Float) = 1.0
         [HideInInspector] _Cull("Culling Mode", Float) = 2.0
     }
     
@@ -27,6 +32,8 @@ Shader "Dynamic Lighting/Metallic"
 
         Pass
         {
+            Blend [_SrcBlend] [_DstBlend]
+            ZWrite [_ZWrite]
             Cull [_Cull]
 
             CGPROGRAM
@@ -43,6 +50,7 @@ Shader "Dynamic Lighting/Metallic"
             #pragma multi_compile_instancing
             #pragma shader_feature_local METALLIC_TEXTURE_UNASSIGNED
             #pragma shader_feature_local _EMISSION
+            #pragma shader_feature_local _ _ALPHATEST_ON _ALPHAPREMULTIPLY_ON
             #pragma shader_feature_local _ DYNAMIC_LIGHTING_CULL_FRONT DYNAMIC_LIGHTING_CULL_OFF
 
             #include "UnityCG.cginc"
@@ -89,6 +97,10 @@ Shader "Dynamic Lighting/Metallic"
                 sampler2D _EmissionMap;
             #endif
 
+            #ifdef _ALPHATEST_ON
+                float _Cutoff;
+            #endif
+
             UNITY_INSTANCING_BUFFER_START(Props)
             UNITY_DEFINE_INSTANCED_PROP(float4, _Color)
             #ifdef _EMISSION
@@ -127,7 +139,7 @@ Shader "Dynamic Lighting/Metallic"
 
             #if DYNAMIC_LIGHTING_LIT
 
-            #define DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS inout float3 albedo, inout float metallic, inout float roughness, inout float3 N, inout float3 V, inout float3 F0, inout float3 Lo
+            #define DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS inout float4 albedo, inout float metallic, inout float roughness, inout float3 N, inout float3 V, inout float3 F0, inout float3 Lo
             #define DYNLIT_FRAGMENT_LIGHT_IN_PARAMETERS albedo, metallic, roughness, N, V, F0, Lo
 
             DYNLIT_FRAGMENT_FUNCTION
@@ -135,7 +147,7 @@ Shader "Dynamic Lighting/Metallic"
                 UNITY_SETUP_INSTANCE_ID(i);
 
                 // material parameters
-                float3 albedo = tex2D(_MainTex, i.uv0).rgb * UNITY_ACCESS_INSTANCED_PROP(Props, _Color).rgb * i.color.rgb;
+                float4 albedo = tex2D(_MainTex, i.uv0) * UNITY_ACCESS_INSTANCED_PROP(Props, _Color) * i.color;
                 
             #if METALLIC_TEXTURE_UNASSIGNED
                 float metallic = _Metallic;
@@ -159,7 +171,7 @@ Shader "Dynamic Lighting/Metallic"
 
                 // calculate reflectance at normal incidence; if dia-electric (like plastic) use F0
                 // of 0.04 and if it's a metal, use the albedo color as F0 (metallic workflow).
-                float3 F0 = lerp(0.04, albedo, metallic);
+                float3 F0 = lerp(0.04, albedo.rgb, metallic);
 
                 // reflectance equation
                 float3 Lo = float3(0.0, 0.0, 0.0);
@@ -191,6 +203,11 @@ Shader "Dynamic Lighting/Metallic"
                 float3 ambient = kD * albedo * (unity_lightmap_color + dynamic_ambient_color);
                 float3 color = (ambient + Lo) * lerp(1.0, ao, _OcclusionStrength) + specular;
                 
+                // clip the fragments when cutout mode is active (leaves holes in color and depth buffers).
+                #ifdef _ALPHATEST_ON
+                    clip(albedo.a - _Cutoff);
+                #endif
+
                 // sample the emission map, add after lighting calculations.
                 #if _EMISSION
                     color.rgb += tex2D(_EmissionMap, i.uv0).rgb * UNITY_ACCESS_INSTANCED_PROP(Props, _EmissionColor).rgb;
@@ -198,7 +215,12 @@ Shader "Dynamic Lighting/Metallic"
 
                 // apply fog.
                 UNITY_APPLY_FOG(i.fogCoord, color);
+
+            #ifdef _ALPHAPREMULTIPLY_ON
+                return float4(color, albedo.a);
+            #else
                 return float4(color, 1.0);
+            #endif
             }
 
             DYNLIT_FRAGMENT_LIGHT
@@ -266,10 +288,10 @@ Shader "Dynamic Lighting/Metallic"
                 
                 // add to outgoing radiance Lo
 #if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
-                Lo += (kD * albedo / UNITY_PI + specular) * radiance * NdotL * map;
-                Lo += (kD * albedo / UNITY_PI + specular) * radiance * bounce;
+                Lo += (kD * albedo.rgb / UNITY_PI + specular) * radiance * NdotL * map;
+                Lo += (kD * albedo.rgb / UNITY_PI + specular) * radiance * bounce;
 #else
-                Lo += (kD * albedo / UNITY_PI + specular) * radiance * NdotL * map;
+                Lo += (kD * albedo.rgb / UNITY_PI + specular) * radiance * NdotL * map;
 #endif
             }
             
@@ -293,10 +315,26 @@ Shader "Dynamic Lighting/Metallic"
             #pragma vertex vert
             #pragma fragment frag
             #pragma multi_compile_fog
+            #pragma shader_feature_local _ _ALPHATEST_ON _ALPHAPREMULTIPLY_ON
             #pragma multi_compile_fwdadd_fullshadows
             #include "GenerateForwardAddMetallic.cginc"
             ENDCG
         }
+
+		Pass
+        {
+			Name "ShadowCaster"
+			Tags { "LightMode" = "ShadowCaster" }
+
+			CGPROGRAM
+			#pragma target 3.0
+			#pragma vertex vert
+			#pragma fragment frag
+            #pragma shader_feature_local _ _ALPHATEST_ON _ALPHAPREMULTIPLY_ON
+			#pragma multi_compile_shadowcaster
+            #include "GenerateShadowCaster.cginc"
+			ENDCG
+		}
     }
     Fallback "Diffuse"
 }

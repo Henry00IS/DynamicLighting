@@ -35,6 +35,10 @@ float _GlossMapScale;
 sampler2D _BumpMap;
 float _BumpScale;
 
+#ifdef _ALPHATEST_ON
+    float _Cutoff;
+#endif
+
 v2f vert (appdata v)
 {
     v2f o;
@@ -84,7 +88,7 @@ fixed4 frag (v2f i) : SV_Target
     float3 view_direction = normalize(_WorldSpaceCameraPos - i.world);
     
     // material parameters.
-    float3 albedo = tex2D(_MainTex, i.uv0).rgb * _Color.rgb * i.color.rgb;
+    float4 albedo = tex2D(_MainTex, i.uv0) * _Color * i.color;
     
     #if METALLIC_TEXTURE_UNASSIGNED // todo: this is not working right (it looks very dull).
         float metallic = _Metallic;
@@ -105,7 +109,7 @@ fixed4 frag (v2f i) : SV_Target
     float3 N = normalize(worldNormal);
 
     // pbr terms for metallic workflow.
-    float3 color = albedo * (1.0h - metallic);
+    float3 color = albedo.rgb * (1.0h - metallic);
     
     // calculate reflectance at normal incidence; if dia-electric (like plastic) use F0
     // of 0.04 and if it's a metal, use the albedo color as F0 (metallic workflow).
@@ -122,6 +126,12 @@ fixed4 frag (v2f i) : SV_Target
 	    CreateLight(i), // gi light
 	    CreateIndirectLight() // gi indirect
     );
+    
+    #if defined(_ALPHAPREMULTIPLY_ON)
+        brdf.rgb *= albedo.a;
+    #elif defined(_ALPHATEST_ON)
+        clip(albedo.a - _Cutoff);
+    #endif
     
     // apply fog.
     UNITY_APPLY_FOG(i.fogCoord, brdf);

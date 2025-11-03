@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using BlendMode = AlpacaIT.DynamicLighting.Editor.DefaultShaderGUI.BlendMode;
+using CullMode = AlpacaIT.DynamicLighting.Editor.DefaultShaderGUI.CullMode;
 
 namespace AlpacaIT.DynamicLighting.Editor
 {
@@ -11,6 +13,37 @@ namespace AlpacaIT.DynamicLighting.Editor
     /// </summary>
     public class MetallicShaderGUI : ShaderGUI
     {
+        public override void AssignNewShaderToMaterial(Material material, Shader oldShader, Shader newShader)
+        {
+            base.AssignNewShaderToMaterial(material, oldShader, newShader);
+
+            // try to restore the blend mode.
+            BlendMode blendMode = BlendMode.Opaque;
+            if (material.HasFloat("_Mode"))
+                blendMode = (BlendMode)material.GetFloat("_Mode");
+
+            // if the blend mode is 'fade' from the standard shader:
+            if ((int)blendMode == 2)
+                blendMode = BlendMode.Transparent;
+
+            // if the blend mode is something completely different:
+            if (blendMode != 0 && (int)blendMode != 1 && (int)blendMode != 3)
+                blendMode = BlendMode.Opaque;
+
+            // recognize the legacy transparent shader from 2025 and switch to transparent.
+            if (oldShader.name.Equals("Dynamic Lighting/Transparent", System.StringComparison.InvariantCultureIgnoreCase))
+                blendMode = BlendMode.Transparent;
+
+            // if we support a mode then adjust it accordingly.
+            if (material.HasFloat("_Mode"))
+            {
+                material.SetFloat("_Mode", (float)blendMode);
+
+                // the standard shader uses a bad blend mode and we need to update any third-party configuration.
+                DefaultShaderGUI.SetupMaterialWithBlendMode(material, blendMode);
+            }
+        }
+
         public override void OnGUI(MaterialEditor materialEditor, MaterialProperty[] properties)
         {
             DefaultShaderGUI.SuggestPresenceOfDynamicLightManager();
@@ -18,6 +51,7 @@ namespace AlpacaIT.DynamicLighting.Editor
             var props = new List<MaterialProperty>(properties);
             var propColor = properties.Find("_Color");
             var propMainTex = properties.Find("_MainTex");
+            var propCutoff = properties.Find("_Cutoff");
             var propMetallicGlossMap = properties.Find("_MetallicGlossMap");
             var propGlossMapScale = properties.Find("_GlossMapScale");
             var propMetallic = properties.Find("_Metallic");
@@ -27,10 +61,21 @@ namespace AlpacaIT.DynamicLighting.Editor
             var propOcclusionStrength = properties.Find("_OcclusionStrength");
             var propEmissionColor = properties.Find("_EmissionColor");
             var propEmissionMap = properties.Find("_EmissionMap");
+            var propMode = properties.Find("_Mode");
             var propCull = properties.Find("_Cull");
+
+            // display the supported blend modes.
+            bool changedMode = materialEditor.Dropdown<BlendMode>(props, propMode, out var selectedMode);
 
             // combine main texture with color.
             materialEditor.Combine(props, propMainTex, propColor);
+
+            // display the cutoff when in cutout mode.
+            materialEditor.Combine(props, propCutoff, () =>
+            {
+                if (selectedMode != BlendMode.Opaque)
+                    materialEditor.Property(propCutoff, 2);
+            });
 
             // known group: metallic gloss with gloss scale.
             materialEditor.Combine(props, propMetallicGlossMap, propGlossMapScale, () =>
@@ -65,12 +110,17 @@ namespace AlpacaIT.DynamicLighting.Editor
             );
 
             // display the supported cull modes.
-            bool changedCull = materialEditor.Dropdown<DefaultShaderGUI.CullMode>(props, propCull, out var selectedCull);
+            bool changedCull = materialEditor.Dropdown<CullMode>(props, propCull, out var selectedCull);
+
+            // update the blend mode parameters in the material when changed.
+            if (changedMode)
+                foreach (var target in propMode.targets)
+                    DefaultShaderGUI.SetupMaterialWithBlendMode((Material)target, (BlendMode)((Material)target).GetFloat("_Mode"));
 
             // update the cull mode parameters in the material when changed.
             if (changedCull)
                 foreach (var target in propCull.targets)
-                    DefaultShaderGUI.SetupMaterialWithCullMode((Material)target, (DefaultShaderGUI.CullMode)((Material)target).GetFloat("_Cull"));
+                    DefaultShaderGUI.SetupMaterialWithCullMode((Material)target, (CullMode)((Material)target).GetFloat("_Cull"));
 
             // render everything else the default way.
             base.OnGUI(materialEditor, props.ToArray());

@@ -117,7 +117,7 @@ namespace AlpacaIT.DynamicLighting.Editor
         /// <summary>Sets up the material to switch to one of the <see cref="BlendMode"/>.</summary>
         /// <param name="material">The material to be modified.</param>
         /// <param name="blendMode">The blend mode to activate.</param>
-        private void SetupMaterialWithBlendMode(Material material, BlendMode blendMode)
+        public static void SetupMaterialWithBlendMode(Material material, BlendMode blendMode)
         {
             switch (blendMode)
             {
