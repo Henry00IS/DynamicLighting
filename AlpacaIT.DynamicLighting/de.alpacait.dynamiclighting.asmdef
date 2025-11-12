@@ -2,7 +2,9 @@
     "name": "de.alpacait.dynamiclighting",
     "rootNamespace": "AlpacaIT.DynamicLighting",
     "references": [
-        "Unity.Mathematics"
+        "Unity.Mathematics",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

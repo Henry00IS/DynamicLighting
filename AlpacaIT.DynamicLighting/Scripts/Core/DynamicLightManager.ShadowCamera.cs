@@ -27,6 +27,9 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>The <see cref="Camera"/> used for capturing shadow frames in the scene.</summary>
         private Camera shadowCamera;
 
+        /// <summary>Additional logic for the unified render pipeline.</summary>
+        private CameraPipeline shadowCameraPipeline;
+
         /// <summary>The array of shadow camera cubemap textures.</summary>
         private RenderTexture shadowCameraCubemaps;
 
@@ -88,6 +91,10 @@ namespace AlpacaIT.DynamicLighting
             // we render depth using a special shader.
             shadowCamera.SetReplacementShader(shadowCameraDepthShader, "RenderType");
 
+            // prepare additional logic in case of the unified render pipeline.
+            shadowCameraPipeline = new CameraPipeline(shadowCamera, dynamicLightingResources.shadowCameraDepthMaterial);
+            shadowCameraPipeline.Initialize();
+
             // create shadow cubemap array.
             shadowCameraCubemaps = new RenderTexture(shadowCameraRenderTextureDescriptor);
             shadowCameraCubemaps.dimension = TextureDimension.CubeArray;
@@ -102,6 +109,9 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Cleanup of the DynamicLightManager.ShadowCamera partial class.</summary>
         private void ShadowCameraCleanup()
         {
+            // cleanup the render pipeline related resources.
+            shadowCameraPipeline.Cleanup();
+
             // destroy the shadow camera game object.
             DestroyImmediate(shadowCameraGameObject);
 
@@ -122,7 +132,7 @@ namespace AlpacaIT.DynamicLighting
             shadowCameraRenderTexture = RenderTexture.GetTemporary(shadowCameraRenderTextureDescriptor);
 
             // have the shadow camera render to the render texture.
-            shadowCamera.targetTexture = shadowCameraRenderTexture;
+            shadowCameraPipeline.targetTexture = shadowCameraRenderTexture;
         }
 
         /// <summary>Called after the lights have been processed for rendering.</summary>
@@ -132,7 +142,7 @@ namespace AlpacaIT.DynamicLighting
             shadowCameraReady = false;
 
             // remove the render texture reference from the camera.
-            shadowCamera.targetTexture = null;
+            shadowCameraPipeline.targetTexture = null;
 
             // release the temporary render textures.
             RenderTexture.ReleaseTemporary(shadowCameraRenderTexture);
@@ -182,7 +192,7 @@ namespace AlpacaIT.DynamicLighting
                 shadowCameraTransform.rotation = shadowCameraOrientations[face];
 
                 // use the depth replacement shader to render the scene.
-                shadowCamera.Render();
+                shadowCameraPipeline.Render();
 
                 RenderTexture rt = RenderTexture.GetTemporary(shadowCameraRenderTextureDescriptor);
                 Graphics.Blit(shadowCameraRenderTexture, rt, shadowCameraGuassianBlurMaterial, 0);

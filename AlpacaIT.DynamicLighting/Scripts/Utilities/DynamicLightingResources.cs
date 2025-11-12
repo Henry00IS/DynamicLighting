@@ -49,5 +49,7 @@ namespace AlpacaIT.DynamicLighting
         public Shader shadowCameraDepthShader;
         public Shader photonCubeShader;
         public Material guassianBlurMaterial;
+        public Material shadowCameraDepthMaterial;
+        public Material photonCameraPhotonCubeMaterial;
     }
 }

@@ -17,3 +17,5 @@ MonoBehaviour:
   shadowCameraDepthShader: {fileID: 4800000, guid: 1a9ff03cd330c124c93337f9e5edac79, type: 3}
   photonCubeShader: {fileID: 4800000, guid: 936f5b5fed8dc6b4eb706ae05d7bbb4e, type: 3}
   guassianBlurMaterial: {fileID: 2100000, guid: ef0b5938293b80541b19a8a0c1e5b8f7, type: 2}
+  shadowCameraDepthMaterial: {fileID: 2100000, guid: 0d221eeb5de98784395ef01f44bc7f9c, type: 2}
+  photonCameraPhotonCubeMaterial: {fileID: 2100000, guid: 99e786e7eda2c964daef32fe663c5073, type: 2}

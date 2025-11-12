@@ -27,6 +27,9 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>The <see cref="Camera"/> used for capturing photon frames in the scene.</summary>
         private Camera photonCamera;
 
+        /// <summary>Additional logic for the unified render pipeline.</summary>
+        private CameraPipeline photonCameraPipeline;
+
         /// <summary>The array of photon camera cubemap textures.</summary>
         private RenderTexture photonCameraCubemaps;
 
@@ -43,7 +46,8 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Initialization of the DynamicLightingTracer.PhotonCamera partial class.</summary>
         private void PhotonCameraInitialize()
         {
-            photonCameraDepthShader = DynamicLightingResources.Instance.photonCubeShader;
+            var dynamicLightingResources = DynamicLightingResources.Instance;
+            photonCameraDepthShader = dynamicLightingResources.photonCubeShader;
 
 #if UNITY_2021_3_OR_NEWER && !UNITY_2021_3_0 && !UNITY_2021_3_1 && !UNITY_2021_3_2 && !UNITY_2021_3_3 && !UNITY_2021_3_4 && !UNITY_2021_3_5 && !UNITY_2021_3_6 && !UNITY_2021_3_7 && !UNITY_2021_3_8 && !UNITY_2021_3_9 && !UNITY_2021_3_10 && !UNITY_2021_3_11 && !UNITY_2021_3_12 && !UNITY_2021_3_13 && !UNITY_2021_3_14 && !UNITY_2021_3_15 && !UNITY_2021_3_16 && !UNITY_2021_3_17 && !UNITY_2021_3_18 && !UNITY_2021_3_19 && !UNITY_2021_3_20 && !UNITY_2021_3_21 && !UNITY_2021_3_22 && !UNITY_2021_3_23 && !UNITY_2021_3_24 && !UNITY_2021_3_25 && !UNITY_2021_3_26 && !UNITY_2021_3_27 && !UNITY_2022_1 && !UNITY_2022_2 && !UNITY_2022_3_0 && !UNITY_2022_3_1 && !UNITY_2022_3_2 && !UNITY_2022_3_3 && !UNITY_2022_3_4 && !UNITY_2022_3_5
             photonCameraRenderTextureDescriptor = new RenderTextureDescriptor(photonCameraResolution, photonCameraResolution, RenderTextureFormat.RGFloat, 16, 0, RenderTextureReadWrite.Linear);
@@ -83,6 +87,10 @@ namespace AlpacaIT.DynamicLighting
             // we only render the temporary raytracing scene.
             photonCamera.scene = temporaryScene.scene;
 #endif
+            // prepare additional logic in case of the unified render pipeline.
+            photonCameraPipeline = new CameraPipeline(photonCamera, dynamicLightingResources.photonCameraPhotonCubeMaterial);
+            photonCameraPipeline.Initialize();
+
             // create photon cubemap array.
             PhotonCameraRecreateCubemapArray();
         }
@@ -90,6 +98,9 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Cleanup of the DynamicLightingTracer.PhotonCamera partial class.</summary>
         private void PhotonCameraCleanup()
         {
+            // cleanup the render pipeline related resources.
+            photonCameraPipeline.Cleanup();
+
             // destroy the photon camera game object.
             Object.DestroyImmediate(photonCameraGameObject);
 
@@ -134,7 +145,7 @@ namespace AlpacaIT.DynamicLighting
             photonCameraRenderTexture.filterMode = FilterMode.Point;
 
             // have the photon camera render to the render texture.
-            photonCamera.targetTexture = photonCameraRenderTexture;
+            photonCameraPipeline.targetTexture = photonCameraRenderTexture;
 
             // ----------------------------------------------------------------
 
@@ -151,7 +162,7 @@ namespace AlpacaIT.DynamicLighting
                 photonCameraTransform.rotation = photonCameraOrientations[face];
 
                 // use the direct illumination replacement shader to render the scene.
-                photonCamera.Render();
+                photonCameraPipeline.Render();
 
                 Graphics.CopyTexture(photonCameraRenderTexture, 0, 0, photonCameraCubemaps, face, 0);
             }
@@ -159,7 +170,7 @@ namespace AlpacaIT.DynamicLighting
             // ----------------------------------------------------------------
 
             // remove the render texture reference from the camera.
-            photonCamera.targetTexture = null;
+            photonCameraPipeline.targetTexture = null;
 
             // release the temporary render textures.
             RenderTexture.ReleaseTemporary(photonCameraRenderTexture);
