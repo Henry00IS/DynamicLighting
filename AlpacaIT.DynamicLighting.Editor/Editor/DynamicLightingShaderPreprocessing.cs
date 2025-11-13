@@ -16,6 +16,7 @@ namespace AlpacaIT.DynamicLighting.Editor
         private ShaderKeyword shaderKeywordDynamicLightingBvh;
         private ShaderKeyword shaderKeywordDynamicLightingBounce;
         private ShaderKeyword shaderKeywordDynamicLightingDynamicGeometryDistanceCubes;
+        private ShaderKeyword shaderKeywordDynamicLightingSceneViewModeLighting;
 
         public int callbackOrder => 0;
 
@@ -28,16 +29,22 @@ namespace AlpacaIT.DynamicLighting.Editor
             shaderKeywordDynamicLightingBvh = new ShaderKeyword("DYNAMIC_LIGHTING_BVH");
             shaderKeywordDynamicLightingBounce = new ShaderKeyword("DYNAMIC_LIGHTING_BOUNCE");
             shaderKeywordDynamicLightingDynamicGeometryDistanceCubes = new ShaderKeyword("DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES");
+            shaderKeywordDynamicLightingSceneViewModeLighting = new ShaderKeyword("DYNAMIC_LIGHTING_SCENE_VIEW_MODE_LIGHTING");
         }
 
         public void OnProcessShader(Shader shader, ShaderSnippetData snippet, IList<ShaderCompilerData> data)
         {
-            var removed = 0;
-
             var dataCount = data.Count;
             for (int i = dataCount; i-- > 0;)
             {
                 var keywords = data[i].shaderKeywordSet;
+
+                // all of the scene view debug draw modes can be stripped from builds:
+                if (keywords.IsEnabled(shaderKeywordDynamicLightingSceneViewModeLighting))
+                {
+                    data.RemoveAt(i);
+                    continue;
+                }
 
                 // the unlit mode has many variations that can be stripped from the build:
                 if (keywords.IsDisabled(shaderKeywordDynamicLightingLit))
@@ -52,7 +59,6 @@ namespace AlpacaIT.DynamicLighting.Editor
                         shaderKeywordDynamicLightingDynamicGeometryDistanceCubes
                     ))
                     {
-                        removed++;
                         data.RemoveAt(i);
                         continue;
                     }

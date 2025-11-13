@@ -19,3 +19,4 @@ MonoBehaviour:
   discordIcon: {fileID: 2800000, guid: fd0bc9b0b2828ed498c74215668639cf, type: 3}
   gitHubIcon: {fileID: 2800000, guid: ed585c3b37097164bbf7a6e9924e7a58, type: 3}
   gitHubIconWhite: {fileID: 2800000, guid: 39a83caaf1e7a934fb58f255a230d960, type: 3}
+  dynamicLightingDiffuseShader: {fileID: 4800000, guid: 0f9ccbd05b7d9544bafd53b17ead090c, type: 3}

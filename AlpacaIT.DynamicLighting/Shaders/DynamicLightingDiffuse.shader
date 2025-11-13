@@ -37,6 +37,7 @@ Shader "Dynamic Lighting/Diffuse"
             #pragma multi_compile __ DYNAMIC_LIGHTING_BVH
             #pragma multi_compile __ DYNAMIC_LIGHTING_BOUNCE
             #pragma multi_compile __ DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES
+            #pragma multi_compile __ DYNAMIC_LIGHTING_SCENE_VIEW_MODE_LIGHTING
             #pragma multi_compile multi_compile_fwdbase
             #pragma multi_compile_instancing
             #pragma shader_feature_local _EMISSION
@@ -126,8 +127,13 @@ Shader "Dynamic Lighting/Diffuse"
                     float3 unity_lightmap_color = float3(0.0, 0.0, 0.0);
                 #endif
 
-                // sample the main texture, multiply by the light and add vertex colors.
-                float4 col = tex2D(_MainTex, i.uv0) * UNITY_ACCESS_INSTANCED_PROP(Props, _Color) * float4(light_final + unity_lightmap_color, 1) * i.color;
+                #ifdef DYNAMIC_LIGHTING_SCENE_VIEW_MODE_LIGHTING
+                    // sample the main texture alpha, multiply by the light and add vertex color alpha.
+                    float4 col = float4(1, 1, 1, tex2D(_MainTex, i.uv0).a) * float4(1, 1, 1, UNITY_ACCESS_INSTANCED_PROP(Props, _Color).a) * float4(light_final + unity_lightmap_color, 1) * float4(1, 1, 1, i.color.a);
+                #else
+                    // sample the main texture, multiply by the light and add vertex colors.
+                    float4 col = tex2D(_MainTex, i.uv0) * UNITY_ACCESS_INSTANCED_PROP(Props, _Color) * float4(light_final + unity_lightmap_color, 1) * i.color;
+                #endif
                 
                 // clip the fragments when cutout mode is active (leaves holes in color and depth buffers).
                 #ifdef _ALPHATEST_ON
@@ -135,7 +141,7 @@ Shader "Dynamic Lighting/Diffuse"
                 #endif
 
                 // sample the emission map, add after lighting calculations.
-                #ifdef _EMISSION
+                #if defined(_EMISSION) && !defined(DYNAMIC_LIGHTING_SCENE_VIEW_MODE_LIGHTING)
                     col.rgb += tex2D(_EmissionMap, i.uv0).rgb * UNITY_ACCESS_INSTANCED_PROP(Props, _EmissionColor).rgb;
                 #endif
 

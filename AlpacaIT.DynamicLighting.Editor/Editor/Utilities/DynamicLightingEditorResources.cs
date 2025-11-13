@@ -41,5 +41,7 @@ namespace AlpacaIT.DynamicLighting.Editor
         public Texture2D discordIcon;
         public Texture2D gitHubIcon;
         public Texture2D gitHubIconWhite;
+
+        public Shader dynamicLightingDiffuseShader;
     }
 }
