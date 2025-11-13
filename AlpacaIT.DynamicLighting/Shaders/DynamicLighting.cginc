@@ -1037,8 +1037,19 @@ float4 dynamic_lighting_unity_LightmapST;
     #define DYNLIT_FRAGMENT_LIGHT void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, bool is_front_face:SV_IsFrontFace, inout DynamicLight light, inout DynamicTriangle dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS)
 #endif
 
-#define DYNLIT_FRAGMENT_UNLIT \
-fixed4 frag (v2f i) : SV_Target\
-{\
-    return tex2D(_MainTex, i.uv0);\
-}
+#ifdef _ALPHATEST_ON
+    #define DYNLIT_FRAGMENT_UNLIT \
+    fixed4 frag (v2f i) : SV_Target\
+    {\
+        float4 col = tex2D(_MainTex, i.uv0);\
+        /* clip the fragments when cutout mode is active (leaves holes in color and depth buffers). */ \
+        clip(col.a - _Cutoff);\
+        return col;\
+    }
+#else
+    #define DYNLIT_FRAGMENT_UNLIT \
+    fixed4 frag (v2f i) : SV_Target\
+    {\
+        return tex2D(_MainTex, i.uv0);\
+    }
+#endif
