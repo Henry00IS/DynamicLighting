@@ -1,3 +1,9 @@
+#pragma target 3.0
+#pragma vertex vert
+#pragma fragment frag
+#pragma shader_feature_local _ _ALPHATEST_ON _ALPHAPREMULTIPLY_ON
+#pragma multi_compile_shadowcaster
+
 #include "UnityCG.cginc"
 
 struct appdata

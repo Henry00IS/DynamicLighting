@@ -18,7 +18,7 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
             #pragma fragment frag
             
             #include "UnityCG.cginc"
-            #include "../Common.cginc"
+            #include "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/Internal/Common.cginc"
 
             struct appdata
             {
@@ -84,7 +84,7 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
             #pragma fragment frag
             
             #include "UnityCG.cginc"
-            #include "../Common.cginc"
+            #include "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/Internal/Common.cginc"
 
             struct appdata
             {
@@ -169,7 +169,7 @@ Shader "Hidden/Dynamic Lighting/PhotonCube"
             #pragma fragment frag
             
             #include "UnityCG.cginc"
-            #include "../Common.cginc"
+            #include "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/Internal/Common.cginc"
 
             struct appdata
             {

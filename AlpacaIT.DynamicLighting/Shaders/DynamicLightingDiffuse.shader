@@ -32,20 +32,15 @@ Shader "Dynamic Lighting/Diffuse"
             #pragma vertex vert
             #pragma fragment frag
             #pragma multi_compile_fog
-            #pragma multi_compile __ DYNAMIC_LIGHTING_QUALITY_LOW DYNAMIC_LIGHTING_QUALITY_HIGH DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS
-            #pragma multi_compile __ DYNAMIC_LIGHTING_LIT
-            #pragma multi_compile __ DYNAMIC_LIGHTING_BVH
-            #pragma multi_compile __ DYNAMIC_LIGHTING_BOUNCE
-            #pragma multi_compile __ DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES
-            #pragma multi_compile __ DYNAMIC_LIGHTING_SCENE_VIEW_MODE_LIGHTING
             #pragma multi_compile multi_compile_fwdbase
             #pragma multi_compile_instancing
+            #pragma multi_compile __ DYNAMIC_LIGHTING_SCENE_VIEW_MODE_LIGHTING
             #pragma shader_feature_local _EMISSION
             #pragma shader_feature_local _ _ALPHATEST_ON _ALPHAPREMULTIPLY_ON
             #pragma shader_feature_local _ DYNAMIC_LIGHTING_CULL_FRONT DYNAMIC_LIGHTING_CULL_OFF
 
             #include "UnityCG.cginc"
-            #include "DynamicLighting.cginc"
+            #include_with_pragmas "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/DynamicLighting.cginc"
 
             struct appdata
             {
@@ -114,6 +109,22 @@ Shader "Dynamic Lighting/Diffuse"
 
             DYNLIT_FRAGMENT_FUNCTION
             {
+                // This function computes the final fragment color to be output to the screen,
+                // declaring and using the following variables (see DynamicLighting.cginc for the full list of variables):
+                //
+                // --------------------------------- | ------------------------------ | ---------------------------------------------------------------
+                // Variable                          | Type/Semantic                  | Description
+                // --------------------------------- | ------------------------------ | ---------------------------------------------------------------
+                // i                                 | v2f                            | Fragment shader interpolants (from struct v2f in this file).
+                // triangle_index                    | uint : SV_PrimitiveID          | Triangle identifier in the mesh.
+                // is_front_face                     | bool : SV_IsFrontFace          | Specifies whether a triangle is front facing.
+                // --------------------------------- | ------------------------------ | ---------------------------------------------------------------
+                // lightmap_resolution               | uint                           | Lightmap size of the mesh (if > 0 then it was raytraced).
+                // dynamic_ambient_color             | float3                         | The ambient color as set in the Dynamic Light Manager.
+                // --------------------------------- | ------------------------------ | ---------------------------------------------------------------
+                // DYNLIT_FRAGMENT_INTERNAL          | Macro                          | Performs the lighting computations (see DYNLIT_FRAGMENT_LIGHT).
+                // --------------------------------- | ------------------------------ | ---------------------------------------------------------------
+                //
                 UNITY_SETUP_INSTANCE_ID(i);
 
                 float3 light_final = dynamic_ambient_color;
@@ -153,23 +164,35 @@ Shader "Dynamic Lighting/Diffuse"
             
             DYNLIT_FRAGMENT_LIGHT
             {
-                // this generates the light with shadows and effects calculation declaring:
-                // 
-                // DynamicLight light; the current dynamic light source.
-                // DynamicTriangle dynamic_triangle; the current triangle data.
-                // float3 light_direction; normalized direction between the light source and the fragment.
-                // float light_distanceSqr; the square distance between the light source and the fragment.
-                // float3 light_position_minus_world; the light position minus the world position.
-                // float NdotL; dot product with the normal and light direction (diffusion).
-                // float attenuation; the attenuation of the point light with maximum radius.
-                // float map; the computed shadow of this fragment with effects.
-                // bool is_bounce_available; whether bounce texture data is available on this triangle.
-                // float bounce; the computed grayscale bounce texture color of this fragment.
+                // This function computes lighting with shadows and effects for a dynamic light source,
+                // declaring and using the following variables:
                 //
-                // it may also early out and continue the loop to the next light.
+                // --------------------------------- | ------------------------------ | --------------------------------------------------------------- | -----------------------------------------------------------------
+                // Variable                          | Type/Semantic                  | Description                                                     | Conditional Availability
+                // --------------------------------- | ------------------------------ | --------------------------------------------------------------- | -----------------------------------------------------------------
+                // i                                 | v2f                            | Fragment shader interpolants (from struct v2f in this file).    | Always
+                // triangle_index                    | uint : SV_PrimitiveID          | Triangle identifier in the mesh.                                | Always
+                // is_front_face                     | bool : SV_IsFrontFace          | Specifies whether a triangle is front facing.                   | Always
+                // light                             | DynamicLight                   | Current dynamic light source (see DynamicLighting.cginc).       | Always
+                // dynamic_triangle                  | DynamicTriangle                | Current triangle data (see DynamicLighting.cginc).              | Always
+                // --------------------------------- | ------------------------------ | --------------------------------------------------------------- | -----------------------------------------------------------------
+                // light_direction                   | float3                         | Normalized direction from fragment to light source.             | Always
+                // light_distanceSqr                 | float                          | Squared distance from fragment to light source.                 | Always
+                // light_position_minus_world        | float3                         | Light position minus world position.                            | Always
+                // NdotL                             | float                          | Dot product of normal and light direction (for diffusion).      | Always
+                //                                   |                                |   - Culling flips the normal based on is_front_face.            |
+                //                                   |                                |   - Dynamic geometry uses half-Lambert shading.                 |
+                // attenuation                       | float                          | Attenuation for point light with max radius.                    | Always
+                // map                               | float                          | Computed shadow value for this fragment with effects.           | Always
+                // --------------------------------- | ------------------------------ | --------------------------------------------------------------- | -----------------------------------------------------------------
+                // is_bounce_available               | bool                           | Whether bounce texture data is available on this triangle.      | DYNAMIC_LIGHTING_BOUNCE && !DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS
+                // bounce                            | float                          | Computed grayscale bounce texture color for this fragment.      | DYNAMIC_LIGHTING_BOUNCE && !DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS
+                // --------------------------------- | ------------------------------ | --------------------------------------------------------------- | -----------------------------------------------------------------
+                //
+                // The function may early-out and continue to the next light in the loop due to heavy optimizations.
                 //
                 #define GENERATE_NORMAL i.normal
-                #include "GenerateLightProcessor.cginc"
+                #include "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/Generators/LightProcessor.cginc"
                 
                 // add this light to the final color of the fragment.
 #if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
@@ -195,13 +218,7 @@ Shader "Dynamic Lighting/Diffuse"
 			ZWrite Off
 
             CGPROGRAM
-            #pragma target 3.0
-            #pragma vertex vert
-            #pragma fragment frag
-            #pragma multi_compile_fog
-            #pragma shader_feature_local _ _ALPHATEST_ON _ALPHAPREMULTIPLY_ON
-            #pragma multi_compile_fwdadd_fullshadows
-            #include "GenerateForwardAdd.cginc"
+            #include_with_pragmas "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/Generators/ForwardAdd.cginc"
             ENDCG
         }
 
@@ -211,12 +228,7 @@ Shader "Dynamic Lighting/Diffuse"
 			Tags { "LightMode" = "ShadowCaster" }
 
 			CGPROGRAM
-			#pragma target 3.0
-			#pragma vertex vert
-			#pragma fragment frag
-            #pragma shader_feature_local _ _ALPHATEST_ON _ALPHAPREMULTIPLY_ON
-			#pragma multi_compile_shadowcaster
-            #include "GenerateShadowCaster.cginc"
+            #include_with_pragmas "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/Generators/ShadowCaster.cginc"
 			ENDCG
 		}
     }

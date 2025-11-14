@@ -1,3 +1,10 @@
+#pragma target 3.0
+#pragma vertex vert
+#pragma fragment frag
+#pragma multi_compile_fog
+#pragma shader_feature_local _ _ALPHATEST_ON _ALPHAPREMULTIPLY_ON
+#pragma multi_compile_fwdadd_fullshadows
+
 #include "UnityCG.cginc"
 #include "UnityPBSLighting.cginc"
 #include "AutoLight.cginc"

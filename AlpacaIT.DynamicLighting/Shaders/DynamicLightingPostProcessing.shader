@@ -16,7 +16,7 @@
 			#pragma fragment frag
 			
 			#include "UnityCG.cginc"
-			#include "DynamicLighting.cginc"
+            #include "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/DynamicLighting.cginc"
 
 			struct appdata
 			{

@@ -1,4 +1,10 @@
-#include "Common.cginc"
+#pragma multi_compile __ DYNAMIC_LIGHTING_QUALITY_LOW DYNAMIC_LIGHTING_QUALITY_HIGH DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS
+#pragma multi_compile __ DYNAMIC_LIGHTING_LIT
+#pragma multi_compile __ DYNAMIC_LIGHTING_BVH
+#pragma multi_compile __ DYNAMIC_LIGHTING_BOUNCE
+#pragma multi_compile __ DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES
+
+#include "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/Internal/Common.cginc"
 
 // macros to name the general purpose variables.
 #define light_cutoff gpFloat1
@@ -306,7 +312,7 @@ struct DynamicLight
 
     #define GENERATE_FUNCTION_NAME calculate_watershimmer_bilinear
     #define GENERATE_FUNCTION_CALL calculate_watershimmer
-    #include "GenerateBilinearFilter3D.cginc"
+    #include "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/Generators/BilinearFilter3D.cginc"
     
     // calculates the random shimmer effect.
     //
@@ -331,7 +337,7 @@ struct DynamicLight
 
     #define GENERATE_FUNCTION_NAME calculate_randomshimmer_bilinear
     #define GENERATE_FUNCTION_CALL calculate_randomshimmer
-    #include "GenerateBilinearFilter3D.cginc"
+    #include "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/Generators/BilinearFilter3D.cginc"
 };
 
 StructuredBuffer<DynamicLight> dynamic_lights;
