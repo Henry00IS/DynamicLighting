@@ -334,7 +334,7 @@ Shader "Dynamic Lighting/Metallic"
 			ZWrite Off
 
             CGPROGRAM
-            #include_with_pragmas "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/Generators/ForwardAdd.cginc"
+            #include_with_pragmas "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/Generators/ForwardAddMetallic.cginc"
             ENDCG
         }
 
