@@ -385,7 +385,10 @@ float sample_distance_cube(uint cubeDataOffset, float3 dir)
 {
     // sample the cubemap lookup texture of array indices to avoid doing complex math.
     uint index = dynamic_lights_distance_cubes_lookup32.SampleLevel(sampler_dynamic_lights_distance_cubes_lookup32, dir, 0);
-    return asfloat(dynamic_lights_distance_cubes[cubeDataOffset + index]);
+    
+    // unpack the distance value that is packed as two f16 per u32.
+    uint packed = dynamic_lights_distance_cubes[cubeDataOffset + (index >> 1u)];
+    return f16tof32(packed >> ((index & 1u) * 16u));
 }
 
 float sample_distance_cube_tiny(uint cubeDataOffset, float3 world, float3 lightPos, float3 normal)
@@ -396,22 +399,14 @@ float sample_distance_cube_tiny(uint cubeDataOffset, float3 world, float3 lightP
     
     float shadow_distance = sample_distance_cube(cubeDataOffset, light_direction);
     
-    light_direction = normalize(light_direction);
-    float NdotL = max(dot(normal, light_direction), 0);
-    
-    // magic bias function! it is amazing!
-    float magic = 0.02 + 0.01 * light_distance;
-    float autobias = magic * tan(acos(1.0 - NdotL));
-    autobias = clamp(autobias, 0.0, magic);
-    
     // check whether the fragment is occluded.
-    return (light_distance - autobias <= shadow_distance);
+    return (light_distance - 0.25 <= shadow_distance);
 }
 
 float sample_distance_cube_bilinear(uint dynamicLightIndex, float3 world, float3 lightPos, float3 normal)
 {
     // calculate the cube data offset in memory.
-    uint cubeDataOffset = dynamicLightIndex * 32 * 32 * 6;
+    uint cubeDataOffset = dynamicLightIndex * 64 * 64 * 3;
     
     float gridScale = 0.25; // blurry approximation.
     
