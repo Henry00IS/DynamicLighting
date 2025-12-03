@@ -6,7 +6,7 @@ float GENERATE_FUNCTION_NAME(float3 world)
 {
     world *= shimmerScale;
 
-    // calculate the weights for the bilinear interpolation.
+    // calculate the weights for the trilinear interpolation.
     float3 weight = frac(world);
 
     // calculate the integer part of the texture coordinates.
@@ -23,17 +23,15 @@ float GENERATE_FUNCTION_NAME(float3 world)
     float bottomRightBack = GENERATE_FUNCTION_CALL(world + float3(1, 1, 1));
 
     // perform bilinear interpolation in the x direction.
-    float4 dx = lerp(float4(topLeftFront , bottomLeftFront , topLeftBack , bottomLeftBack),
-                     float4(topRightFront, bottomRightFront, topRightBack, bottomRightBack),
-                     weight.x);
+    float4 dz = lerp(float4(topLeftFront, topRightFront, bottomLeftFront, bottomRightFront),
+                     float4(topLeftBack , topRightBack , bottomLeftBack , bottomRightBack),
+                     weight.z);
     
     // perform bilinear interpolation in the y direction.
-    float2 dy = lerp(float2(dx.x, dx.z),
-                     float2(dx.y, dx.w),
-                     weight.y);
+    float2 dy = lerp(dz.xy, dz.zw, weight.y);
 
     // perform bilinear interpolation in the z direction.
-    return lerp(dy.x, dy.y, weight.z);
+    return lerp(dy.x, dy.y, weight.x);
 }
 
 #undef GENERATE_FUNCTION_NAME

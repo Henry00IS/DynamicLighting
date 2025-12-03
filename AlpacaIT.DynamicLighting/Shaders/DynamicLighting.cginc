@@ -310,9 +310,9 @@ struct DynamicLight
         return 1.0 - abs(sin(stablerng * _Time.w + _Time.x)) * shimmerModifier;
     }
 
-    #define GENERATE_FUNCTION_NAME calculate_watershimmer_bilinear
+    #define GENERATE_FUNCTION_NAME calculate_watershimmer_trilinear
     #define GENERATE_FUNCTION_CALL calculate_watershimmer
-    #include "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/Generators/BilinearFilter3D.cginc"
+    #include "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/Generators/TrilinearFilter.cginc"
     
     // calculates the random shimmer effect.
     //
@@ -335,9 +335,9 @@ struct DynamicLight
         return intensity * pow(1.0 - s, 2.0) / (1.0 + falloff * s);
     }
 
-    #define GENERATE_FUNCTION_NAME calculate_randomshimmer_bilinear
+    #define GENERATE_FUNCTION_NAME calculate_randomshimmer_trilinear
     #define GENERATE_FUNCTION_CALL calculate_randomshimmer
-    #include "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/Generators/BilinearFilter3D.cginc"
+    #include "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/Generators/TrilinearFilter.cginc"
 };
 
 StructuredBuffer<DynamicLight> dynamic_lights;
@@ -364,16 +364,16 @@ float3 dynamic_ambient_color;
 // realtime shadows, except that they rarely/never update their data.
 //
 // +-----------+        +-------------+
-// |Light Index|-----+->|Index*32*32*6|
+// |Light Index|-----+->|Index*64*64*3|
 // +-----------+     |  +-------------+
-//                   +->|Index*32*32*6|
+//                   +->|Index*64*64*3|
 //                      +-------------+
 //                      |...          |
 //                      +-------------+
 //                             |
 //                             v
 //                      +---------------+
-// Cube Data Offset --> |Distance Floats|
+// Cube Data Offset --> |Distance Floats| 2x f16
 //                      +---------------+
 //
 StructuredBuffer<uint> dynamic_lights_distance_cubes;
@@ -391,19 +391,19 @@ float sample_distance_cube(uint cubeDataOffset, float3 dir)
     return f16tof32(packed >> ((index & 1u) * 16u));
 }
 
-float sample_distance_cube_tiny(uint cubeDataOffset, float3 world, float3 lightPos, float3 normal)
+float sample_distance_cube_tiny(uint cubeDataOffset, float3 world, float3 lightPos)
 {
     float3 light_direction = lightPos - world;
     float light_distanceSqr = dot(light_direction, light_direction);
-    float light_distance = sqrt(light_distanceSqr);
     
     float shadow_distance = sample_distance_cube(cubeDataOffset, light_direction);
     
     // check whether the fragment is occluded.
-    return (light_distance - 0.25 <= shadow_distance);
+    // [CPU] shadow_distance += 0.25; // bias.
+    return light_distanceSqr <= shadow_distance * shadow_distance;
 }
 
-float sample_distance_cube_bilinear(uint dynamicLightIndex, float3 world, float3 lightPos, float3 normal)
+float sample_distance_cube_trilinear(uint dynamicLightIndex, float3 world, float3 lightPos)
 {
     // calculate the cube data offset in memory.
     uint cubeDataOffset = dynamicLightIndex * 64 * 64 * 3;
@@ -413,7 +413,7 @@ float sample_distance_cube_bilinear(uint dynamicLightIndex, float3 world, float3
     // convert world position to grid coordinates based on the grid scale.
     float3 gridCoord = world / gridScale;
     
-    // calculate the weights for the bilinear interpolation.
+    // calculate the weights for the trilinear interpolation.
     float3 weight = frac(gridCoord);
     
     // calculate the integer part of the grid coordinates.
@@ -423,27 +423,25 @@ float sample_distance_cube_bilinear(uint dynamicLightIndex, float3 world, float3
     float3 baseWorldPos = gridCoordInt * gridScale;
     
     // sample the texture at the neighboring cells
-    float topLeftFront     = sample_distance_cube_tiny(cubeDataOffset, baseWorldPos, lightPos, normal); 
-    float topRightFront    = sample_distance_cube_tiny(cubeDataOffset, baseWorldPos + float3(gridScale, 0, 0), lightPos, normal); 
-    float bottomLeftFront  = sample_distance_cube_tiny(cubeDataOffset, baseWorldPos + float3(0, gridScale, 0), lightPos, normal); 
-    float bottomRightFront = sample_distance_cube_tiny(cubeDataOffset, baseWorldPos + float3(gridScale, gridScale, 0), lightPos, normal); 
-    float topLeftBack      = sample_distance_cube_tiny(cubeDataOffset, baseWorldPos + float3(0, 0, gridScale), lightPos, normal); 
-    float topRightBack     = sample_distance_cube_tiny(cubeDataOffset, baseWorldPos + float3(gridScale, 0, gridScale), lightPos, normal); 
-    float bottomLeftBack   = sample_distance_cube_tiny(cubeDataOffset, baseWorldPos + float3(0, gridScale, gridScale), lightPos, normal); 
-    float bottomRightBack  = sample_distance_cube_tiny(cubeDataOffset, baseWorldPos + float3(gridScale, gridScale, gridScale), lightPos, normal); 
+    float topLeftFront     = sample_distance_cube_tiny(cubeDataOffset, baseWorldPos, lightPos);
+    float topRightFront    = sample_distance_cube_tiny(cubeDataOffset, baseWorldPos + float3(gridScale, 0, 0), lightPos);
+    float bottomLeftFront  = sample_distance_cube_tiny(cubeDataOffset, baseWorldPos + float3(0, gridScale, 0), lightPos);
+    float bottomRightFront = sample_distance_cube_tiny(cubeDataOffset, baseWorldPos + float3(gridScale, gridScale, 0), lightPos);
+    float topLeftBack      = sample_distance_cube_tiny(cubeDataOffset, baseWorldPos + float3(0, 0, gridScale), lightPos);
+    float topRightBack     = sample_distance_cube_tiny(cubeDataOffset, baseWorldPos + float3(gridScale, 0, gridScale), lightPos);
+    float bottomLeftBack   = sample_distance_cube_tiny(cubeDataOffset, baseWorldPos + float3(0, gridScale, gridScale), lightPos);
+    float bottomRightBack  = sample_distance_cube_tiny(cubeDataOffset, baseWorldPos + float3(gridScale, gridScale, gridScale), lightPos);
     
     // perform bilinear interpolation in the x direction.
-    float4 dx = lerp(float4(topLeftFront , bottomLeftFront , topLeftBack , bottomLeftBack),
-                     float4(topRightFront, bottomRightFront, topRightBack, bottomRightBack),
-                     weight.x);
+    float4 dz = lerp(float4(topLeftFront, topRightFront, bottomLeftFront, bottomRightFront),
+                     float4(topLeftBack , topRightBack , bottomLeftBack , bottomRightBack),
+                     weight.z);
     
     // perform bilinear interpolation in the y direction.
-    float2 dy = lerp(float2(dx.x, dx.z),
-                     float2(dx.y, dx.w),
-                     weight.y);
+    float2 dy = lerp(dz.xy, dz.zw, weight.y);
 
     // perform bilinear interpolation in the z direction.
-    return lerp(dy.x, dy.y, weight.z);
+    return lerp(dy.x, dy.y, weight.x);
 }
 
 // [dynamic triangles technique]

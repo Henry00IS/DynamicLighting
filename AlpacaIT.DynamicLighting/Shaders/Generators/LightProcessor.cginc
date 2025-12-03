@@ -107,7 +107,7 @@ if (light.is_dynamic())
 // dynamic geometry drawn using the bounding volume hierarchy sample distance cubemaps.
 else if (bvhLightIndex != -1)
 {
-    map = sample_distance_cube_bilinear(bvhLightIndex, i.world, light.position, i.normal);
+    map = sample_distance_cube_trilinear(bvhLightIndex, i.world, light.position);
 }
 #endif
 
@@ -117,7 +117,6 @@ if (light.is_shadow_available())
 {
     float fragDepth = sqrt(light_distanceSqr / light.radiusSqr);
     float2 moments = shadow_cubemaps.SampleLevel(sampler_shadow_cubemaps, float4(light_direction, light.shadowCubemapIndex), 0);
-    float2 lit = (float2)0.0f;
     float E_x2 = moments.y;
     float Ex_2 = moments.x * moments.x;
     float variance = E_x2 - Ex_2;
@@ -213,11 +212,11 @@ if (map != 0.0)
     }
     else if (light_shimmer == light_shimmer_water)
     {
-        map *= light.calculate_watershimmer_bilinear(i.world);
+        map *= light.calculate_watershimmer_trilinear(i.world);
     }
     else if (light_shimmer == light_shimmer_random)
     {
-        map *= light.calculate_randomshimmer_bilinear(i.world);
+        map *= light.calculate_randomshimmer_trilinear(i.world);
     }
 #if defined(DYNAMIC_LIGHTING_BOUNCE) && !defined(DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS)
 }
