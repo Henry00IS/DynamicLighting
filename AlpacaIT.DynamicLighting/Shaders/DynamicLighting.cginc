@@ -432,7 +432,7 @@ float sample_distance_cube_trilinear(uint dynamicLightIndex, float3 world, float
     float bottomLeftBack   = sample_distance_cube_tiny(cubeDataOffset, baseWorldPos + float3(0, gridScale, gridScale), lightPos);
     float bottomRightBack  = sample_distance_cube_tiny(cubeDataOffset, baseWorldPos + float3(gridScale, gridScale, gridScale), lightPos);
     
-    // perform bilinear interpolation in the x direction.
+    // perform bilinear interpolation in the z direction.
     float4 dz = lerp(float4(topLeftFront, topRightFront, bottomLeftFront, bottomRightFront),
                      float4(topLeftBack , topRightBack , bottomLeftBack , bottomRightBack),
                      weight.z);
@@ -440,7 +440,7 @@ float sample_distance_cube_trilinear(uint dynamicLightIndex, float3 world, float
     // perform bilinear interpolation in the y direction.
     float2 dy = lerp(dz.xy, dz.zw, weight.y);
 
-    // perform bilinear interpolation in the z direction.
+    // perform bilinear interpolation in the x direction.
     return lerp(dy.x, dy.y, weight.x);
 }
 
