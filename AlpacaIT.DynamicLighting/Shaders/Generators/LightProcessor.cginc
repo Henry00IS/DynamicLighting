@@ -103,11 +103,15 @@ if (light.is_dynamic())
     if (map == 0.0) return;
 #endif
 }
-#ifdef DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES
+#if defined(DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES) || defined(DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_ANGULAR)
 // dynamic geometry drawn using the bounding volume hierarchy sample distance cubemaps.
 else if (bvhLightIndex != -1)
 {
+#ifdef DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES
     map = sample_distance_cube_trilinear(bvhLightIndex, i.world, light.position);
+#else
+    map = sample_distance_cube_angular(bvhLightIndex, light_distanceSqr, light_position_minus_world, i.normal);
+#endif
 }
 #endif
 

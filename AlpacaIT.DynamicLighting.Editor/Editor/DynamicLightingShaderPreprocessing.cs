@@ -16,6 +16,7 @@ namespace AlpacaIT.DynamicLighting.Editor
         private ShaderKeyword shaderKeywordDynamicLightingBvh;
         private ShaderKeyword shaderKeywordDynamicLightingBounce;
         private ShaderKeyword shaderKeywordDynamicLightingDynamicGeometryDistanceCubes;
+        private ShaderKeyword shaderKeywordDynamicLightingDynamicGeometryAngular;
         private ShaderKeyword shaderKeywordDynamicLightingSceneViewModeLighting;
 
         public int callbackOrder => 0;
@@ -29,6 +30,7 @@ namespace AlpacaIT.DynamicLighting.Editor
             shaderKeywordDynamicLightingBvh = new ShaderKeyword("DYNAMIC_LIGHTING_BVH");
             shaderKeywordDynamicLightingBounce = new ShaderKeyword("DYNAMIC_LIGHTING_BOUNCE");
             shaderKeywordDynamicLightingDynamicGeometryDistanceCubes = new ShaderKeyword("DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES");
+            shaderKeywordDynamicLightingDynamicGeometryAngular = new ShaderKeyword("DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_ANGULAR");
             shaderKeywordDynamicLightingSceneViewModeLighting = new ShaderKeyword("DYNAMIC_LIGHTING_SCENE_VIEW_MODE_LIGHTING");
         }
 
@@ -56,7 +58,8 @@ namespace AlpacaIT.DynamicLighting.Editor
                         shaderKeywordDynamicLightingQualityIntegratedGraphics,
                         shaderKeywordDynamicLightingBvh,
                         shaderKeywordDynamicLightingBounce,
-                        shaderKeywordDynamicLightingDynamicGeometryDistanceCubes
+                        shaderKeywordDynamicLightingDynamicGeometryDistanceCubes,
+                        shaderKeywordDynamicLightingDynamicGeometryAngular
                     ))
                     {
                         data.RemoveAt(i);

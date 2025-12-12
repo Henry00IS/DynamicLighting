@@ -73,6 +73,9 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Stores the <see cref="GlobalKeyword"/> of "DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES".</summary>
         private GlobalKeyword shadersGlobalKeywordDynamicGeometryDistanceCubes;
 
+        /// <summary>Stores the <see cref="GlobalKeyword"/> of "DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_ANGULAR".</summary>
+        private GlobalKeyword shadersGlobalKeywordDynamicGeometryAngular;
+
         /// <summary>Global <see cref="Shader.PropertyToID"/> for buffer "dynamic_lights".</summary>
         private int shadersGlobalPropertyIdDynamicLights;
 
@@ -156,6 +159,13 @@ namespace AlpacaIT.DynamicLighting
         {
             get => Shader.IsKeywordEnabled(shadersGlobalKeywordDynamicGeometryDistanceCubes);
             set => ShadersSetGlobalKeyword(ref shadersGlobalKeywordDynamicGeometryDistanceCubes, value);
+        }
+
+        /// <summary>Gets or sets whether global shader keyword "DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_ANGULAR" is enabled.</summary>
+        private bool shadersKeywordDynamicGeometryAngularEnabled
+        {
+            get => Shader.IsKeywordEnabled(shadersGlobalKeywordDynamicGeometryAngular);
+            set => ShadersSetGlobalKeyword(ref shadersGlobalKeywordDynamicGeometryAngular, value);
         }
 
         /// <summary>Gets or sets the global shader integer property "dynamic_lights_count".</summary>
@@ -287,6 +297,7 @@ namespace AlpacaIT.DynamicLighting
             shadersGlobalKeywordQualityLow = GlobalKeyword.Create("DYNAMIC_LIGHTING_QUALITY_LOW");
             shadersGlobalKeywordQualityHigh = GlobalKeyword.Create("DYNAMIC_LIGHTING_QUALITY_HIGH");
             shadersGlobalKeywordDynamicGeometryDistanceCubes = GlobalKeyword.Create("DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES");
+            shadersGlobalKeywordDynamicGeometryAngular = GlobalKeyword.Create("DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_ANGULAR");
 
             shadersGlobalPropertyIdDynamicLights = Shader.PropertyToID("dynamic_lights");
             shadersGlobalPropertyIdDynamicLightsCount = Shader.PropertyToID("dynamic_lights_count");
@@ -309,7 +320,7 @@ namespace AlpacaIT.DynamicLighting
             shadersKeywordBounceEnabled = activateBounceLightingInCurrentScene;
 
             // enable the dynamic geometry lighting mode used in the scene during raytracing.
-            shadersKeywordDynamicGeometryDistanceCubesEnabled = dynamicGeometryLightingModeInCurrentScene == DynamicGeometryLightingMode.DistanceCubes;
+            ShadersSetDynamicGeometryLightingMode(dynamicGeometryLightingModeInCurrentScene);
 
             // switch to the default medium quality mode.
             ShadersSetRuntimeQuality(runtimeQuality);
@@ -374,6 +385,33 @@ namespace AlpacaIT.DynamicLighting
                         shadersKeywordQualityHighEnabled = true;
                         break;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Enables or disables <see cref="shadersKeywordDynamicGeometryDistanceCubesEnabled"/> and
+        /// <see cref="shadersKeywordDynamicGeometryAngularEnabled"/> and depending on the desired
+        /// lighting mode for dynamic geometry.
+        /// </summary>
+        /// <param name="mode">The lighting mode to be applied.</param>
+        private void ShadersSetDynamicGeometryLightingMode(DynamicGeometryLightingMode mode)
+        {
+            switch (mode)
+            {
+                case DynamicGeometryLightingMode.LightingOnly:
+                    shadersKeywordDynamicGeometryDistanceCubesEnabled = false;
+                    shadersKeywordDynamicGeometryAngularEnabled = false;
+                    break;
+
+                case DynamicGeometryLightingMode.DistanceCubes:
+                    shadersKeywordDynamicGeometryDistanceCubesEnabled = true;
+                    shadersKeywordDynamicGeometryAngularEnabled = false;
+                    break;
+
+                case DynamicGeometryLightingMode.Angular:
+                    shadersKeywordDynamicGeometryDistanceCubesEnabled = false;
+                    shadersKeywordDynamicGeometryAngularEnabled = true;
+                    break;
             }
         }
     }

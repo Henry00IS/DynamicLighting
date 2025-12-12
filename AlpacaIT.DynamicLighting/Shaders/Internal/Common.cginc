@@ -40,6 +40,51 @@ float rand(float co) { return frac(sin(co * (91.3458)) * 47453.5453); }
 float rand(float2 co) { return frac(sin(dot(co.xy, float2(12.9898, 78.233))) * 43758.5453); }
 float rand(float3 co) { return rand(co.xy + rand(co.z)); }
 
+// convert a direction to face index and uv [0..1].
+// standard cubemap mapping: +x, -x, +y, -y, +z, -z.
+void cubemap_get_face_and_uv(float3 dir, out uint face, out float2 uv)
+{
+    float3 absDir = abs(dir);
+    float ma;
+    float2 sc; // sc = (sc.x, sc.y) = (xc, yc) usually.
+
+    if (absDir.x > absDir.y && absDir.x > absDir.z) {
+        ma = absDir.x;
+        face = dir.x > 0 ? 0 : 1;
+        sc = (dir.x > 0) ? float2(-dir.z, -dir.y) : float2(dir.z, -dir.y);
+    } else if (absDir.y > absDir.z) {
+        ma = absDir.y;
+        face = dir.y > 0 ? 2 : 3;
+        sc = (dir.y > 0) ? float2(dir.x, dir.z) : float2(dir.x, -dir.z);
+    } else {
+        ma = absDir.z;
+        face = dir.z > 0 ? 4 : 5;
+        sc = (dir.z > 0) ? float2(dir.x, -dir.y) : float2(-dir.x, -dir.y);
+    }
+    
+    // convert range [-ma, ma] to [0, 1].
+    uv = (sc / ma) * 0.5 + 0.5;
+}
+
+// convert face index and uv [0..1] back to a direction.
+// this allows us to find the exact direction of a neighbor texel center.
+float3 cubemap_get_dir_from_face_and_uv(uint face, float2 uv)
+{
+    // remap [0, 1] back to [-1, 1].
+    float2 sc = uv * 2.0 - 1.0;
+    float3 dir;
+
+    switch (face) {
+        case 0: dir = float3(1.0, -sc.y, -sc.x); break;  // +X
+        case 1: dir = float3(-1.0, -sc.y, sc.x); break;  // -X
+        case 2: dir = float3(sc.x, 1.0, sc.y); break;    // +Y
+        case 3: dir = float3(sc.x, -1.0, -sc.y); break;  // -Y
+        case 4: dir = float3(sc.x, -sc.y, 1.0); break;   // +Z
+        case 5: dir = float3(-sc.x, -sc.y, -1.0); break; // -Z
+    }
+    return normalize(dir);
+}
+
 bool point_in_sphere(float3 pos, float3 center, float radius, float epsilon = 0.00001)
 {
     float3 dist = center - pos;

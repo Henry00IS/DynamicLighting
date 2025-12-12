@@ -730,7 +730,7 @@ namespace AlpacaIT.DynamicLighting
                 }
                 else Debug.LogError("Unable to read the dynamic lights bounding volume hierarchy file! Probably because you upgraded from an older version. Please raytrace your scene again.");
 
-                if (dynamicGeometryLightingModeInCurrentScene == DynamicGeometryLightingMode.DistanceCubes)
+                if (dynamicGeometryLightingModeInCurrentScene != DynamicGeometryLightingMode.LightingOnly)
                 {
                     // assign the dynamic lights distance cubes to a global buffer.
                     if (raycastedScene && raycastedScene.dynamicLightsDistanceCubes.Read(out var distanceCubesData))

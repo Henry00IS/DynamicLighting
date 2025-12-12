@@ -12,7 +12,7 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Initialization of the DynamicLightManager.DistanceCubes partial class.</summary>
         private void DistanceCubesInitialize()
         {
-            if (dynamicGeometryLightingModeInCurrentScene == DynamicGeometryLightingMode.DistanceCubes)
+            if (dynamicGeometryLightingModeInCurrentScene != DynamicGeometryLightingMode.LightingOnly)
             {
                 // create a cubemap with a single floating-point channel.
                 distanceCubesLookupTexture32 = new Cubemap(DynamicLightingTracer.distanceCubesResolution, TextureFormat.RFloat, false);

@@ -275,7 +275,7 @@ namespace AlpacaIT.DynamicLighting
 #endif
                 }
 
-                if (dynamicGeometryLightingMode == DynamicGeometryLightingMode.DistanceCubes)
+                if (dynamicGeometryLightingMode != DynamicGeometryLightingMode.LightingOnly)
                 {
                     // build distance cubes for dynamic mesh lighting.
                     vramDistanceCubesTotal += DistanceCubesGenerate();

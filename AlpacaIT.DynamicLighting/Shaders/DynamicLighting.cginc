@@ -2,7 +2,7 @@
 #pragma multi_compile __ DYNAMIC_LIGHTING_LIT
 #pragma multi_compile __ DYNAMIC_LIGHTING_BVH
 #pragma multi_compile __ DYNAMIC_LIGHTING_BOUNCE
-#pragma multi_compile __ DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES
+#pragma multi_compile __ DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_ANGULAR
 
 #include "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/Internal/Common.cginc"
 
@@ -41,7 +41,7 @@
 // if you want to skip all dynamic geometry lighting work, you can define the
 // disabled keyword instead of the bvh keyword and implement your own system.
 //
-#ifndef DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES
+#if !defined(DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES) && !defined(DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_ANGULAR)
     // #define DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISABLED
 #endif
 
@@ -442,6 +442,102 @@ float sample_distance_cube_trilinear(uint dynamicLightIndex, float3 world, float
 
     // perform bilinear interpolation in the x direction.
     return lerp(dy.x, dy.y, weight.x);
+}
+
+// [Angular Wedge Interpolation]
+//
+// Angular Interpolation: Instead of standard hardware bilinear sampling (which
+// can be poor for PCF on cubemaps and additionally is not available here), the
+// method explicitly calculates the four surrounding texel centers
+// (angular wedges) for a given light ray. It then uses the ray's UV coordinates
+// to derive bilinear weights. This works because many fragments in the world
+// share the same pixel on the cubemap (the angle from light source to world).
+// Imagine a pyramid coming out of the cubemap pixel, it has four fixed points
+// that never change, by calculating the precise UV coordinates this gives us
+// fixed points to apply software bilinear filtering. Since the angular size of
+// a texel projects to an increasing area with distance, the filtering naturally
+// produces a penumbra (shadow blur) that widens further from the occluder.
+// 
+// Percentage-Closer Filtering (PCF): The binary shadow result (lit or shadowed)
+// is calculated for each of the four neighbors by comparing the
+// distance-to-surface against the stored distance. These four binary results
+// are then blended using the bilinear weights to produce a smooth, filtered
+// shadow value between 0.0 and 1.0. This Angular Interpolation provides a
+// high-quality, continuous shadow coverage over the light's sphere of influence.
+//
+// Copyright (c) 2025, Henry de Jongh. All rights reserved.
+// This code is licensed under the MIT License.
+//
+float sample_distance_cube_angular(uint dynamicLightIndex, float light_distanceSqr, float3 light_position_minus_world, float3 normal)
+{
+    // calculate the cube data offset in memory.
+    uint cubeDataOffset = dynamicLightIndex * 64 * 64 * 3;
+    
+    // determine which "fixed points" (texels) surround our ray.
+    uint face; 
+    float2 uv;
+    cubemap_get_face_and_uv(light_position_minus_world, face, uv);
+
+    // scale uv to grid coordinates (0 to 64).
+    float2 grid_uv = uv * 64.0;
+    
+    // offset by -0.5 because pixel centers are at 0.5.
+    // we want to find the top-left index relative to the grid centers.
+    float2 base_grid = grid_uv - 0.5;
+    
+    // floor to get the integer coordinate of the top-left neighbor.
+    float2 grid_pos = floor(base_grid);
+    
+    // the fraction is our bilinear weight.
+    float2 weight = frac(base_grid);
+    
+    // fixme: sqrt is only for the bias calculation and that is sad.
+    float light_distance = sqrt(light_distanceSqr);
+
+    // sample 4 neighbors (quadrilinear angular filter).
+    // we accumulate occlusion, not distance, to prevent light bleeding artifacts.
+    float shadow_accum = 0.0;
+
+    [unroll]
+    for (int y = 0; y <= 1; y++)
+    {
+        [unroll]
+        for (int x = 0; x <= 1; x++)
+        {
+            // calculate the uv coordinates of the neighbor's texel center.
+            // we add 0.5 to move from integer grid back to texture center.
+            float2 neighbor_uv = (grid_pos + float2(x, y) + 0.5) / 64.0;
+
+            // reconstruct the exact direction for this texel center.
+            // note: if uv > 1.0, this function naturally wraps to the correct direction
+            // on the adjacent face, leveraging the cubemap's spherical nature!
+            float3 neighbor_dir = cubemap_get_dir_from_face_and_uv(face, neighbor_uv);
+
+            // we use the reconstructed neighbor direction to get the index.
+            uint index = dynamic_lights_distance_cubes_lookup32.SampleLevel(sampler_dynamic_lights_distance_cubes_lookup32, neighbor_dir, 0);
+            
+            // unpack the correct f16 distance.
+            uint packed_val = dynamic_lights_distance_cubes[cubeDataOffset + (index >> 1u)];
+            float stored_dist = f16tof32(packed_val >> ((index & 1u) * 16u));
+            
+            // fixme: bias madness, this is bad guesswork that needs to be fixed.
+            // fixme: sqrt.
+            stored_dist += 0.1 + max(0, 1.0 - dot(normal, normalize(light_position_minus_world))) * (0.1 + light_distance * 0.04);
+            
+            // standard shadow comparison.
+            float is_lit = (light_distanceSqr <= stored_dist * stored_dist) ? 1.0 : 0.0;
+            
+            // bilinear weighting.
+            //float w = (x == 0 ? (1.0 - weight.x) : weight.x) * (y == 0 ? (1.0 - weight.y) : weight.y);
+            float w_x = lerp(1.0 - weight.x, weight.x, (float)x); // todo: benchmark and try SIMD.
+            float w_y = lerp(1.0 - weight.y, weight.y, (float)y);
+            float w = w_x * w_y;
+                      
+            shadow_accum += is_lit * w;
+        }
+    }
+
+    return shadow_accum;
 }
 
 // [dynamic triangles technique]
@@ -884,7 +980,7 @@ float4 dynamic_lighting_unity_LightmapST;
 
 // next we prepare macro statements that shaders use to implement their fragment functions.
 
-#ifdef DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES
+#if defined(DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES) || defined(DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_ANGULAR)
     #define DYNLIT_FRAGMENT_FUNCTION \
     void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, bool is_front_face:SV_IsFrontFace, int bvhLightIndex, inout DynamicLight light, inout DynamicTriangle dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS);\
     \
@@ -1030,7 +1126,7 @@ float4 dynamic_lighting_unity_LightmapST;
 
 #endif
 
-#ifdef DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES
+#if defined(DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES) || defined(DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_ANGULAR)
     #define DYNLIT_FRAGMENT_LIGHT void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, bool is_front_face:SV_IsFrontFace, int bvhLightIndex, inout DynamicLight light, inout DynamicTriangle dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS)
 #else
     #define DYNLIT_FRAGMENT_LIGHT void dynlit_frag_light(v2f i, uint triangle_index:SV_PrimitiveID, bool is_front_face:SV_IsFrontFace, inout DynamicLight light, inout DynamicTriangle dynamic_triangle, DYNLIT_FRAGMENT_LIGHT_OUT_PARAMETERS)
