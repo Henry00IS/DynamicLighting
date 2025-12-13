@@ -127,8 +127,8 @@ if (light.is_shadow_available())
     float mD = moments.x - fragDepth;
     float mD_2 = mD * mD;
     float p = variance / (variance + mD_2);
-    float res = map = max(p, fragDepth - (0.0075 * fragDepth) <= moments.x);
-    map = ReduceLightBleeding(res, max(max(0.3, 1.0 - NdotL), fragDepth));
+    float res = max(p, fragDepth - (0.0075 * fragDepth) <= moments.x);
+    map *= ReduceLightBleeding(res, max(max(0.3, 1.0 - NdotL), fragDepth));
 }
 #endif
 
