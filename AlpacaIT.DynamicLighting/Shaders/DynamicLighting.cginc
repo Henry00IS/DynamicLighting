@@ -468,75 +468,92 @@ float sample_distance_cube_trilinear(uint dynamicLightIndex, float3 world, float
 // Copyright (c) 2025, Henry de Jongh. All rights reserved.
 // This code is licensed under the MIT License.
 //
-float sample_distance_cube_angular(uint dynamicLightIndex, float light_distanceSqr, float3 light_position_minus_world, float3 normal)
+float sample_distance_cube_angular(uint dynamicLightIndex, float light_distanceSqr, float3 light_direction, float3 normal, float NdotL)
 {
     // calculate the cube data offset in memory.
     uint cubeDataOffset = dynamicLightIndex * 64 * 64 * 3;
     
-    // determine which "fixed points" (texels) surround our ray.
+    // determine which cubemap face and uv coordinate corresponds to the light direction.
     uint face; 
     float2 uv;
-    cubemap_get_face_and_uv(light_position_minus_world, face, uv);
+    cubemap_get_face_and_uv(light_direction, face, uv);
 
-    // scale uv to grid coordinates (0 to 64).
+    // scale uv to grid coordinates ([0-64] 64x64 resolution).
     float2 grid_uv = uv * 64.0;
     
-    // offset by -0.5 because pixel centers are at 0.5.
-    // we want to find the top-left index relative to the grid centers.
+    // offset by half a texel to sample from the center of the grid cells.
     float2 base_grid = grid_uv - 0.5;
     
-    // floor to get the integer coordinate of the top-left neighbor.
+    // calculate the integer grid position (fixed top-left anchor).
     float2 grid_pos = floor(base_grid);
     
-    // the fraction is our bilinear weight.
+    // calculate fractional weights for bilinear interpolation.
     float2 weight = frac(base_grid);
     
-    // fixme: sqrt is only for the bias calculation and that is sad.
+    // precompute geometry data.
     float light_distance = sqrt(light_distanceSqr);
+    
+    // calculate bias based on the angle of incidence to prevent shadow acne.
+    float bias = 0.05 + 0.05 * (1.0 - NdotL);
+    NdotL = max(0.001, NdotL);
 
     // sample 4 neighbors (quadrilinear angular filter).
-    // we accumulate occlusion, not distance, to prevent light bleeding artifacts.
     float shadow_accum = 0.0;
 
+    // iterate over the 2x2 block of neighboring texels (angular wedges):
     [unroll]
     for (int y = 0; y <= 1; y++)
     {
+        // pre-calculate bilinear y weight for this neighbor.
+        float w_y = (y == 0) ? (1.0 - weight.y) : weight.y;
+        
         [unroll]
         for (int x = 0; x <= 1; x++)
         {
-            // calculate the uv coordinates of the neighbor's texel center.
-            // we add 0.5 to move from integer grid back to texture center.
+            // calculate the uv coordinate of the current neighbor.
+            // we add 0.5 to move from integer grid (top-left) back to texture center.
             float2 neighbor_uv = (grid_pos + float2(x, y) + 0.5) / 64.0;
 
-            // reconstruct the exact direction for this texel center.
-            // note: if uv > 1.0, this function naturally wraps to the correct direction
-            // on the adjacent face, leveraging the cubemap's spherical nature!
+            // reconstruct the direction vector for this specific neighbor texel.
             float3 neighbor_dir = cubemap_get_dir_from_face_and_uv(face, neighbor_uv);
 
-            // we use the reconstructed neighbor direction to get the index.
+            // we use the reconstructed neighbor direction to get the buffer index.
             uint index = dynamic_lights_distance_cubes_lookup32.SampleLevel(sampler_dynamic_lights_distance_cubes_lookup32, neighbor_dir, 0);
             
-            // unpack the correct f16 distance.
+            // retrieve the packed f16 distance value from the buffer using the index.
+            // unpack the high or low 16 bits depending on the index parity.
             uint packed_val = dynamic_lights_distance_cubes[cubeDataOffset + (index >> 1u)];
             float stored_dist = f16tof32(packed_val >> ((index & 1u) * 16u));
+           
+            // calculate the angle between the surface normal and the neighbor ray.
+            float NdotRay = max(0.001, dot(normal, neighbor_dir));
+
+            // analytic plane distance:
+            // project the distance onto the surface plane. this compensates for the parallax error
+            // when sampling neighboring rays that strike a flat surface at an angle.
+            // this is the distance the light ray would travel to hit this flat wall
+            // if it were traveling along the 'neighbor_dir' vector.
+            float plane_dist = light_distance * (NdotL / NdotRay);
             
-            // fixme: bias madness, this is bad guesswork that needs to be fixed.
-            // fixme: sqrt.
-            stored_dist += 0.1 + max(0, 1.0 - dot(normal, normalize(light_position_minus_world))) * (0.1 + light_distance * 0.04);
+            // hybrid shadow test: calculate both spherical and planar occlusion.
+            float2 is_lits = step(float2(light_distance - bias, plane_dist),
+                                  float2(stored_dist, stored_dist + bias));
             
-            // standard shadow comparison.
-            float is_lit = (light_distanceSqr <= stored_dist * stored_dist) ? 1.0 : 0.0;
+            // blend between the two methods based on the incidence angle to reduce leaks.
+            // additionally this is import for half-lambert occlusion that will visually
+            // render lines when the analytic plane distance gets too close to zero.
+            float t = 1.0 - saturate(0.1 - NdotL) * 10.0; // i.e. divide by 0.1.
+            float is_lit = lerp(is_lits.x, is_lits.y, t * t * t * t);
             
-            // bilinear weighting.
-            //float w = (x == 0 ? (1.0 - weight.x) : weight.x) * (y == 0 ? (1.0 - weight.y) : weight.y);
-            float w_x = lerp(1.0 - weight.x, weight.x, (float)x); // todo: benchmark and try SIMD.
-            float w_y = lerp(1.0 - weight.y, weight.y, (float)y);
-            float w = w_x * w_y;
-                      
-            shadow_accum += is_lit * w;
+            // calculate bilinear weight for this neighbor.
+            float w_x = (x == 0) ? (1.0 - weight.x) : weight.x;
+            
+            // accumulate the weighted shadow result.
+            shadow_accum += is_lit * w_x * w_y;
         }
     }
 
+    // return the final interpolated shadow intensity.
     return shadow_accum;
 }
 

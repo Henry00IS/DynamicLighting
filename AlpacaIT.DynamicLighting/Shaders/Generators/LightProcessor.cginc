@@ -27,6 +27,10 @@ light_direction = normalize(light_direction);
     float NdotL = dot(GENERATE_NORMAL, light_direction);
 #endif
 
+#if defined(DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_ANGULAR)
+    float NdotL_original = NdotL;
+#endif
+
 #ifndef DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISABLED
 if (lightmap_resolution > 0)
 {
@@ -110,7 +114,7 @@ else if (bvhLightIndex != -1)
 #ifdef DYNAMIC_LIGHTING_DYNAMIC_GEOMETRY_DISTANCE_CUBES
     map = sample_distance_cube_trilinear(bvhLightIndex, i.world, light.position);
 #else
-    map = sample_distance_cube_angular(bvhLightIndex, light_distanceSqr, light_position_minus_world, i.normal);
+    map = sample_distance_cube_angular(bvhLightIndex, light_distanceSqr, light_direction, i.normal, NdotL_original);
 #endif
 }
 #endif
