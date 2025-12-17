@@ -6,8 +6,8 @@ namespace AlpacaIT.DynamicLighting
 
     public partial class DynamicLightManager
     {
-        /// <summary>The cubemap texture for a 32x32x6 cubemap lookup table.</summary>
-        private Cubemap distanceCubesLookupTexture32;
+        /// <summary>The cubemap texture for a 64x64x6 cubemap index lookup table.</summary>
+        private Cubemap distanceCubesIndexLookupTexture;
 
         /// <summary>Initialization of the DynamicLightManager.DistanceCubes partial class.</summary>
         private void DistanceCubesInitialize()
@@ -15,38 +15,38 @@ namespace AlpacaIT.DynamicLighting
             if (dynamicGeometryLightingModeInCurrentScene != DynamicGeometryLightingMode.LightingOnly)
             {
                 // create a cubemap with a single floating-point channel.
-                distanceCubesLookupTexture32 = new Cubemap(DynamicLightingTracer.distanceCubesResolution, TextureFormat.RFloat, false);
-                distanceCubesLookupTexture32.filterMode = FilterMode.Point;
+                distanceCubesIndexLookupTexture = new Cubemap(DynamicLightingTracer.distanceCubesResolution, TextureFormat.RFloat, false);
+                distanceCubesIndexLookupTexture.filterMode = FilterMode.Point;
 
-                // build the lookup texture.
-                DistanceCubesBuild(DynamicLightingTracer.distanceCubesResolution);
+                // build the lookup textures.
+                DistanceCubesBuildIndex(DynamicLightingTracer.distanceCubesResolution);
 
                 // set the global texture for use in shaders.
-                ShadersSetGlobalDynamicLightsDistanceCubesLookup32(distanceCubesLookupTexture32);
+                ShadersSetGlobalDynamicLightsDistanceCubesIndexLookup(distanceCubesIndexLookupTexture);
             }
         }
 
         /// <summary>Cleanup of the DynamicLightManager.DistanceCubes partial class.</summary>
         private void DistanceCubesCleanup()
         {
-            if (distanceCubesLookupTexture32)
-                DestroyImmediate(distanceCubesLookupTexture32);
-            distanceCubesLookupTexture32 = null;
+            if (distanceCubesIndexLookupTexture)
+                DestroyImmediate(distanceCubesIndexLookupTexture);
+            distanceCubesIndexLookupTexture = null;
         }
 
-        private void DistanceCubesBuild(int size)
+        private void DistanceCubesBuildIndex(int size)
         {
             for (int face = 0; face < 6; face++)
             {
-                DistanceCubesBuildFace(face, size);
+                DistanceCubesBuildIndexFace(face, size);
             }
 
             // apply the changes to the cubemap texture.
-            distanceCubesLookupTexture32.Apply();
+            distanceCubesIndexLookupTexture.Apply();
         }
 
         /// <summary>Builds a single face of the cubemap lookup texture.</summary>
-        private void DistanceCubesBuildFace(int faceIndex, int size)
+        private void DistanceCubesBuildIndexFace(int faceIndex, int size)
         {
             var sizeSqr = size * size;
             var colors = new Color[sizeSqr];
@@ -76,7 +76,7 @@ namespace AlpacaIT.DynamicLighting
                     colors[i].r = index++;
             }
 
-            distanceCubesLookupTexture32.SetPixels(colors, (CubemapFace)faceIndex, 0);
+            distanceCubesIndexLookupTexture.SetPixels(colors, (CubemapFace)faceIndex, 0);
         }
     }
 }

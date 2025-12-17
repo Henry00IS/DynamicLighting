@@ -68,20 +68,28 @@ void cubemap_get_face_and_uv(float3 dir, out uint face, out float2 uv)
 
 // convert face index and uv [0..1] back to a direction.
 // this allows us to find the exact direction of a neighbor texel center.
-float3 cubemap_get_dir_from_face_and_uv(uint face, float2 uv)
+float3 cubemap_get_dir(uint face, float2 uv)
 {
-    // remap [0, 1] back to [-1, 1].
-    float2 sc = uv * 2.0 - 1.0;
-    float3 dir;
+    static const float3 FaceOrigins[6] = {
+        float3(1,1,1),   // +X
+        float3(-1,1,-1), // -X
+        float3(-1,1,-1), // +Y
+        float3(-1,-1,1), // -Y
+        float3(-1,1,1),  // +Z
+        float3(1,1,-1)   // -Z
+    };
 
-    switch (face) {
-        case 0: dir = float3(1.0, -sc.y, -sc.x); break;  // +X
-        case 1: dir = float3(-1.0, -sc.y, sc.x); break;  // -X
-        case 2: dir = float3(sc.x, 1.0, sc.y); break;    // +Y
-        case 3: dir = float3(sc.x, -1.0, -sc.y); break;  // -Y
-        case 4: dir = float3(sc.x, -sc.y, 1.0); break;   // +Z
-        case 5: dir = float3(-sc.x, -sc.y, -1.0); break; // -Z
-    }
+    static const float3 FaceRights[6] = {
+        float3(0,0,-2), float3(0,0,2),  float3(2,0,0), 
+        float3(2,0,0),  float3(2,0,0),  float3(-2,0,0)
+    };
+
+    static const float3 FaceUps[6] = {
+        float3(0,-2,0), float3(0,-2,0), float3(0,0,2), 
+        float3(0,0,-2), float3(0,-2,0), float3(0,-2,0)
+    };
+    
+    float3 dir = FaceOrigins[face] + (uv.x * FaceRights[face]) + (uv.y * FaceUps[face]);
     return normalize(dir);
 }
 

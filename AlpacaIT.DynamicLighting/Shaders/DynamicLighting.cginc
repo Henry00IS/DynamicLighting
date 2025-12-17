@@ -378,13 +378,13 @@ float3 dynamic_ambient_color;
 //
 StructuredBuffer<uint> dynamic_lights_distance_cubes;
 
-TextureCube dynamic_lights_distance_cubes_lookup32;
-sampler sampler_dynamic_lights_distance_cubes_lookup32;
+TextureCube dynamic_lights_distance_cubes_index_lookup;
+sampler sampler_dynamic_lights_distance_cubes_index_lookup;
 
 float sample_distance_cube(uint cubeDataOffset, float3 dir)
 {
     // sample the cubemap lookup texture of array indices to avoid doing complex math.
-    uint index = dynamic_lights_distance_cubes_lookup32.SampleLevel(sampler_dynamic_lights_distance_cubes_lookup32, dir, 0);
+    uint index = dynamic_lights_distance_cubes_index_lookup.SampleLevel(sampler_dynamic_lights_distance_cubes_index_lookup, dir, 0);
     
     // unpack the distance value that is packed as two f16 per u32.
     uint packed = dynamic_lights_distance_cubes[cubeDataOffset + (index >> 1u)];
@@ -474,10 +474,10 @@ float sample_distance_cube_angular(uint dynamicLightIndex, float light_distanceS
     uint cubeDataOffset = dynamicLightIndex * 64 * 64 * 3;
     
     // determine which cubemap face and uv coordinate corresponds to the light direction.
-    uint face; 
+    uint face;
     float2 uv;
     cubemap_get_face_and_uv(light_direction, face, uv);
-
+    
     // scale uv to grid coordinates ([0-64] 64x64 resolution).
     float2 grid_uv = uv * 64.0;
     
@@ -485,7 +485,8 @@ float sample_distance_cube_angular(uint dynamicLightIndex, float light_distanceS
     float2 base_grid = grid_uv - 0.5;
     
     // calculate the integer grid position (fixed top-left anchor).
-    float2 grid_pos = floor(base_grid);
+    // we add 0.5 to move from integer grid (top-left) back to texture center.
+    float2 center_pos = floor(base_grid) + 0.5;
     
     // calculate fractional weights for bilinear interpolation.
     float2 weight = frac(base_grid);
@@ -499,31 +500,36 @@ float sample_distance_cube_angular(uint dynamicLightIndex, float light_distanceS
 
     // sample 4 neighbors (quadrilinear angular filter).
     float shadow_accum = 0.0;
+    
+    // prepare blending between two bias methods.
+    float t = pow(saturate(NdotL * 10.0), 4.0); // i.e. divide by 0.1 and then ^4.
+    
+    // prepare projecting the distance onto the surface plane.
+    float light_distance_ndotl = light_distance * NdotL;
 
     // iterate over the 2x2 block of neighboring texels (angular wedges):
     [unroll]
     for (int y = 0; y <= 1; y++)
     {
-        // pre-calculate bilinear y weight for this neighbor.
+        // calculate bilinear y-weight for this neighbor.
         float w_y = (y == 0) ? (1.0 - weight.y) : weight.y;
         
         [unroll]
         for (int x = 0; x <= 1; x++)
         {
             // calculate the uv coordinate of the current neighbor.
-            // we add 0.5 to move from integer grid (top-left) back to texture center.
-            float2 neighbor_uv = (grid_pos + float2(x, y) + 0.5) / 64.0;
+            float2 neighbor_uv = (center_pos + float2(x, y)) / 64.0;
 
             // reconstruct the direction vector for this specific neighbor texel.
-            float3 neighbor_dir = cubemap_get_dir_from_face_and_uv(face, neighbor_uv);
+            float3 neighbor_dir = cubemap_get_dir(face, neighbor_uv);
 
             // we use the reconstructed neighbor direction to get the buffer index.
-            uint index = dynamic_lights_distance_cubes_lookup32.SampleLevel(sampler_dynamic_lights_distance_cubes_lookup32, neighbor_dir, 0);
+            uint index = dynamic_lights_distance_cubes_index_lookup.SampleLevel(sampler_dynamic_lights_distance_cubes_index_lookup, neighbor_dir, 0);
             
             // retrieve the packed f16 distance value from the buffer using the index.
             // unpack the high or low 16 bits depending on the index parity.
             uint packed_val = dynamic_lights_distance_cubes[cubeDataOffset + (index >> 1u)];
-            float stored_dist = f16tof32(packed_val >> ((index & 1u) * 16u));
+            float stored_dist = f16tof32(packed_val >> ((index & 1u) * 16u)) + bias; // bias!
            
             // calculate the angle between the surface normal and the neighbor ray.
             float NdotRay = max(0.001, dot(normal, neighbor_dir));
@@ -533,19 +539,17 @@ float sample_distance_cube_angular(uint dynamicLightIndex, float light_distanceS
             // when sampling neighboring rays that strike a flat surface at an angle.
             // this is the distance the light ray would travel to hit this flat wall
             // if it were traveling along the 'neighbor_dir' vector.
-            float plane_dist = light_distance * (NdotL / NdotRay);
+            float plane_dist = light_distance_ndotl / NdotRay;
             
             // hybrid shadow test: calculate both spherical and planar occlusion.
-            float2 is_lits = step(float2(light_distance - bias, plane_dist),
-                                  float2(stored_dist, stored_dist + bias));
+            float2 is_lits = step(float2(light_distance, plane_dist), stored_dist.xx);
             
             // blend between the two methods based on the incidence angle to reduce leaks.
-            // additionally this is import for half-lambert occlusion that will visually
+            // additionally this is important for half-lambert occlusion that will visually
             // render lines when the analytic plane distance gets too close to zero.
-            float t = 1.0 - saturate(0.1 - NdotL) * 10.0; // i.e. divide by 0.1.
-            float is_lit = lerp(is_lits.x, is_lits.y, t * t * t * t);
+            float is_lit = lerp(is_lits.x, is_lits.y, t);
             
-            // calculate bilinear weight for this neighbor.
+            // calculate bilinear x-weight for this neighbor.
             float w_x = (x == 0) ? (1.0 - weight.x) : weight.x;
             
             // accumulate the weighted shadow result.

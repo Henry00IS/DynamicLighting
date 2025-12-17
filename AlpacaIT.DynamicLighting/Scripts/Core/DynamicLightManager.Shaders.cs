@@ -94,8 +94,8 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Global <see cref="Shader.PropertyToID"/> for buffer "dynamic_lights_distance_cubes".</summary>
         private int shadersGlobalPropertyIdDynamicLightsDistanceCubes;
 
-        /// <summary>Global <see cref="Shader.PropertyToID"/> for texture "dynamic_lights_distance_cubes_lookup32".</summary>
-        private int shadersGlobalPropertyIdDynamicLightsDistanceCubesLookup32;
+        /// <summary>Global <see cref="Shader.PropertyToID"/> for texture "dynamic_lights_distance_cubes_index_lookup".</summary>
+        private int shadersGlobalPropertyIdDynamicLightsDistanceCubesIndexLookup;
 
         /// <summary>Global <see cref="Shader.PropertyToID"/> for float "dynamic_lighting_shadow_depth_light_radius".</summary>
         private int shadersGlobalPropertyIdDynamicLightingShadowDepthLightRadius;
@@ -279,10 +279,10 @@ namespace AlpacaIT.DynamicLighting
             Shader.SetGlobalBuffer(shadersGlobalPropertyIdDynamicLightsDistanceCubes, buffer);
         }
 
-        /// <summary>Sets the global shader texture property "dynamic_lights_distance_cubes_lookup32".</summary>
-        private void ShadersSetGlobalDynamicLightsDistanceCubesLookup32(Cubemap texture)
+        /// <summary>Sets the global shader texture property "dynamic_lights_distance_cubes_index_lookup".</summary>
+        private void ShadersSetGlobalDynamicLightsDistanceCubesIndexLookup(Cubemap texture)
         {
-            Shader.SetGlobalTexture(shadersGlobalPropertyIdDynamicLightsDistanceCubesLookup32, texture);
+            Shader.SetGlobalTexture(shadersGlobalPropertyIdDynamicLightsDistanceCubesIndexLookup, texture);
         }
 
         /// <summary>
@@ -305,7 +305,7 @@ namespace AlpacaIT.DynamicLighting
             shadersGlobalPropertyIdDynamicAmbientColor = Shader.PropertyToID("dynamic_ambient_color");
             shadersGlobalPropertyIdDynamicLightsBvh = Shader.PropertyToID("dynamic_lights_bvh");
             shadersGlobalPropertyIdDynamicLightsDistanceCubes = Shader.PropertyToID("dynamic_lights_distance_cubes");
-            shadersGlobalPropertyIdDynamicLightsDistanceCubesLookup32 = Shader.PropertyToID("dynamic_lights_distance_cubes_lookup32");
+            shadersGlobalPropertyIdDynamicLightsDistanceCubesIndexLookup = Shader.PropertyToID("dynamic_lights_distance_cubes_index_lookup");
             shadersGlobalPropertyIdDynamicLightingShadowDepthLightRadius = Shader.PropertyToID("dynamic_lighting_shadow_depth_light_radius");
 
             // upon startup (or level transitions):
