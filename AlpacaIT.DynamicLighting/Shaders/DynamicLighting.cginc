@@ -482,7 +482,7 @@ float sample_distance_cube_angular(uint dynamicLightIndex, float light_distanceS
     float2 grid_uv = uv * 64.0;
     
     // offset by half a texel to sample from the center of the grid cells.
-    float2 base_grid = grid_uv - 0.5;
+    float2 base_grid = grid_uv - 0.49805; // fixme: small rounding error since gatherred.
     
     // calculate the integer grid position (fixed top-left anchor).
     // we add 0.5 to move from integer grid (top-left) back to texture center.
@@ -506,6 +506,9 @@ float sample_distance_cube_angular(uint dynamicLightIndex, float light_distanceS
     
     // prepare projecting the distance onto the surface plane.
     float light_distance_ndotl = light_distance * NdotL;
+    
+    // gather gives us 2x2 indices in one call.
+    float4 indices = dynamic_lights_distance_cubes_index_lookup.GatherRed(sampler_dynamic_lights_distance_cubes_index_lookup, light_direction).wzxy;
 
     // iterate over the 2x2 block of neighboring texels (angular wedges):
     [unroll]
@@ -523,8 +526,8 @@ float sample_distance_cube_angular(uint dynamicLightIndex, float light_distanceS
             // reconstruct the direction vector for this specific neighbor texel.
             float3 neighbor_dir = cubemap_get_dir(face, neighbor_uv);
 
-            // we use the reconstructed neighbor direction to get the buffer index.
-            uint index = dynamic_lights_distance_cubes_index_lookup.SampleLevel(sampler_dynamic_lights_distance_cubes_index_lookup, neighbor_dir, 0);
+            // fetch the current buffer index.
+            uint index = indices[y * 2 + x];
             
             // retrieve the packed f16 distance value from the buffer using the index.
             // unpack the high or low 16 bits depending on the index parity.

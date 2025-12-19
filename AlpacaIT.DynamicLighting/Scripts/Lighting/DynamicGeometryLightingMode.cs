@@ -13,27 +13,28 @@ namespace AlpacaIT.DynamicLighting
         LightingOnly = 0,
 
         /// <summary>
-        /// Dynamic geometry that has not been raytraced, will read low-resolution shadows casted by
-        /// static geometry that never update using a technique similar to shadow mapping (default).
+        /// Dynamic geometry that has not been raytraced, will receive low-resolution shadows casted
+        /// by static geometry that never update using a technique similar to shadow mapping.
         /// <para>
         /// This technique treats the world as voxels for interpolation, this works well but you can
         /// see the boxes (sometimes floating boxes of shadow in mid-air).
         /// </para>
         /// </summary>
-        [Tooltip("Dynamic geometry that has not been raytraced, will read low-resolution shadows casted by static geometry that never update using a technique similar to shadow mapping (default).\r\n\r\nThis technique treats the world as voxels for interpolation, this works well but you can see the boxes (sometimes floating boxes of shadow in mid-air).")]
-        [InspectorName("Cubic Interpolation")]
+        [Tooltip("Dynamic geometry that has not been raytraced, will receive low-resolution shadows casted by static geometry that never update using a technique similar to shadow mapping.\r\n\r\nThis technique treats the world as voxels for interpolation, this works well but you can see the boxes (sometimes floating boxes of shadow in mid-air).")]
+        [InspectorName("Cubic Interpolation (Deprecated)")]
         DistanceCubes = 1,
 
         /// <summary>
-        /// Dynamic geometry that has not been raytraced, will read low-resolution shadows casted by
-        /// static geometry that never update using a technique similar to shadow mapping.
+        /// Dynamic geometry that has not been raytraced, will receive shadows using high-quality
+        /// angular filtering (default).
         /// <para>
-        /// This is a new technique that works more like regular shadow mapping, accurate smooth
-        /// shadows. Extreme angles can cause visible wedges that look out of place.
+        /// This technique treats light as a series of expanding wedges radiating from the source.
+        /// It calculates smooth gradients between shadow pixels, resulting in soft, natural
+        /// penumbras that realistically blur as the distance from the shadow-caster increases.
         /// </para>
         /// </summary>
-        [Tooltip("Dynamic geometry that has not been raytraced, will read low-resolution shadows casted by static geometry that never update using a technique similar to shadow mapping.\r\n\r\nThis is a new technique that works more like regular shadow mapping, accurate smooth shadows. Extreme angles can cause visible wedges that look out of place.")]
-        [InspectorName("Angular Interpolation (New!)")]
+        [Tooltip("Dynamic geometry that has not been raytraced, will receive shadows using high-quality angular filtering (default).\r\n\r\nThis technique treats light as a series of expanding wedges radiating from the source. It calculates smooth gradients between shadow pixels, resulting in soft, natural penumbras that realistically blur as the distance from the shadow-caster increases.")]
+        [InspectorName("Angular Interpolation")]
         Angular = 2,
     }
 }

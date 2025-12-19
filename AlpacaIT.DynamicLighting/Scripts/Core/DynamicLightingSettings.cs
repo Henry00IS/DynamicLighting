@@ -74,7 +74,7 @@ namespace AlpacaIT.DynamicLighting
             pixelDensityPerSquareMeter = 128;
             bounceLightingCompression = DynamicBounceLightingDefaultCompressionMode.EightBitsPerPixel;
             lightTrackingMode = DynamicLightTrackingMode.LiveTracking;
-            dynamicGeometryLightingMode = DynamicGeometryLightingMode.DistanceCubes;
+            dynamicGeometryLightingMode = DynamicGeometryLightingMode.Angular;
 
             TryApply();
         }

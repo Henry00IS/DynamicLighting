@@ -295,7 +295,7 @@ namespace AlpacaIT.DynamicLighting
         /// </para>
         /// </summary>
         [Tooltip("The lighting mode for dynamic geometry that was not raytraced.\n\nNote that any adjustments to this setting require raytracing the scene again for the changes to take effect.")]
-        public DynamicGeometryLightingMode dynamicGeometryLightingMode = DynamicGeometryLightingMode.DistanceCubes;
+        public DynamicGeometryLightingMode dynamicGeometryLightingMode = DynamicGeometryLightingMode.Angular;
 
         /// <summary>
         /// The runtime quality for Dynamic Lighting in the scene. These options should be available

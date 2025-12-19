@@ -26,7 +26,7 @@ namespace AlpacaIT.DynamicLighting
         public DynamicLightingTracerFlags tracerFlags = DynamicLightingTracerFlags.None;
 
         /// <summary>The lighting mode for dynamic geometry that was not raytraced.</summary>
-        public DynamicGeometryLightingMode dynamicGeometryLightingMode = DynamicGeometryLightingMode.DistanceCubes;
+        public DynamicGeometryLightingMode dynamicGeometryLightingMode = DynamicGeometryLightingMode.Angular;
 
         /// <summary>Called when this tracer instance has been cancelled.</summary>
 #pragma warning disable CS0067
