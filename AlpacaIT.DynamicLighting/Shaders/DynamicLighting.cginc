@@ -508,7 +508,7 @@ float sample_distance_cube_angular(uint dynamicLightIndex, float light_distanceS
     float light_distance_ndotl = light_distance * NdotL;
     
     // gather gives us 2x2 indices in one call.
-    float4 indices = dynamic_lights_distance_cubes_index_lookup.GatherRed(sampler_dynamic_lights_distance_cubes_index_lookup, light_direction).wzxy;
+    uint4 indices = dynamic_lights_distance_cubes_index_lookup.GatherRed(sampler_dynamic_lights_distance_cubes_index_lookup, light_direction).wzxy;
 
     // iterate over the 2x2 block of neighboring texels (angular wedges):
     [unroll]
@@ -516,6 +516,7 @@ float sample_distance_cube_angular(uint dynamicLightIndex, float light_distanceS
     {
         // calculate bilinear y-weight for this neighbor.
         float w_y = (y == 0) ? (1.0 - weight.y) : weight.y;
+        uint y_times_two = y * 2;
         
         [unroll]
         for (int x = 0; x <= 1; x++)
@@ -527,7 +528,7 @@ float sample_distance_cube_angular(uint dynamicLightIndex, float light_distanceS
             float3 neighbor_dir = cubemap_get_dir(face, neighbor_uv);
 
             // fetch the current buffer index.
-            uint index = indices[y * 2 + x];
+            uint index = indices[y_times_two + x];
             
             // retrieve the packed f16 distance value from the buffer using the index.
             // unpack the high or low 16 bits depending on the index parity.
