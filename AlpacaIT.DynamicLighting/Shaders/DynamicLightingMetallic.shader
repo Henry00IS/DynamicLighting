@@ -49,6 +49,7 @@ Shader "Dynamic Lighting/Metallic"
             #pragma shader_feature_local _ DYNAMIC_LIGHTING_CULL_FRONT DYNAMIC_LIGHTING_CULL_OFF
 
             #include "UnityCG.cginc"
+            #include "UnityStandardUtils.cginc"
             #include_with_pragmas "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/DynamicLighting.cginc"
 
             struct appdata
@@ -198,6 +199,17 @@ Shader "Dynamic Lighting/Metallic"
                 
                 // reflecting a ray from the camera against the object surface.
                 float3 reflection = reflect(-V, worldNormal);
+
+                // adjust the reflection direction for box projection.
+                #ifdef UNITY_SPECCUBE_BOX_PROJECTION
+                    reflection = BoxProjectedCubemapDirection(
+                        reflection, i.world,
+                        unity_SpecCube0_ProbePosition,
+                        unity_SpecCube0_BoxMin,
+                        unity_SpecCube0_BoxMax
+                    );
+                #endif
+
                 // sample the default cubemap provided by unity.
                 float4 skyData = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, reflection, roughness * 4.0);
                 float3 skyColor = DecodeHDR(skyData, unity_SpecCube0_HDR);
