@@ -200,21 +200,35 @@ Shader "Dynamic Lighting/Metallic"
                 // reflecting a ray from the camera against the object surface.
                 float3 reflection = reflect(-V, worldNormal);
 
-                // adjust the reflection direction for box projection.
+                // sample the primary reflection probe provided by unity.
+                float3 refl0 = reflection;
                 #ifdef UNITY_SPECCUBE_BOX_PROJECTION
-                    reflection = BoxProjectedCubemapDirection(
-                        reflection, i.world,
-                        unity_SpecCube0_ProbePosition,
-                        unity_SpecCube0_BoxMin,
-                        unity_SpecCube0_BoxMax
-                    );
+                    // adjust the reflection direction for box projection.
+                    refl0 = BoxProjectedCubemapDirection(refl0, i.world, unity_SpecCube0_ProbePosition, unity_SpecCube0_BoxMin, unity_SpecCube0_BoxMax);
+                #endif
+                float3 skyColor = DecodeHDR(UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, refl0, roughness * 4.0), unity_SpecCube0_HDR);
+
+                // sample the secondary reflection probe (blending).
+                #ifdef UNITY_SPECCUBE_BLENDING
+                    float blendLerp = unity_SpecCube0_BoxMin.w;
+                    if (blendLerp < 0.99999)
+                    {
+                        float3 refl1 = reflection;
+                        #ifdef UNITY_SPECCUBE_BOX_PROJECTION
+                            // adjust the reflection direction for box projection.
+                            refl1 = BoxProjectedCubemapDirection(refl1, i.world, unity_SpecCube1_ProbePosition, unity_SpecCube1_BoxMin, unity_SpecCube1_BoxMax);
+                        #endif
+                        
+                        // sample cube1 using cube0's sampler to ensure compatibility.
+                        float3 skyColor1 = DecodeHDR(UNITY_SAMPLE_TEXCUBE_SAMPLER_LOD(unity_SpecCube1, unity_SpecCube0, refl1, roughness * 4.0), unity_SpecCube1_HDR);
+                        
+                        // reflection probe blending.
+                        skyColor = lerp(skyColor1, skyColor, blendLerp);
+                    }
                 #endif
 
-                // sample the default cubemap provided by unity.
-                float4 skyData = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, reflection, roughness * 4.0);
-                float3 skyColor = DecodeHDR(skyData, unity_SpecCube0_HDR);
                 float3 specular = skyColor * F;
-                
+
                 // sample the unity baked lightmap (i.e. progressive lightmapper).
                 #if LIGHTMAP_ON
                     float3 unity_lightmap_color = DecodeLightmap(UNITY_SAMPLE_TEX2D(unity_Lightmap, i.uv2));
