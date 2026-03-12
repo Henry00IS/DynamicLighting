@@ -74,7 +74,15 @@ namespace AlpacaIT.DynamicLighting
             }
 
             // calculate the bounding box of the mesh in world space.
-            worldBounds = GeometryUtility.CalculateBounds(meshVertices, localToWorldMatrix);
+            if (meshVertices.Length > 0)
+            {
+                worldBounds = GeometryUtility.CalculateBounds(meshVertices, localToWorldMatrix);
+            }
+            else
+            {
+                worldBounds = default;
+                Debug.LogWarning("The mesh " + mesh.name + " has zero vertices!");
+            }
 
             // check whether the mesh has lightmap coordinates.
             hasLightmapCoordinates = meshUv1.Length > 0;
