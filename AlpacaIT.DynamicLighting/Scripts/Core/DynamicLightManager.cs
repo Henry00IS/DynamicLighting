@@ -838,7 +838,7 @@ namespace AlpacaIT.DynamicLighting
 
                 // remove the lightmap data from the material property block.
                 materialPropertyBlock.SetBuffer("lightmap", (ComputeBuffer)null);
-                materialPropertyBlock.SetBuffer("dynamic_triangles", (ComputeBuffer)null);
+                materialPropertyBlock.SetBuffer("dynamic_triangles", DirectX12.dynamicTrianglesGlobalBuffer); // unity api oversight: cannot delete entries in a material property block.
                 materialPropertyBlock.SetInteger("lightmap_resolution", 0);
 
                 meshRenderer.SetPropertyBlock(materialPropertyBlock, j);

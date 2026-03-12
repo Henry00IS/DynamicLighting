@@ -13,7 +13,7 @@ namespace AlpacaIT.DynamicLighting
         /// Property Blocks, so Unity will complain whenever this is not the case. MPBs have
         /// priority over global shader variables.
         /// </summary>
-        private static ComputeBuffer dynamicTrianglesGlobalBuffer;
+        public static ComputeBuffer dynamicTrianglesGlobalBuffer;
 
         /// <summary>Creates the global fallback buffers so that DirectX 12 is satisfied.</summary>
         private static void CreateFallbackBuffers()
