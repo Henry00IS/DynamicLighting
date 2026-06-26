@@ -138,10 +138,12 @@ namespace AlpacaIT.DynamicLighting
                 var handler = raycastCommandsHandlers.b[i];
                 var hit = &nativeRaycastHitsPtr[i];
 
-#if !UNITY_2021_2_OR_NEWER
-                if (hit->distance == 0f && hit->point.Equals(Vector3.zero))
-#else
+#if UNITY_6000_5_OR_NEWER
+                if (!hit->colliderEntityId.IsValid())
+#elif UNITY_2021_2_OR_NEWER
                 if (hit->colliderInstanceID == 0)
+#else
+                if (hit->distance == 0f && hit->point.Equals(Vector3.zero))
 #endif
                 {
                     handler.OnRaycastMiss();
