@@ -27,6 +27,7 @@ namespace AlpacaIT.DynamicLighting
         public int resolution;
 
         /// <summary>The binary triangle data buffer uploaded to the graphics card.</summary>
+        [NonSerialized]
         public ComputeBuffer buffer;
 
         /// <summary>

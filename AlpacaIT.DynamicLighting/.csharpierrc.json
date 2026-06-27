@@ -1,0 +1,8 @@
+{
+  "printWidth": 200,
+  "useTabs": false,
+  "indentSize": 4,
+  "endOfLine": "crlf",
+  "xmlWhitespaceSensitivity": "strict",
+  "henry": "I did not place this in the root directory because GitHub gets cluttered"
+}
