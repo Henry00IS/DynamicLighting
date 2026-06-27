@@ -15,7 +15,9 @@ namespace AlpacaIT.DynamicLighting.Internal
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T FindObjectOfType<T>() where T : Object
         {
-#if UNITY_6000_0_OR_NEWER
+#if UNITY_6000_7_OR_NEWER
+            return Object.FindAnyObjectByType<T>();
+#elif UNITY_6000_0_OR_NEWER
             return Object.FindFirstObjectByType<T>();
 #else
             return Object.FindObjectOfType<T>();
@@ -31,7 +33,9 @@ namespace AlpacaIT.DynamicLighting.Internal
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T[] FindObjectsOfType<T>() where T : Object
         {
-#if UNITY_6000_0_OR_NEWER
+#if UNITY_6000_7_OR_NEWER
+            return Object.FindObjectsByType<T>();
+#elif UNITY_6000_0_OR_NEWER
             return Object.FindObjectsByType<T>(FindObjectsSortMode.InstanceID);
 #else
             return Object.FindObjectsOfType<T>();
