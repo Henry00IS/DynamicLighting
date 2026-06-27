@@ -19,7 +19,8 @@ namespace AlpacaIT.DynamicLighting
             get
             {
                 // if known, immediately return the instance.
-                if (s_Instance) return s_Instance;
+                if (s_Instance)
+                    return s_Instance;
 
                 // load the dynamic lighting resources from the resources directory.
                 LoadResources();
@@ -51,5 +52,6 @@ namespace AlpacaIT.DynamicLighting
         public Material guassianBlurMaterial;
         public Material shadowCameraDepthMaterial;
         public Material photonCameraPhotonCubeMaterial;
+        public Material pipelineDefaultMaterial;
     }
 }
