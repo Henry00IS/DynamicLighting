@@ -19,6 +19,7 @@ namespace AlpacaIT.DynamicLighting
     // 3. lighting pass:
     // - render per pixel lighting with dxr using the respective bins.
 
+#if UNITY_6000_7_OR_NEWER
     public class DynamicLightingRenderPipelineInstance : RenderPipeline
     {
         private DynamicLightingRenderPipelineAsset renderPipelineAsset;
@@ -108,14 +109,14 @@ namespace AlpacaIT.DynamicLighting
 
             if (camera.name == "[Dynamic Lighting - Realtime Shadow Camera]")
             {
-                rendererListDesc.overrideMaterialPassIndex = 0;
-                rendererListDesc.overrideMaterial = DynamicLightingResources.Instance.shadowCameraDepthMaterial;
+                rendererListDesc.overrideShaderPassIndex = 1;
+                rendererListDesc.overrideShader = DynamicLightingResources.Instance.shadowCameraDepthShader;
             }
 
             if (camera.name == "[Dynamic Lighting - Photon Camera]")
             {
-                rendererListDesc.overrideMaterialPassIndex = 0;
-                rendererListDesc.overrideMaterial = DynamicLightingResources.Instance.photonCameraPhotonCubeMaterial;
+                rendererListDesc.overrideShaderPassIndex = 1;
+                rendererListDesc.overrideShader = DynamicLightingResources.Instance.photonCubeShader;
             }
 
             var rendererList = context.CreateRendererList(rendererListDesc);
@@ -141,14 +142,14 @@ namespace AlpacaIT.DynamicLighting
 
             if (camera.name == "[Dynamic Lighting - Realtime Shadow Camera]")
             {
-                rendererListDesc.overrideMaterialPassIndex = 0;
-                rendererListDesc.overrideMaterial = DynamicLightingResources.Instance.shadowCameraDepthMaterial;
+                rendererListDesc.overrideShaderPassIndex = 1;
+                rendererListDesc.overrideShader = DynamicLightingResources.Instance.shadowCameraDepthShader;
             }
 
             if (camera.name == "[Dynamic Lighting - Photon Camera]")
             {
-                rendererListDesc.overrideMaterialPassIndex = 0;
-                rendererListDesc.overrideMaterial = DynamicLightingResources.Instance.photonCameraPhotonCubeMaterial;
+                rendererListDesc.overrideShaderPassIndex = 1;
+                rendererListDesc.overrideShader = DynamicLightingResources.Instance.photonCubeShader;
             }
 
             var rendererList = context.CreateRendererList(rendererListDesc);
@@ -161,4 +162,5 @@ namespace AlpacaIT.DynamicLighting
             cmd.ClearRenderTarget(true, true, new Color(0.0f, 0.0f, 0.0f, 0.0f));
         }
     }
+#endif
 }
