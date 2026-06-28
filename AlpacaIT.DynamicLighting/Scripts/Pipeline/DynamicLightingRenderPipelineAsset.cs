@@ -1,10 +1,10 @@
+#if UNITY_6000_7_OR_NEWER
 using System;
 using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace AlpacaIT.DynamicLighting
 {
-#if UNITY_6000_7_OR_NEWER
     // The CreateAssetMenu attribute lets you create instances of this class in the Unity Editor.
     [CreateAssetMenu(menuName = "Rendering/DynamicLightingRenderPipelineAsset")]
     public class DynamicLightingRenderPipelineAsset : RenderPipelineAsset
@@ -23,5 +23,5 @@ namespace AlpacaIT.DynamicLighting
             return new DynamicLightingRenderPipelineInstance(this);
         }
     }
-#endif
 }
+#endif
