@@ -5,14 +5,15 @@ using UnityEngine.Rendering;
 
 namespace AlpacaIT.DynamicLighting
 {
-    // The CreateAssetMenu attribute lets you create instances of this class in the Unity Editor.
-    [CreateAssetMenu(menuName = "Rendering/DynamicLightingRenderPipelineAsset")]
+    /// <summary>
+    /// The Dynamic Lighting Render Pipeline (DLRP) Asset. This contains the pipeline rendering settings.
+    /// </summary>
+    [CreateAssetMenu(menuName = "Dynamic Lighting/Render Pipeline Asset")]
     public class DynamicLightingRenderPipelineAsset : RenderPipelineAsset
     {
         public override Type pipelineType => typeof(DynamicLightingRenderPipelineInstance);
         public override string renderPipelineShaderTag => "DynamicLightingRenderPipeline";
         public override Material defaultMaterial => DynamicLightingResources.Instance.pipelineDefaultMaterial;
-
         public override Shader defaultShader => DynamicLightingResources.Instance.pipelineDefaultShader;
 
         // Unity calls this method before rendering the first frame.

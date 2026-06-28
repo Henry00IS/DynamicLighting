@@ -102,11 +102,13 @@ namespace AlpacaIT.DynamicLighting
                 // [06] draw the transparent scene.
                 DrawTransparentScene(context, camera, cameraCullingResults, cameraType, cmd);
 
+#if UNITY_EDITOR
                 // [07] draw the editor debug wireframe overlay.
                 DrawWireframeOverlay(context, camera, cmd);
 
                 // [08] draw the gizmos.
                 DrawEditorGizmos(context, camera, cmd);
+#endif
 
                 context.ExecuteCommandBuffer(cmd);
                 context.Submit();
@@ -141,7 +143,13 @@ namespace AlpacaIT.DynamicLighting
 
         private static void DrawEditorGizmos(ScriptableRenderContext context, Camera camera, CommandBuffer cmd)
         {
-            cmd.DrawRendererList(context.CreateGizmoRendererList(camera, GizmoSubset.PostImageEffects));
+#if UNITY_EDITOR
+            if (UnityEditor.Handles.ShouldRenderGizmos())
+            {
+                cmd.DrawRendererList(context.CreateGizmoRendererList(camera, GizmoSubset.PreImageEffects));
+                cmd.DrawRendererList(context.CreateGizmoRendererList(camera, GizmoSubset.PostImageEffects));
+            }
+#endif
         }
 
         private static void DrawCameraSkybox(ScriptableRenderContext context, Camera camera, CommandBuffer cmd)
