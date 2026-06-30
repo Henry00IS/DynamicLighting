@@ -231,6 +231,27 @@ Shader "Dynamic Lighting/Diffuse"
             #include_with_pragmas "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/Generators/ShadowCaster.cginc"
 			ENDCG
 		}
+
+        Pass
+        {
+            Name "DepthOnly"
+            Tags { "LightMode" = "DepthOnly" }
+            ColorMask 0
+
+            CGPROGRAM
+            #include_with_pragmas "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/Generators/DepthOnly.cginc"
+            ENDCG
+        }
+
+        Pass
+        {
+            Name "DepthNormals"
+            Tags { "LightMode" = "DepthNormals" }
+
+            CGPROGRAM
+            #include_with_pragmas "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Shaders/Generators/DepthNormals.cginc"
+            ENDCG
+        }
     }
     Fallback "Diffuse"
 }

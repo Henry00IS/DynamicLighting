@@ -1,8 +1,8 @@
-#pragma target 3.0
+// universal render pipeline - depth and normals pass for post processing effects.
+
 #pragma vertex vert
 #pragma fragment frag
 #pragma shader_feature_local _ _ALPHATEST_ON _ALPHAPREMULTIPLY_ON
-#pragma multi_compile_shadowcaster
 
 #include "UnityCG.cginc"
 
@@ -16,7 +16,8 @@ struct appdata
 struct v2f
 {
     float4 vertex : SV_POSITION;
-    float2 uv0 : TEXCOORD0;
+    float3 normal : TEXCOORD0;
+    float2 uv0 : TEXCOORD1;
 };
 
 sampler2D _MainTex;
@@ -27,25 +28,21 @@ float4 _Color;
     float _Cutoff;
 #endif
 
-v2f vert(appdata v)
+v2f vert (appdata v)
 {
-	v2f o;
-	o.vertex = UnityClipSpaceShadowCasterPos(v.vertex.xyz, v.normal);
-	o.vertex = UnityApplyLinearShadowBias(o.vertex);
-	o.uv0 = TRANSFORM_TEX(v.uv0, _MainTex);
-	return o;
+    v2f o;
+    o.vertex = UnityObjectToClipPos(v.vertex);
+    o.normal = UnityObjectToWorldNormal(v.normal);
+    o.uv0 = TRANSFORM_TEX(v.uv0, _MainTex);
+    return o;
 }
 
-float4 frag(v2f i) : SV_Target
+float4 frag (v2f i) : SV_Target
 {
 	float alpha = _Color.a;
 	alpha *= tex2D(_MainTex, i.uv0).a;
-    #if defined(DYNAMIC_LIGHTING_LEGACY_TRANSPARENT_SHADER)
-        clip(alpha - 0.5);
-    #elif defined(_ALPHAPREMULTIPLY_ON) || defined(_ALPHATEST_ON)
+    #if defined(_ALPHAPREMULTIPLY_ON) || defined(_ALPHATEST_ON)
         clip(alpha - _Cutoff);
-    #else
-        clip(1);
     #endif
-	return 0;
+    return float4(i.normal, 0);
 }
