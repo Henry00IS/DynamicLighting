@@ -1,7 +1,6 @@
 // GENERATE_FUNCTION_NAME: The name of the function that will be generated.
 // GENERATE_FUNCTION_CALL: The function to call to get samples to be filtered.
 
-// shoutouts to https://chat.openai.com/ for actually figuring out bilinear filtering in 3 dimensions.
 float GENERATE_FUNCTION_NAME(float3 world)
 {
     world *= shimmerScale;
