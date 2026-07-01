@@ -19,7 +19,8 @@ namespace AlpacaIT.DynamicLighting.Editor
             get
             {
                 // if known, immediately return the instance.
-                if (s_Instance) return s_Instance;
+                if (s_Instance)
+                    return s_Instance;
 
                 // load the dynamic lighting resources from the resources directory.
                 LoadResources();
@@ -41,6 +42,16 @@ namespace AlpacaIT.DynamicLighting.Editor
         public Texture2D discordIcon;
         public Texture2D gitHubIcon;
         public Texture2D gitHubIconWhite;
+
+        public Texture2D dynamicLightingPointLightIcon;
+        public Texture2D dynamicLightingSpotLightIcon;
+        public Texture2D dynamicLightingTransparentIcon;
+        public Texture2D dynamicLightingBounceIcon;
+        public Texture2D dynamicLightingRealtimeShadowsIcon;
+        public Texture2D dynamicLightingVolumetricIcon;
+        public Texture2D dynamicLightingEffectsIcon;
+        public Texture2D dynamicLightingShimmerWaterIcon;
+        public Texture2D dynamicLightingShimmerFireIcon;
 
         public Shader dynamicLightingDiffuseShader;
     }

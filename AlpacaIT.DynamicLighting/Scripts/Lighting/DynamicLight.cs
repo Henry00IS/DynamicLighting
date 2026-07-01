@@ -24,6 +24,7 @@ namespace AlpacaIT.DynamicLighting
         /// bright colors) so that both current and future shader math calculations are correct.
         /// </para>
         /// </summary>
+        // csharpier-ignore
         [Tooltip("The color of the light emitted by this point light source. The selected color affects how the light interacts with objects in the scene, influencing the overall mood and tone. Use warm colors like yellows and oranges for a cozy or natural feel, or cool colors like blues and greens for a calm or eerie atmosphere. Experimenting with different colors can enhance the realism or stylization of your scene.\n\nWhen using bounce lighting with a custom bounce lighting color, you can set this color to black to only render the bounce lighting.")]
         [ColorUsage(showAlpha: false)]
         public Color lightColor = Color.white;
@@ -43,6 +44,7 @@ namespace AlpacaIT.DynamicLighting
         /// more than 32 lights all overlapping each other (i.e. some pixel in the level getting
         /// illuminated by 32 lights- quite a lot), otherwise an error will occur.
         /// </summary>
+        // csharpier-ignore
         [Tooltip("The spherical radius that the light will occupy. The light cannot exceed this radius and is guaranteed to be completely gone when it reaches the end. Each light type (e.g. spot lights) will always use this entire radius for their calculations.\n\nThere must never be more than 32 lights all overlapping each other (i.e. some pixel in the level getting illuminated by 32 lights- quite a lot), otherwise an error will occur.")]
         [Min(0f)]
         public float lightRadius = 4.0f;
@@ -58,6 +60,7 @@ namespace AlpacaIT.DynamicLighting
         /// experimentation to achieve the desired effect but not exceeding 1.0 is a good rule.
         /// </para>
         /// </summary>
+        // csharpier-ignore
         [Tooltip("The falloff parameter controls the decay of light within its radius, providing artistic flexibility over light attenuation. While setting this above zero deviates from physical accuracy, it enables unique effects, such as a desk lamp emitting a bright, localized light.\n\nThe value itself doesn't correspond to any easily understood unit. Internally, it's adjusted to stay consistent with the light radius. A value of 0.0 disables the falloff, while 1.0 matches the falloff to the light radius. This \"magic number\" requires some experimentation to achieve the desired effect but not exceeding 1.0 is a good rule.")]
         [Min(0f)]
         public float lightFalloff = 0.0f;
@@ -73,6 +76,7 @@ namespace AlpacaIT.DynamicLighting
         /// other overlapping light uses so that each light has its own unique space in memory to
         /// store shadows in.
         /// </summary>
+        // csharpier-ignore
         [Tooltip("This is the channel that the light occupies. This value is automatically assigned to the light during ray tracing. Dynamic realtime lights must always use channel 32 (they can move around the scene without shadows). This value is a crucial part of the inner workings of the lighting system. You should not touch this field unless you know what you are doing or to simply set it to 32 to make it a realtime light. The raytracer will ignore lights that are on channel 32 (i.e. it will not reset this channel to something else).\n\nThis channel is assigned a number that no other overlapping light uses so that each light has its own unique space in memory to store shadows in.")]
         [Range(0, 32)]
         public uint lightChannel = 0;
@@ -101,6 +105,7 @@ namespace AlpacaIT.DynamicLighting
         /// angle. The outer cutoff angle must be larger or equal to the inner cutoff angle
         /// otherwise the light will appear to turn off.
         /// </summary>
+        // csharpier-ignore
         [Tooltip("When using the 'Spot' light type, this specifies the outer cutoff angle in degrees where the light is darkest. There is a smooth transition between the inner and outer cutoff angle. The outer cutoff angle must be larger or equal to the inner cutoff angle otherwise the light will appear to turn off.")]
         [Range(0f, 180f)]
         public float lightOuterCutoff = 30.0f;
@@ -111,6 +116,7 @@ namespace AlpacaIT.DynamicLighting
         /// angle. The outer cutoff angle must be larger or equal to the inner cutoff angle
         /// otherwise the light will appear to turn off.
         /// </summary>
+        // csharpier-ignore
         [Tooltip("When using the 'Spot' light type, this specifies the inner cutoff angle in degrees where the light is brightest. There is a smooth transition between the inner and outer cutoff angle. The outer cutoff angle must be larger or equal to the inner cutoff angle otherwise the light will appear to turn off.")]
         [Range(0f, 180f)]
         public float lightCutoff = 26.0f;
@@ -120,6 +126,7 @@ namespace AlpacaIT.DynamicLighting
         /// specifies how fast the waves move around the light source. This number can be negative
         /// to reverse the effect.
         /// </summary>
+        // csharpier-ignore
         [Tooltip("When using the 'Wave', 'Interference', 'Rotor', 'Shock' or 'Disco' light types, this specifies how fast the waves move around the light source. This number can be negative to reverse the effect.")]
         public float lightWaveSpeed = 1f;
 
@@ -127,6 +134,7 @@ namespace AlpacaIT.DynamicLighting
         /// When using the 'Wave', 'Interference', 'Rotor', 'Shock' or 'Disco' light types, this
         /// changes the frequency of the waves. A higher number produces more waves that are closer together.
         /// </summary>
+        // csharpier-ignore
         [Tooltip("When using the 'Wave', 'Interference', 'Rotor', 'Shock' or 'Disco' light types, this changes the frequency of the waves. A higher number produces more waves that are closer together.")]
         [Min(0f)]
         public float lightWaveFrequency = 1f;
@@ -136,6 +144,7 @@ namespace AlpacaIT.DynamicLighting
         /// changes the time offset of the waves. This prevents lights from moving in sync and can
         /// also be used to programatically control the wave animation.
         /// </summary>
+        // csharpier-ignore
         [Tooltip("When using the 'Wave', 'Interference', 'Rotor', 'Shock' or 'Disco' light types, this changes the time offset of the waves. This prevents lights from moving in sync and can also be used to programatically control the wave animation.")]
         [Range(0f, 1f)]
         public float lightWaveOffset = 0f;
@@ -159,6 +168,7 @@ namespace AlpacaIT.DynamicLighting
         /// When using the 'Spot' light type, this texture can be used as a grayscale shadow cookie
         /// that will be projected within the radius of the spot light. Animated render textures are supported.
         /// </summary>
+        // csharpier-ignore
         [Tooltip("When using the 'Spot' light type, this texture can be used as a grayscale shadow cookie that will be projected within the radius of the spot light. Animated render textures are supported.")]
         public Texture lightCookieTexture;
 
@@ -168,6 +178,7 @@ namespace AlpacaIT.DynamicLighting
         /// from the main light color allows for greater creative control, to help the usually dark
         /// bounce lighting better match the environment.
         /// </summary>
+        // csharpier-ignore
         [Header("Bounce Lighting:")]
         [Tooltip("The color of the bounce lighting. Use the alpha component to blend between the current light color and this color. Bounce lighting is grayscale by design, but separating it from the main light color allows for greater creative control, to help the usually dark bounce lighting better match the environment.")]
         [ColorUsage(showAlpha: true)]
@@ -180,6 +191,7 @@ namespace AlpacaIT.DynamicLighting
         /// cref="lightBounceIntensity"/> does, as it only changes the final rendered transparency
         /// of the bounce light.
         /// </summary>
+        // csharpier-ignore
         [Tooltip("Adjusts the visibility of bounce lighting by modifying its transparency. At 0, the bounce lighting will be fully transparent, while at 1, it will be fully visible. This setting does not affect the raytracing or compression process like 'Light Bounce Intensity' does, as it only changes the final rendered transparency of the bounce light.")]
         [Range(0f, 1f)]
         public float lightBounceModifier = 1.0f;
@@ -192,6 +204,7 @@ namespace AlpacaIT.DynamicLighting
         /// changes to take effect.
         /// </para>
         /// </summary>
+        // csharpier-ignore
         [Header("Raytracing Settings:")]
         [Tooltip("The intensity of the bounce lighting when using 'Single Bounce' illumination. This is useful for brightening up areas where the bounce lighting appears too dim.\n\nNote that any adjustments to this setting require raytracing the scene again for the changes to take effect.")]
         [Min(0f)]
@@ -208,6 +221,7 @@ namespace AlpacaIT.DynamicLighting
         /// changes to take effect.
         /// </para>
         /// </summary>
+        // csharpier-ignore
         [Tooltip("The number of light samples taken from the scene when using 'Single Bounce' illumination. Increasing the number of samples helps reduce graininess or noise, resulting in smoother and more accurate lighting. However, higher sample counts may increase rendering times. A sample count of 128 delivers high quality results, providing smooth and accurate lighting with minimal graininess.\n\nNote that any adjustments to this setting require raytracing the scene again for the changes to take effect.")]
         [Min(2f)]
         public int lightBounceSamples = 32;
@@ -221,6 +235,7 @@ namespace AlpacaIT.DynamicLighting
         /// changes to take effect.
         /// </para>
         /// </summary>
+        // csharpier-ignore
         [Tooltip("The compression level for bounce lighting data. Choosing a higher compression can reduce VRAM usage, but may result in reduced visual quality. For best results, adjust based on your VRAM availability and visual preferences.\n\nNote that any adjustments to this setting require raytracing the scene again for the changes to take effect.")]
         public DynamicBounceLightingCompressionMode lightBounceCompression = DynamicBounceLightingCompressionMode.Inherit;
 
@@ -239,6 +254,7 @@ namespace AlpacaIT.DynamicLighting
         /// create the effect. This property changes the size of the blocks. This is all
         /// mathematics, there is no difference in performance.
         /// </summary>
+        // csharpier-ignore
         [Tooltip("When using a shimmering light, this specifies the scale of the caustics. In the shader, the world is essentially overlaid with persistent random value blocks from 0.0 to 1.0 that do not change. Then sine waves and time are multiplied against these blocks to create the effect. This property changes the size of the blocks. This is all mathematics, there is no difference in performance.")]
         [Min(0f)]
         public float lightShimmerScale = 12.25f;
@@ -261,6 +277,7 @@ namespace AlpacaIT.DynamicLighting
         /// effect, this specifies how many times per second the light should pulse (as a
         /// multiplier), where 1 means once per second; or controls the speed of the animation.
         /// </summary>
+        // csharpier-ignore
         [Tooltip("When using the 'Pulse', 'Pulsar', 'Generator', 'Lightning', 'Cloudy' or 'Overcast' light effect, this specifies how many times per second the light should pulse (as a multiplier), where 1 means once per second; or controls the speed of the animation.")]
         public float lightEffectPulseSpeed = 1.0f;
 
@@ -270,6 +287,7 @@ namespace AlpacaIT.DynamicLighting
         /// light effect, this specifies how dim the light can become per pulse, where 0 is
         /// completely off and 1 does nothing.
         /// </summary>
+        // csharpier-ignore
         [Tooltip("When using the 'Pulse', 'Pulsar', 'Candle', 'Fire', 'Flicker', 'Generator', 'Lightning', 'Random', 'Strobe', 'FluorescentStarter', 'FluorescentRandom', 'Cloudy' or 'Overcast' light effect, this specifies how dim the light can become per pulse, where 0 is completely off and 1 does nothing.")]
         [Range(0f, 1f)]
         public float lightEffectPulseModifier = 0.25f;
@@ -280,6 +298,7 @@ namespace AlpacaIT.DynamicLighting
         /// changes the time offset of the pulses. This prevents lights from pulsing in sync and can
         /// also be used to programatically control the pulse animation.
         /// </summary>
+        // csharpier-ignore
         [Tooltip("When using the 'Pulse', 'Pulsar', 'Candle', 'Fire', 'Generator', 'Lightning', 'FluorescentStarter', 'FluorescentClicker', 'Cloudy' or 'Overcast' light effect, this changes the time offset of the pulses. This prevents lights from pulsing in sync and can also be used to programatically control the pulse animation.")]
         [Range(0f, 100f)]
         public float lightEffectPulseOffset = 0f;
@@ -295,6 +314,7 @@ namespace AlpacaIT.DynamicLighting
         /// noise but no distinct on/off period.
         /// </para>
         /// </summary>
+        // csharpier-ignore
         [Min(0.00001f)]
         [Tooltip("The framerate independent fixed timestep frequency for lighting effects in seconds. For example a frequency of 30Hz would be achieved using the formula 1f / 30f.\n\nUsed to decouple the lighting calculations from the framerate. If you have a flickering light or strobe light, the light may be on over several frames. If you are playing VR at 144Hz then the light may only turn on and off 30 times per second, giving you that sense of reality, opposed to having a light flicker at 144 times per second causing visual noise but no distinct on/off period.")]
         public float lightEffectTimestepFrequency = 1f / 30f;
@@ -336,12 +356,16 @@ namespace AlpacaIT.DynamicLighting
         /// which an object can still be clearly discerned. This allows you to see nearby objects
         /// relatively clearly whilst surrounded by thick fog.
         /// </summary>
+        // csharpier-ignore
         [Tooltip("The visibility in meters within the volumetric fog, is the measure of the distance at which an object can still be clearly discerned. This allows you to see nearby objects relatively clearly whilst surrounded by thick fog.")]
         [Min(0f)]
         public float lightVolumetricVisibility = 2.0f;
 
         /// <summary>Gets whether this dynamic light is realtime (no shadows, channel 32).</summary>
-        public bool realtime { get => lightChannel == 32; }
+        public bool realtime
+        {
+            get => lightChannel == 32;
+        }
 
         /// <summary>
         /// Unity stores <see cref="Color"/> (when assigned in an inspector) in <see
@@ -415,15 +439,15 @@ namespace AlpacaIT.DynamicLighting
 
                     case DynamicLightVolumetricType.ConeZ:
                     case DynamicLightVolumetricType.ConeY:
-                        {
-                            // try to calculate a radius encompassing the cone:
-                            float angle = Mathf.Clamp(lightOuterCutoff, 0f, 75f);
-                            if (lightOuterCutoff > 90f)
-                                angle = (1.0f - Mathf.InverseLerp(115f, 180f, lightOuterCutoff)) * 75f;
+                    {
+                        // try to calculate a radius encompassing the cone:
+                        float angle = Mathf.Clamp(lightOuterCutoff, 0f, 75f);
+                        if (lightOuterCutoff > 90f)
+                            angle = (1.0f - Mathf.InverseLerp(115f, 180f, lightOuterCutoff)) * 75f;
 
-                            // calculate the maximal distance from the tip to the base edge.
-                            return lightVolumetricRadius / Mathf.Cos(angle * Mathf.Deg2Rad);
-                        }
+                        // calculate the maximal distance from the tip to the base edge.
+                        return lightVolumetricRadius / Mathf.Cos(angle * Mathf.Deg2Rad);
+                    }
 
                     default:
                         return lightVolumetricRadius;
@@ -684,7 +708,8 @@ namespace AlpacaIT.DynamicLighting
             Gizmos.DrawLine(root, head);
 
             // only draw the orientation lines when the effect is twistable.
-            if (!twistable) return;
+            if (!twistable)
+                return;
 
             // green upwards line.
             {

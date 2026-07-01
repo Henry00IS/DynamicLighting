@@ -19,4 +19,13 @@ MonoBehaviour:
   discordIcon: {fileID: 2800000, guid: fd0bc9b0b2828ed498c74215668639cf, type: 3}
   gitHubIcon: {fileID: 2800000, guid: ed585c3b37097164bbf7a6e9924e7a58, type: 3}
   gitHubIconWhite: {fileID: 2800000, guid: 39a83caaf1e7a934fb58f255a230d960, type: 3}
+  dynamicLightingPointLightIcon: {fileID: 2800000, guid: 713fe024c2abede42a0aab7521fa2040, type: 3}
+  dynamicLightingSpotLightIcon: {fileID: 2800000, guid: e952decdf2491e14fa829e1f53e964f9, type: 3}
+  dynamicLightingTransparentIcon: {fileID: 2800000, guid: 20c9069d0cb7d2947a13039cdf9f0d03, type: 3}
+  dynamicLightingBounceIcon: {fileID: 2800000, guid: 9846f29b7fe3e1e48a0760cf9f0eb8c0, type: 3}
+  dynamicLightingRealtimeShadowsIcon: {fileID: 2800000, guid: 4c73c6bfefe23fe47b9899b3f009d2b3, type: 3}
+  dynamicLightingVolumetricIcon: {fileID: 2800000, guid: 92ee7f319337f3547924787649ac25c5, type: 3}
+  dynamicLightingEffectsIcon: {fileID: 2800000, guid: 339ce1894fe6b414a88f4dbab3f23ddd, type: 3}
+  dynamicLightingShimmerWaterIcon: {fileID: 2800000, guid: 2cb8d3991a0bce84d8eb29ee6c76fed1, type: 3}
+  dynamicLightingShimmerFireIcon: {fileID: 2800000, guid: 4d64aac20cec4214ea315df3758363d5, type: 3}
   dynamicLightingDiffuseShader: {fileID: 4800000, guid: 0f9ccbd05b7d9544bafd53b17ead090c, type: 3}
