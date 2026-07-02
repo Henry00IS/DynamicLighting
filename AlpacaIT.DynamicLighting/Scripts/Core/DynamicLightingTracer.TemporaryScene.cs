@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
 using UnityEngine.Rendering;
-
 #if UNITY_EDITOR
 
 using UnityEditor;
@@ -44,11 +43,13 @@ namespace AlpacaIT.DynamicLighting
         private bool TemporarySceneAdd(MeshFilter meshFilter)
         {
             // we have to recreate simple meshes with a mesh collider.
-            if (!meshFilter) return false;
+            if (!meshFilter)
+                return false;
             var originalGameObject = meshFilter.gameObject;
 
             // the game object must be marked as static.
-            if (!originalGameObject.isStatic) return false;
+            if (!originalGameObject.isStatic)
+                return false;
 #if UNITY_EDITOR
             // the game object must also have contributegi enabled.
             var editorStaticFlags = GameObjectUtility.GetStaticEditorFlags(originalGameObject);
@@ -57,10 +58,15 @@ namespace AlpacaIT.DynamicLighting
 #endif
             // make sure the mesh filter has a mesh assigned.
             var mesh = meshFilter.sharedMesh;
-            if (!mesh) return false;
+            if (!mesh)
+                return false;
 
             // we only care about things we can actually render.
             if (!meshFilter.TryGetComponent<MeshRenderer>(out var meshRenderer))
+                return false;
+
+            // the mesh renderer component must be enabled.
+            if (!meshRenderer.enabled)
                 return false;
 
             // the mesh renderer must have shadow casting enabled.
