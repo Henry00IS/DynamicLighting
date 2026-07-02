@@ -11,7 +11,7 @@ namespace AlpacaIT.DynamicLighting
     [CreateAssetMenu(menuName = "Dynamic Lighting/Render Pipeline Asset")]
     public class DynamicLightingRenderPipelineAsset : RenderPipelineAsset
     {
-        public override Type pipelineType => typeof(DynamicLightingRenderPipelineInstance);
+        public override Type pipelineType => typeof(DynamicLightingRenderPipeline);
         public override string renderPipelineShaderTag => "DynamicLightingRenderPipeline";
         public override Material defaultMaterial => DynamicLightingResources.Instance.pipelineDefaultMaterial;
         public override Shader defaultShader => DynamicLightingResources.Instance.pipelineDefaultShader;
@@ -21,7 +21,7 @@ namespace AlpacaIT.DynamicLighting
         protected override RenderPipeline CreatePipeline()
         {
             // Instantiate the Render Pipeline that this custom SRP uses for rendering.
-            return new DynamicLightingRenderPipelineInstance(this);
+            return new DynamicLightingRenderPipeline(this);
         }
     }
 }
