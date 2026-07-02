@@ -559,7 +559,9 @@ namespace AlpacaIT.DynamicLighting
 
             if (lightIllumination == DynamicLightIlluminationMode.SingleBounce)
             {
-                Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingBounce.png", true, white);
+                Color bounce = lightBounceColorAdjusted;
+                bounce.a = 1f;
+                Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingBounce.png", true, bounce);
             }
 
             if (lightTransparency != DynamicLightTransparencyMode.Disabled)

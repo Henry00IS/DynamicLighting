@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.UIElements;
 
 namespace AlpacaIT.DynamicLighting.Editor
 {
@@ -48,7 +49,8 @@ namespace AlpacaIT.DynamicLighting.Editor
         /// <returns>True when enabled, false when not or mixed state.</returns>
         public static bool MaterialKeywordCheckbox(this MaterialEditor materialEditor, string keyword, string label)
         {
-            if (materialEditor.targets.Length == 0) return false;
+            if (materialEditor.targets.Length == 0)
+                return false;
 
             // check whether all selected materials have the keyword enabled.
             // detect uniform vs. mixed states.
@@ -58,9 +60,12 @@ namespace AlpacaIT.DynamicLighting.Editor
             {
                 var material = target as Material;
                 bool isEnabled = material.IsKeywordEnabled(keyword);
-                if (!isEnabled) allEnabled = false;
-                else allDisabled = false;
-                if (!allEnabled && !allDisabled) break; // early out: mixed confirmed.
+                if (!isEnabled)
+                    allEnabled = false;
+                else
+                    allDisabled = false;
+                if (!allEnabled && !allDisabled)
+                    break; // early out: mixed confirmed.
             }
             bool isMixed = !allEnabled && !allDisabled;
 
@@ -194,7 +199,8 @@ namespace AlpacaIT.DynamicLighting.Editor
         /// <returns>
         /// True when the property was updated (and <paramref name="property"/> was not null) else false.
         /// </returns>
-        public static bool Dropdown<T>(this MaterialEditor materialEditor, List<MaterialProperty> properties, MaterialProperty property, out T selected) where T : Enum
+        public static bool Dropdown<T>(this MaterialEditor materialEditor, List<MaterialProperty> properties, MaterialProperty property, out T selected)
+            where T : Enum
         {
             selected = default(T);
             if (property != null)
@@ -236,6 +242,26 @@ namespace AlpacaIT.DynamicLighting.Editor
                 return result;
             }
             return false;
+        }
+
+        /// <summary>
+        /// Removes all elements from the children of <paramref name="element"/> that are of type
+        /// <typeparamref name="T"/>. When an element of type <typeparamref name="T"/> was found
+        /// then true is returned else false.
+        /// </summary>
+        /// <returns>True when an element of type <typeparamref name="T"/> existed else false.</returns>
+        public static bool RemoveByType<T>(this VisualElement element)
+            where T : VisualElement
+        {
+            var found = false;
+            var childCount = element.childCount;
+            for (int i = childCount; i-- > 0; )
+                if (element[i] is T marker)
+                {
+                    element.Remove(marker);
+                    found = true;
+                }
+            return found;
         }
     }
 }
