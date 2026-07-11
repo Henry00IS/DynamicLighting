@@ -79,6 +79,9 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Global <see cref="Shader.PropertyToID"/> for buffer "dynamic_lights".</summary>
         private int shadersGlobalPropertyIdDynamicLights;
 
+        /// <summary>Global <see cref="Shader.PropertyToID"/> for buffer "dynamic_triangles".</summary>
+        private int shadersGlobalPropertyIdDynamicTriangles;
+
         /// <summary>Global <see cref="Shader.PropertyToID"/> for integer "dynamic_lights_count".</summary>
         private int shadersGlobalPropertyIdDynamicLightsCount;
 
@@ -212,6 +215,12 @@ namespace AlpacaIT.DynamicLighting
             Shader.SetGlobalBuffer(shadersGlobalPropertyIdDynamicLights, buffer);
         }
 
+        /// <summary>Sets the global shader buffer property "dynamic_triangles".</summary>
+        private void ShadersSetGlobalDynamicTriangles(ComputeBuffer buffer)
+        {
+            Shader.SetGlobalBuffer(shadersGlobalPropertyIdDynamicTriangles, buffer);
+        }
+
         /// <summary>Sets whether global shader keyword "DYNAMIC_LIGHTING_LIT" is enabled.</summary>
         private void ShadersSetKeywordLitEnabled(bool value)
         {
@@ -307,6 +316,7 @@ namespace AlpacaIT.DynamicLighting
             shadersGlobalPropertyIdDynamicLightsDistanceCubes = Shader.PropertyToID("dynamic_lights_distance_cubes");
             shadersGlobalPropertyIdDynamicLightsDistanceCubesIndexLookup = Shader.PropertyToID("dynamic_lights_distance_cubes_index_lookup");
             shadersGlobalPropertyIdDynamicLightingShadowDepthLightRadius = Shader.PropertyToID("dynamic_lighting_shadow_depth_light_radius");
+            shadersGlobalPropertyIdDynamicTriangles = Shader.PropertyToID("dynamic_triangles");
 
             // upon startup (or level transitions):
 

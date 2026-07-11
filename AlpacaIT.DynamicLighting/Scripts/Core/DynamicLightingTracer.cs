@@ -506,6 +506,7 @@ namespace AlpacaIT.DynamicLighting
                 // unity api oversight: cannot get material count as it's a private method, so to
                 // prevent allocations on the garbage collector we recycle a list here.
                 meshRenderer.GetSharedMaterials(materialsScratchMemory);
+                lightmap.triangleCount = meshBuilder.triangleCount;
                 lightmap.subMeshCount = System.Math.Min(mesh.subMeshCount - meshRenderer.subMeshStartIndex, materialsScratchMemory.Count);
                 lightmap.subMeshIndexStartOffsets = new int[lightmap.subMeshCount];
                 for (int j = 0; j < lightmap.subMeshCount; j++)

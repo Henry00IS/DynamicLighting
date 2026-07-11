@@ -1,0 +1,36 @@
+#pragma kernel FixupChunk
+
+RWStructuredBuffer<uint> dynamic_triangles;
+uint dynamic_triangles_offset;
+uint dynamic_triangles_count;
+uint dynamic_triangles_bounce_stride; // 2 for no bounce lighting else 3.
+
+[numthreads(64,1,1)]
+void FixupChunk(uint3 id : SV_DispatchThreadID)
+{
+    uint t = id.x;
+    if (t >= dynamic_triangles_count) return;
+
+    // absolute header location in the big buffer
+    uint headerIdx = dynamic_triangles_offset + t * 4;
+    
+    uint relLightData = dynamic_triangles[headerIdx];
+    uint absLightData = relLightData + dynamic_triangles_offset;
+    dynamic_triangles[headerIdx] = absLightData;
+    
+    // light list lives at baseElements + original relLightData
+    uint lightListStart = dynamic_triangles_offset + relLightData;
+    uint lightCount = dynamic_triangles[lightListStart];
+
+    // we can crash the gpu driver when we read a garbage light count.
+    // 32 overlapping lights limit doesn't restrict a triangle from being hit by more.
+    if (lightCount > 256) lightCount = 256;
+    
+    for (uint li = 0; li < lightCount; li++)
+    {
+        uint entry = lightListStart + 1 + li * dynamic_triangles_bounce_stride;
+        dynamic_triangles[entry + 1] += dynamic_triangles_offset;           // shadow offset
+        if (dynamic_triangles_bounce_stride == 3)
+            dynamic_triangles[entry + 2] += dynamic_triangles_offset;       // bounce offset
+    }
+}

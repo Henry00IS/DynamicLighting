@@ -55,5 +55,6 @@ namespace AlpacaIT.DynamicLighting
         public Material pipelineDefaultMaterial;
         public Shader pipelineDefaultShader;
         public Material blitColorDepthMaterial;
+        public ComputeShader dynamicTrianglesFixupComputeShader;
     }
 }

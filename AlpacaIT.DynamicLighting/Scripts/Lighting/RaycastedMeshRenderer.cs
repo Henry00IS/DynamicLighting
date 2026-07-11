@@ -20,6 +20,9 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>The sub mesh index start offsets at the time of raytracing.</summary>
         public int[] subMeshIndexStartOffsets;
 
+        /// <summary>The combined triangle count of all sub meshes at the time of raytracing.</summary>
+        public int triangleCount;
+
         /// <summary>The unique identifier used to find the binary data files on disk.</summary>
         public int identifier;
 

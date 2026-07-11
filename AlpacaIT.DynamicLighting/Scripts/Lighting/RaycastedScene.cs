@@ -38,27 +38,8 @@ namespace AlpacaIT.DynamicLighting
                 // legacy compressed data from an old version of dynamic lighting:
                 if (length == 0)
                 {
-                    Debug.LogWarning("Warning: Dynamic Lighting is using a very slow loading method, please raytrace your scene again. Support for this legacy data will be removed in 2025.");
-                    try
-                    {
-                        using (var decompressed = new MemoryStream())
-                        {
-                            using (var compressed = new NativeArrayStream<byte>(bytes))
-                            using (var gzip = new GZipStream(compressed, CompressionMode.Decompress))
-                            {
-                                gzip.CopyTo(decompressed);
-                            }
-                            var decompressedLength = (int)decompressed.Length;
-                            result = new DecompressGZipStreamHandle<uint>(bytes, decompressedLength);
-                            return true;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogError(ex);
-                        result = default;
-                        return false;
-                    }
+                    Debug.LogWarning("Warning: Dynamic Lighting is using ancient scene data, please raytrace your scene again. Support for this legacy data has been removed.");
+                    return false;
                 }
 
                 result = new DecompressGZipStreamHandle<uint>(bytes, length);
@@ -155,6 +136,17 @@ namespace AlpacaIT.DynamicLighting
                 return false;
             }
             return this.dynamicTriangles[index].Read(out dynamicTriangles);
+        }
+
+        public bool GetDynamicTrianglesDecompressedSize(int index, out int length)
+        {
+            if (index < 0 || index >= dynamicTriangles.Count)
+            {
+                length = default;
+                return false;
+            }
+            length = dynamicTriangles[index].length;
+            return true;
         }
     }
 }

@@ -22,3 +22,4 @@ MonoBehaviour:
   pipelineDefaultMaterial: {fileID: 2100000, guid: 1223bdaace2200649a30396a99f60b7f, type: 2}
   pipelineDefaultShader: {fileID: 4800000, guid: 0f9ccbd05b7d9544bafd53b17ead090c, type: 3}
   blitColorDepthMaterial: {fileID: 2100000, guid: 2b8c756787e425845a20d41014775d05, type: 2}
+  dynamicTrianglesFixupComputeShader: {fileID: 7200000, guid: c1f8d9d9cc8ff3f4f82cd0b8cc669995, type: 3}

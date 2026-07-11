@@ -1,7 +1,7 @@
-using AlpacaIT.DynamicLighting.Internal;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using AlpacaIT.DynamicLighting.Internal;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Serialization;
@@ -146,7 +146,8 @@ namespace AlpacaIT.DynamicLighting
             get
             {
                 // if known, immediately return the instance.
-                if (s_Instance) return s_Instance;
+                if (s_Instance)
+                    return s_Instance;
 
                 // C# hot reloading support: try finding an existing instance in the scene.
                 s_Instance = Compatibility.FindObjectOfType<DynamicLightManager>();
@@ -183,6 +184,7 @@ namespace AlpacaIT.DynamicLighting
         /// during initialization (typically when the scene is loaded). In the editor, changes to
         /// the template are automatically applied to this instance.
         /// </summary>
+        // csharpier-ignore
         [Tooltip("The settings of the dynamic light manager can be shared across several scenes by assigning a template here. The values are copied from the template to this instance during initialization (typically when the scene is loaded). In the editor, changes to the template are automatically applied to this instance.")]
         [FormerlySerializedAs("lightingSettings")]
         public DynamicLightingSettings settingsTemplate;
@@ -194,6 +196,7 @@ namespace AlpacaIT.DynamicLighting
         /// through (unless this is desired). This color should be very dark to achieve the best
         /// effect. You can make use of the alpha color to finetune the brightness.
         /// </summary>
+        // csharpier-ignore
         [Tooltip("The ambient lighting color is added to the whole scene, thus making it look like there is always some scattered light, even when there is no direct light source. This prevents absolute black, dark patches from appearing in the scene that are impossible to see through (unless this is desired). This color should be very dark to achieve the best effect. You can make use of the alpha color to finetune the brightness.")]
         public Color ambientColor = new Color(1.0f, 1.0f, 1.0f, 0.1254902f);
 
@@ -206,6 +209,7 @@ namespace AlpacaIT.DynamicLighting
         /// older graphics hardware when there are many realtime lights in the scene. Budgeting does
         /// not begin until the number of active realtime dynamic lights actually exceeds this number.
         /// </summary>
+        // csharpier-ignore
         [Tooltip("The number of realtime dynamic lights that can be active at the same time. Realtime lights have no shadows and can move around the scene. They are useful for glowing particles, car headlights, etc. If this budget is exceeded, lights that are out of view or furthest away from the camera will automatically fade out in a way that the player will hopefully not notice. A conservative budget as per the game requirements will help older graphics hardware when there are many realtime lights in the scene. Budgeting does not begin until the number of active realtime dynamic lights actually exceeds this number.")]
         [Min(0)]
         public int realtimeLightBudget = 32;
@@ -229,6 +233,7 @@ namespace AlpacaIT.DynamicLighting
         /// option, whereas a standard Unity real-time shadow casting light source respects it.
         /// </para>
         /// </summary>
+        // csharpier-ignore
         [Tooltip("The layer mask used while raytracing to determine which hits to ignore. There are many scenarios where you have objects that should collide with everything in the scene, but not cause shadows. You should consider creating a physics layer (click on 'Layer: Default' at the top of the Game Object Inspector -> Add Layer...) and naming it 'Collision'. You can then remove this layer from the list so it will be ignored by the raytracer. The rest of the scene will still have regular collisions with it. You can also do the opposite by creating a physics layer called 'Lighting' and disabling regular collisions with other colliders (in Edit -> Project Settings -> Physics), but leaving the layer checked in this list. Now you have a special shadow casting collision that nothing else can touch or interact with. These were just two example names, you can freely choose the names of the physics layers.\n\nAlternatively, you can uncheck 'Contribute GI' in the static dropdown options on a per-GameObject basis. You can also set 'Cast Shadows' to 'Off' on a Mesh Renderer. Note that real-time shadows cast by a dynamic light source will ignore the 'Cast Shadows' option, whereas a standard Unity real-time shadow casting light source respects it.")]
         public LayerMask raytraceLayers = ~0;
 
@@ -237,6 +242,7 @@ namespace AlpacaIT.DynamicLighting
         /// In some cases, specific objects may require raytracing for baked lighting and visual
         /// appeal, yet they shouldn't contribute to real-time shadow casting (e.g. thin objects).
         /// </summary>
+        // csharpier-ignore
         [Tooltip("The layer mask used for real-time shadows to discern which objects are shadow casters. In some cases, specific objects may require raytracing for baked lighting and visual appeal, yet they shouldn't contribute to real-time shadow casting (e.g. thin objects).")]
         public LayerMask realtimeShadowLayers = ~(4 | 16 | 32);
 
@@ -258,6 +264,7 @@ namespace AlpacaIT.DynamicLighting
         /// can increase the <see cref="runtimeQuality"/> field in C# to help reduce pixelated shadows.
         /// </para>
         /// </summary>
+        // csharpier-ignore
         [Tooltip("The desired pixel density (e.g. 128 for 128x128 per meter squared). This lighting system does not require \"power of two\" textures. You may have heard this term before because graphics cards can render textures in such sizes much faster. This system relies on binary data on the GPU using compute buffers and it's quite different. Without going into too much detail, this simply means that we can choose any texture size. An intelligent algorithm calculates the surface area of the meshes and determines exactly how many pixels are needed to cover them evenly with shadow pixels, regardless of the ray tracing resolution (unless it exceeds that maximum ray tracing resolution, of course, then those shadow pixels will start to increase in size). Here you can set how many pixels should cover a square meter. It can result in a 47x47 texture or 328x328, exactly the amount needed to cover all polygons with the same amount of shadow pixels. Higher details require more VRAM (exponentially)!\n\nTip: 32 works well for larger game worlds, providing softer, more realistic shadows. You can increase the 'runtimeQuality' field in C# to help reduce pixelated shadows.")]
         [Min(1)]
         public int pixelDensityPerSquareMeter = 128;
@@ -267,6 +274,7 @@ namespace AlpacaIT.DynamicLighting
         /// can reduce VRAM usage, but may result in reduced visual quality. For best results,
         /// adjust based on your VRAM availability and visual preferences.
         /// </summary>
+        // csharpier-ignore
         [Tooltip("The default compression level for bounce lighting data. Choosing a higher compression can reduce VRAM usage, but may result in reduced visual quality. For best results, adjust based on your VRAM availability and visual preferences.")]
         public DynamicBounceLightingDefaultCompressionMode bounceLightingCompression = DynamicBounceLightingDefaultCompressionMode.EightBitsPerPixel;
 
@@ -284,6 +292,7 @@ namespace AlpacaIT.DynamicLighting
         /// volumetric fog that uses the game object scale will also not be updated. An exception is
         /// the light rotation which will always be updated no matter which mode is used.
         /// </summary>
+        // csharpier-ignore
         [Tooltip("Dynamic light sources can be moved in the scene, where they will be treated as real-time lights without shadows. While this approach is easy to work with, it requires a background process to continuously track the positions of all light sources. This uses some computational power which may not be available in your project. Moving raytraced lights (with the intention to use them as real-time lights) also incurs a performance cost on the GPU compared to actual real-time light sources and is therefore not recommended. Alternatively, it is possible to only update all positions when required, such as a raytraced light (or the game object with a raytraced light) getting enabled in the scene. This relaxes the system and reduces the computational overhead. Note that volumetric fog that uses the game object scale will also not be updated. An exception is the light rotation which will always be updated no matter which mode is used.")]
         public DynamicLightTrackingMode lightTrackingMode = DynamicLightTrackingMode.LiveTracking;
 
@@ -294,6 +303,7 @@ namespace AlpacaIT.DynamicLighting
         /// changes to take effect.
         /// </para>
         /// </summary>
+        // csharpier-ignore
         [Tooltip("The lighting mode for dynamic geometry that was not raytraced.\n\nNote that any adjustments to this setting require raytracing the scene again for the changes to take effect.")]
         public DynamicGeometryLightingMode dynamicGeometryLightingMode = DynamicGeometryLightingMode.Angular;
 
@@ -338,6 +348,8 @@ namespace AlpacaIT.DynamicLighting
         private ComputeBuffer dynamicLightsBuffer;
 
         private ComputeBuffer dynamicLightsDistanceCubesBuffer;
+
+        private ComputeBuffer dynamicTrianglesBuffer;
 
         /// <summary>The memory size in bytes of the <see cref="BvhLightNode"/> struct.</summary>
         private int dynamicLightsBvhNodeStride;
@@ -436,7 +448,6 @@ namespace AlpacaIT.DynamicLighting
             Instance.EditorDeleteLightmaps();
             Instance.Reload();
         }
-
 #endif
 
         private void OnEnable()
@@ -468,7 +479,8 @@ namespace AlpacaIT.DynamicLighting
 
                 // make sure the scene reference is still valid.
                 var meshRenderer = lightmap.renderer;
-                if (!meshRenderer) continue;
+                if (!meshRenderer)
+                    continue;
 
                 // the unity_lightmapst vector goes missing with static batching enabled as they
                 // decided to bake the uv1 coordinates, this code is used to undo that operation.
@@ -480,12 +492,20 @@ namespace AlpacaIT.DynamicLighting
 
                     // make sure that the mesh filter has a mesh assigned.
                     var mesh = meshFilter.sharedMesh;
-                    if (!mesh) continue;
+                    if (!mesh)
+                        continue;
 
                     var lightmapScaleOffset = meshRenderer.lightmapScaleOffset;
-                    if (lightmapScaleOffset.x == 0.0f) lightmapScaleOffset.x = 0.00001f;
-                    if (lightmapScaleOffset.y == 0.0f) lightmapScaleOffset.y = 0.00001f;
-                    lightmapScaleOffset = new Vector4(1.0f / lightmapScaleOffset.x * lightmap.resolution, 1.0f / lightmapScaleOffset.y * lightmap.resolution, lightmapScaleOffset.z, lightmapScaleOffset.w);
+                    if (lightmapScaleOffset.x == 0.0f)
+                        lightmapScaleOffset.x = 0.00001f;
+                    if (lightmapScaleOffset.y == 0.0f)
+                        lightmapScaleOffset.y = 0.00001f;
+                    lightmapScaleOffset = new Vector4(
+                        1.0f / lightmapScaleOffset.x * lightmap.resolution,
+                        1.0f / lightmapScaleOffset.y * lightmap.resolution,
+                        lightmapScaleOffset.z,
+                        lightmapScaleOffset.w
+                    );
 
                     // assign the material property block to each submesh.
                     var hasPropertyBlock = meshRenderer.HasPropertyBlock(); // unity api oversight: cannot differentiate between submesh blocks and normal ones.
@@ -525,7 +545,7 @@ namespace AlpacaIT.DynamicLighting
 
             // remove all of the realtime lights from our collection.
             var dynamicPointLightsCount = dynamicPointLights.Count;
-            for (int i = dynamicPointLightsCount; i-- > 0;)
+            for (int i = dynamicPointLightsCount; i-- > 0; )
                 if (dynamicPointLights[i].realtime)
                     dynamicPointLights.RemoveAt(i);
 
@@ -540,7 +560,7 @@ namespace AlpacaIT.DynamicLighting
 
             // remove all of the raycasted lights from our collection.
             var dynamicPointLightsCount = dynamicPointLights.Count;
-            for (int i = dynamicPointLightsCount; i-- > 0;)
+            for (int i = dynamicPointLightsCount; i-- > 0; )
                 if (IsRaycastedDynamicLight(dynamicPointLights[i]))
                     dynamicPointLights.RemoveAt(i);
 
@@ -550,7 +570,8 @@ namespace AlpacaIT.DynamicLighting
         private void Initialize(bool reload = false)
         {
             // only execute the rest if not initialized yet.
-            if (isInitialized) return;
+            if (isInitialized)
+                return;
             isInitialized = true;
 
             // prepare event arguments for common callbacks.
@@ -619,9 +640,15 @@ namespace AlpacaIT.DynamicLighting
             // prevent allocations on the garbage collector we recycle a list here.
             var materialsScratchMemory = new List<Material>();
 
-            // prepare the scene for dynamic lighting.
+            // having a unique compute buffer on every renderer (material property block) will break
+            // batching, so we create a single global buffer that contains all of the smaller
+            // buffers and access them by an offset.
             var raycastedMeshRenderersCount = raycastedMeshRenderers.Count;
-            var decompressionHandles = new List<(DecompressGZipStreamHandle<uint> decompression, Action finished)>(raycastedMeshRenderersCount);
+            var validRaycastedMeshRenderers = new int[raycastedMeshRenderersCount];
+            var validRaycastedMeshRenderersCount = 0;
+            var decompressedIndices = new int[raycastedMeshRenderersCount];
+            var decompressedSizes = new int[raycastedMeshRenderersCount];
+            var decompressedSize = 0;
             for (int i = 0; i < raycastedMeshRenderersCount; i++)
             {
                 // for every game object that requires a lightmap:
@@ -629,7 +656,8 @@ namespace AlpacaIT.DynamicLighting
 
                 // make sure the scene reference is still valid.
                 var meshRenderer = lightmap.renderer;
-                if (!meshRenderer) continue;
+                if (!meshRenderer)
+                    continue;
 
                 // make sure that the reference has a mesh filter.
                 if (!meshRenderer.TryGetComponent<MeshFilter>(out var meshFilter))
@@ -637,7 +665,51 @@ namespace AlpacaIT.DynamicLighting
 
                 // make sure that the mesh filter has a mesh assigned.
                 var mesh = meshFilter.sharedMesh;
-                if (!mesh) continue;
+                if (!mesh)
+                    continue;
+
+                if (raycastedScene != null)
+                {
+                    if (raycastedScene.GetDynamicTrianglesDecompressedSize(i, out var size))
+                    {
+                        validRaycastedMeshRenderers[validRaycastedMeshRenderersCount] = i;
+                        decompressedSizes[validRaycastedMeshRenderersCount] = size;
+                        decompressedIndices[validRaycastedMeshRenderersCount] = decompressedSize / sizeof(uint);
+                        validRaycastedMeshRenderersCount++;
+                        decompressedSize += size;
+                    }
+                }
+            }
+
+            if (decompressedSize == 0)
+                dynamicTrianglesBuffer = new ComputeBuffer(1, sizeof(uint)); // fallback for dx12.
+            else
+                dynamicTrianglesBuffer = new ComputeBuffer(decompressedSize / sizeof(uint), sizeof(uint));
+
+            ShadersSetGlobalDynamicTriangles(dynamicTrianglesBuffer);
+
+            var dynamicTrianglesFixupComputeShader = new DynamicTrianglesFixupComputeShader();
+
+            // prepare the scene for dynamic lighting.
+            var decompressionHandles = new List<(DecompressGZipStreamHandle<uint> decompression, Action finished)>(validRaycastedMeshRenderersCount);
+            for (int i = 0; i < validRaycastedMeshRenderersCount; i++)
+            {
+                // for every game object that requires a lightmap:
+                var lightmap = raycastedMeshRenderers[validRaycastedMeshRenderers[i]];
+
+                // make sure the scene reference is still valid.
+                var meshRenderer = lightmap.renderer;
+                if (!meshRenderer)
+                    continue;
+
+                // make sure that the reference has a mesh filter.
+                if (!meshRenderer.TryGetComponent<MeshFilter>(out var meshFilter))
+                    continue;
+
+                // make sure that the mesh filter has a mesh assigned.
+                var mesh = meshFilter.sharedMesh;
+                if (!mesh)
+                    continue;
 #if UNITY_EDITOR
                 // prepare to detect mesh changes in edit mode.
                 if (!editorIsPlaying)
@@ -655,11 +727,15 @@ namespace AlpacaIT.DynamicLighting
                         triangles.Schedule();
 
                         // this is the code we want to execute once decompression is done:
+                        int k = i;
+                        // csharpier-ignore
                         decompressionHandles.Add((triangles, () =>
                         {
-                            lightmap.buffer = new ComputeBuffer(triangles.length / sizeof(uint), sizeof(uint));
-                            lightmap.buffer.SetData(triangles.GetNativeArray());
+                            dynamicTrianglesBuffer.SetData(triangles.GetNativeArray(), 0, decompressedIndices[k], triangles.length / sizeof(uint));
                             triangles.Dispose();
+
+                            // fix up the dynamic triangles data structure to work at the position in the buffer.
+                            dynamicTrianglesFixupComputeShader.Dispatch(decompressedIndices[k], lightmap.triangleCount, activateBounceLightingInCurrentScene);
 
                             // in the editor due to a manual reload or in builds:
                             var meshRendererIsPartOfStaticBatch = meshRenderer.isPartOfStaticBatch;
@@ -684,23 +760,26 @@ namespace AlpacaIT.DynamicLighting
                                 if (hasPropertyBlock)
                                     meshRenderer.GetPropertyBlock(materialPropertyBlock, j);
 
-                                materialPropertyBlock.SetBuffer("dynamic_triangles", lightmap.buffer);
                                 materialPropertyBlock.SetInteger("lightmap_resolution", lightmap.resolution);
                                 materialPropertyBlock.SetVector("dynamic_lighting_unity_LightmapST", new Vector4(lightmap.resolution, lightmap.resolution, 0f, 0f)); // identity.
 
                                 // add a triangle offset to fix sv_primitiveid starting at zero.
                                 // combined meshes still want original submesh data.
+                                //
+                                // additionally we multiply by four in advance and add the buffer
+                                // offset, this reduces the fragment shader work.
                                 if (meshRendererIsPartOfStaticBatch)
-                                    materialPropertyBlock.SetInteger("triangle_index_submesh_offset", lightmap.subMeshIndexStartOffsets[j]);
+                                    materialPropertyBlock.SetInteger("dynamic_triangles_offset", decompressedIndices[k] + lightmap.subMeshIndexStartOffsets[j] * 4);
                                 else
-                                    materialPropertyBlock.SetInteger("triangle_index_submesh_offset", (int)(mesh.GetIndexStart(j) / 3));
+                                    materialPropertyBlock.SetInteger("dynamic_triangles_offset", decompressedIndices[k] + (int)(mesh.GetIndexStart(j) / 3) * 4);
 
                                 meshRenderer.SetPropertyBlock(materialPropertyBlock, j);
                             }
                         }
                         ));
                     }
-                    else Debug.LogError("Unable to read the dynamic lighting data file! Probably because you upgraded from an older version. Please raytrace your scene again.");
+                    else
+                        Debug.LogError("Unable to read the dynamic lighting data file! Probably because you upgraded from an older version. Please raytrace your scene again.");
                 }
             }
 
@@ -728,7 +807,8 @@ namespace AlpacaIT.DynamicLighting
                     // enable the bounding volume hierarchy processing in the shader.
                     shadersKeywordBvhEnabled = true;
                 }
-                else Debug.LogError("Unable to read the dynamic lights bounding volume hierarchy file! Probably because you upgraded from an older version. Please raytrace your scene again.");
+                else
+                    Debug.LogError("Unable to read the dynamic lights bounding volume hierarchy file! Probably because you upgraded from an older version. Please raytrace your scene again.");
 
                 if (dynamicGeometryLightingModeInCurrentScene != DynamicGeometryLightingMode.LightingOnly)
                 {
@@ -740,7 +820,8 @@ namespace AlpacaIT.DynamicLighting
                         distanceCubesData.Dispose();
                         ShadersSetGlobalDynamicLightsDistanceCubes(dynamicLightsDistanceCubesBuffer);
                     }
-                    else Debug.LogError("Unable to read the dynamic lights distance cubes file! Probably because you upgraded from an older version. Please raytrace your scene again.");
+                    else
+                        Debug.LogError("Unable to read the dynamic lights distance cubes file! Probably because you upgraded from an older version. Please raytrace your scene again.");
                 }
             }
 
@@ -750,7 +831,8 @@ namespace AlpacaIT.DynamicLighting
 
         private void Cleanup()
         {
-            if (!isInitialized) return;
+            if (!isInitialized)
+                return;
             isInitialized = false;
 
 #if UNITY_EDITOR
@@ -770,6 +852,12 @@ namespace AlpacaIT.DynamicLighting
                 dynamicLightsBuffer = null;
             }
 
+            if (dynamicTrianglesBuffer != null && dynamicTrianglesBuffer.IsValid())
+            {
+                dynamicTrianglesBuffer.Release();
+                dynamicTrianglesBuffer = null;
+            }
+
             if (dynamicLightsBvhBuffer != null && dynamicLightsBvhBuffer.IsValid())
             {
                 dynamicLightsBvhBuffer.Release();
@@ -785,19 +873,10 @@ namespace AlpacaIT.DynamicLighting
             // always disable the bounding volume hierarchy in the shader as it's dangerous now.
             shadersKeywordBvhEnabled = false;
 
+            // remove the lightmap data from the material property block.
             var raycastedMeshRenderersCount = raycastedMeshRenderers.Count;
             for (int i = 0; i < raycastedMeshRenderersCount; i++)
-            {
-                var raycastedMeshRenderer = raycastedMeshRenderers[i];
-                if (raycastedMeshRenderer.buffer != null && raycastedMeshRenderer.buffer.IsValid())
-                {
-                    raycastedMeshRenderer.buffer.Release();
-                    raycastedMeshRenderer.buffer = null;
-                }
-
-                // remove the lightmap data from the material property block.
-                CleanupMaterialPropertyBlock(raycastedMeshRenderer);
-            }
+                CleanupMaterialPropertyBlock(raycastedMeshRenderers[i]);
 
             sceneRealtimeLights = null;
             activeRealtimeLights = null;
@@ -824,7 +903,8 @@ namespace AlpacaIT.DynamicLighting
         {
             // make sure the scene reference is still valid.
             var meshRenderer = raycastedMeshRenderer.renderer;
-            if (!meshRenderer) return;
+            if (!meshRenderer)
+                return;
 
             // assign the material property block to each submesh.
             var hasPropertyBlock = meshRenderer.HasPropertyBlock(); // unity api oversight: cannot differentiate between submesh blocks and normal ones.
@@ -837,9 +917,8 @@ namespace AlpacaIT.DynamicLighting
                     meshRenderer.GetPropertyBlock(materialPropertyBlock, j);
 
                 // remove the lightmap data from the material property block.
-                materialPropertyBlock.SetBuffer("lightmap", (ComputeBuffer)null);
-                materialPropertyBlock.SetBuffer("dynamic_triangles", DirectX12.dynamicTrianglesGlobalBuffer); // unity api oversight: cannot delete entries in a material property block.
                 materialPropertyBlock.SetInteger("lightmap_resolution", 0);
+                materialPropertyBlock.SetInteger("dynamic_triangles_offset", 0);
 
                 meshRenderer.SetPropertyBlock(materialPropertyBlock, j);
             }
@@ -997,7 +1076,8 @@ namespace AlpacaIT.DynamicLighting
 
             // if the budget changed we must recreate the shader buffers.
             var totalLightBudget = raycastedDynamicLightsCount + realtimeLightBudget;
-            if (totalLightBudget == 0) return; // sanity check.
+            if (totalLightBudget == 0)
+                return; // sanity check.
             if (shaderDynamicLights.Length != totalLightBudget)
                 ReallocateShaderLightBuffer();
 
@@ -1010,7 +1090,8 @@ namespace AlpacaIT.DynamicLighting
                 var raycastedDynamicLight = raycastedDynamicLights[i];
 
                 // destroyed raycasted lights in the scene, must still exist in the shader.
-                if (!raycastedDynamicLight.lightAvailable) continue;
+                if (!raycastedDynamicLight.lightAvailable)
+                    continue;
 
                 var light = raycastedDynamicLight.light;
                 var lightCache = light.cache;
@@ -1182,11 +1263,13 @@ namespace AlpacaIT.DynamicLighting
                     var lightmap = raycastedMeshRenderers[i];
 
                     // make sure this object has not already been cleaned.
-                    if (lightmap.lastMeshModified) continue;
+                    if (lightmap.lastMeshModified)
+                        continue;
 
                     // make sure the scene reference is still valid.
                     var meshRenderer = lightmap.renderer;
-                    if (!meshRenderer) continue;
+                    if (!meshRenderer)
+                        continue;
 
                     // make sure the mesh filter is still valid.
                     var meshFilter = lightmap.lastMeshFilter;
@@ -1224,6 +1307,7 @@ namespace AlpacaIT.DynamicLighting
                         var meshName = meshFilter ? $" ({meshFilter.name})" : "";
 
                         // inform the user about the reason for the visual change.
+                        // csharpier-ignore
                         Debug.LogWarning($"Temporarily disabled Dynamic Lighting for {meshRenderer.name}{meshName}.\nA change in the mesh was detected, which is expected when editing level geometry. Please raytrace your scene again once you have finished editing. If you're curious about the reason for this action, hit play now to see for yourself.", meshRenderer);
                     }
                 }
@@ -1257,6 +1341,7 @@ namespace AlpacaIT.DynamicLighting
         /// <param name="origin">The origin (usually the camera world position).</param>
         private void SortSceneRealtimeLights(Vector3 origin)
         {
+            // csharpier-ignore
             sceneRealtimeLights.Sort((a, b) => (origin - a.cache.transformPosition).sqrMagnitude
             .CompareTo((origin - b.cache.transformPosition).sqrMagnitude));
         }
@@ -1445,7 +1530,8 @@ namespace AlpacaIT.DynamicLighting
         private unsafe void UpdateLightEffects(ShaderDynamicLight* shaderLight, DynamicLight light, bool lightAvailable)
         {
             // destroyed raycasted lights in the scene, must still exist in the shader.
-            if (!lightAvailable) return;
+            if (!lightAvailable)
+                return;
 
             // retrieving light fields to reduce overhead.
             var lightCache = light.cache;
@@ -1568,7 +1654,6 @@ namespace AlpacaIT.DynamicLighting
             }
             return true;
         }
-
 #endif
 
         /// <summary>Raytraces the current scene, calculating the shadows for all dynamic lights.</summary>
@@ -1581,7 +1666,8 @@ namespace AlpacaIT.DynamicLighting
         public void Raytrace(int maximumLightmapSize = 2048, DynamicLightingTracerFlags dynamicLightingTracerFlags = DynamicLightingTracerFlags.None)
         {
 #if UNITY_EDITOR
-            if (!EditorEnsureUserSavedScene()) return;
+            if (!EditorEnsureUserSavedScene())
+                return;
 #endif
             var tracer = new DynamicLightingTracer();
             tracer.maximumLightmapSize = maximumLightmapSize;
@@ -1591,7 +1677,11 @@ namespace AlpacaIT.DynamicLighting
 
             // callback for third-party developers.
             bool cancelled = false;
-            tracer.cancelled += (s, e) => { cancelled = true; traceCancelled?.Invoke(this, new DynamicLightingTraceCancelledEventArgs(this)); };
+            tracer.cancelled += (s, e) =>
+            {
+                cancelled = true;
+                traceCancelled?.Invoke(this, new DynamicLightingTraceCancelledEventArgs(this));
+            };
 
             // callback for third-party developers.
             traceStarted?.Invoke(this, new DynamicLightingTraceStartedEventArgs(this));

@@ -344,7 +344,6 @@ StructuredBuffer<DynamicLight> dynamic_lights;
 uint dynamic_lights_count;
 uint realtime_lights_count;
 
-int triangle_index_submesh_offset;
 uint lightmap_resolution;
 
 TextureCubeArray shadow_cubemaps;
@@ -604,6 +603,7 @@ float sample_distance_cube_angular(uint dynamicLightIndex, float light_distanceS
 //                       +--------------------+
 //
 StructuredBuffer<uint> dynamic_triangles;
+int dynamic_triangles_offset;
 
 struct DynamicTriangle
 {
@@ -639,7 +639,7 @@ struct DynamicTriangle
     void load(uint triangle_index)
     {
         // read the dynamic triangles header.
-        uint offset = (triangle_index + triangle_index_submesh_offset) * 4; // struct size.
+        uint offset = dynamic_triangles_offset + triangle_index * 4; // struct size.
         
         // read the offset into dynamic_triangles[] for the light data.
         lightDataOffset = dynamic_triangles[offset++];
