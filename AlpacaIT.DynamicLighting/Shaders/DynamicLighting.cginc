@@ -344,8 +344,6 @@ StructuredBuffer<DynamicLight> dynamic_lights;
 uint dynamic_lights_count;
 uint realtime_lights_count;
 
-uint lightmap_resolution;
-
 TextureCubeArray shadow_cubemaps;
 sampler sampler_shadow_cubemaps;
 
@@ -353,6 +351,16 @@ Texture2DArray light_cookies;
 sampler sampler_light_cookies;
 
 float3 dynamic_ambient_color;
+
+UNITY_INSTANCING_BUFFER_START(DynamicLightingProps)
+UNITY_DEFINE_INSTANCED_PROP(uint, lightmap_resolution)
+UNITY_DEFINE_INSTANCED_PROP(uint, dynamic_triangles_offset)
+UNITY_DEFINE_INSTANCED_PROP(float4, dynamic_lighting_unity_LightmapST)
+UNITY_INSTANCING_BUFFER_END(DynamicLightingProps)
+
+#define lightmap_resolution UNITY_ACCESS_INSTANCED_PROP(DynamicLightingProps, lightmap_resolution)
+#define dynamic_triangles_offset UNITY_ACCESS_INSTANCED_PROP(DynamicLightingProps, dynamic_triangles_offset)
+#define dynamic_lighting_unity_LightmapST UNITY_ACCESS_INSTANCED_PROP(DynamicLightingProps, dynamic_lighting_unity_LightmapST)
 
 // [distance cubes technique]
 //
@@ -603,7 +611,6 @@ float sample_distance_cube_angular(uint dynamicLightIndex, float light_distanceS
 //                       +--------------------+
 //
 StructuredBuffer<uint> dynamic_triangles;
-int dynamic_triangles_offset;
 
 struct DynamicTriangle
 {
@@ -1001,7 +1008,6 @@ struct DynamicLightBvhNode
 };
 
 StructuredBuffer<DynamicLightBvhNode> dynamic_lights_bvh;
-float4 dynamic_lighting_unity_LightmapST;
 
 // next we prepare macro statements that shaders use to implement their fragment functions.
 

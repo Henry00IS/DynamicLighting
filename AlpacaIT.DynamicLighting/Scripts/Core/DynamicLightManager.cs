@@ -682,7 +682,7 @@ namespace AlpacaIT.DynamicLighting
             }
 
             if (decompressedSize == 0)
-                dynamicTrianglesBuffer = new ComputeBuffer(1, sizeof(uint)); // fallback for dx12.
+                dynamicTrianglesBuffer = new ComputeBuffer(32, sizeof(uint)); // fallback for dx12.
             else
                 dynamicTrianglesBuffer = new ComputeBuffer(decompressedSize / sizeof(uint), sizeof(uint));
 
