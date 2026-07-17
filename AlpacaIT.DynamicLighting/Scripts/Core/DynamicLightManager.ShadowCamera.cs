@@ -160,6 +160,9 @@ namespace AlpacaIT.DynamicLighting
             // the light must have realtime shadows enabled.
             if (light.lightShadows != DynamicLightShadowMode.RealtimeShadows) return;
 
+            // directional lights use cascaded shadow maps in the render pipeline.
+            if (light.lightType == DynamicLightType.Directional) return;
+
             // we ran out of cubemaps.
             if (shadowCameraCubemapIndex >= shadowCameraCubemapBudget)
                 return;

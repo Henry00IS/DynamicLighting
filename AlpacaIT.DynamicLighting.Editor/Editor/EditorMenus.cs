@@ -148,8 +148,11 @@ namespace AlpacaIT.DynamicLighting.Editor
 
             // add the dynamic light component.
             var light = sun.AddComponent<DynamicLight>();
+            light.lightType = DynamicLightType.Directional;
+            light.lightShadows = DynamicLightShadowMode.RealtimeShadows;
             light.lightIntensity = 2.0f;
             light.lightRadius = 10000.0f; // 10km
+            light.lightChannel = 32; // realtime (no baked channel required)
 
             // make sure it's selected and unity editor will let the user rename the game object.
             UnityEditor.Selection.activeGameObject = parent;

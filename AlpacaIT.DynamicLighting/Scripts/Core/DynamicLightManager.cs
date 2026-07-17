@@ -547,6 +547,46 @@ namespace AlpacaIT.DynamicLighting
             return dynamicPointLights;
         }
 
+        /// <summary>
+        /// Finds a realtime <see cref="DynamicLightType.Directional"/> light with realtime shadows
+        /// for the cascaded shadow pass in the render pipeline.
+        /// </summary>
+        internal DynamicLight FindDirectionalRealtimeShadowLight()
+        {
+            if (sceneRealtimeLights == null)
+                return null;
+
+            var count = sceneRealtimeLights.Count;
+            for (int i = 0; i < count; i++)
+            {
+                var light = sceneRealtimeLights[i];
+                if (light
+                    && light.isActiveAndEnabled
+                    && light.lightType == DynamicLightType.Directional
+                    && light.lightShadows == DynamicLightShadowMode.RealtimeShadows
+                    && light.lightIntensity > 0f)
+                    return light;
+            }
+
+            // also check the active budget list in case the light was moved onto channel 32 mid-frame.
+            if (activeRealtimeLights != null)
+            {
+                count = activeRealtimeLights.Count;
+                for (int i = 0; i < count; i++)
+                {
+                    var light = activeRealtimeLights[i];
+                    if (light
+                        && light.isActiveAndEnabled
+                        && light.lightType == DynamicLightType.Directional
+                        && light.lightShadows == DynamicLightShadowMode.RealtimeShadows
+                        && light.lightIntensity > 0f)
+                        return light;
+                }
+            }
+
+            return null;
+        }
+
         private void Initialize(bool reload = false)
         {
             // only execute the rest if not initialized yet.
@@ -1403,6 +1443,14 @@ namespace AlpacaIT.DynamicLighting
                     lightRotation = light.transform.rotation;
                     shaderLight->up = lightRotation * Vector3.up;
                     shaderLight->forward = lightRotation * Vector3.forward;
+                    break;
+
+                case DynamicLightType.Directional:
+                    lightRotation = light.transform.rotation;
+                    shaderLight->forward = lightRotation * Vector3.forward;
+                    // cascade shadows are filled by the render pipeline (not cubemaps).
+                    if (light.lightShadows == DynamicLightShadowMode.RealtimeShadows)
+                        shaderLight->channel |= 32768u;
                     break;
             }
 

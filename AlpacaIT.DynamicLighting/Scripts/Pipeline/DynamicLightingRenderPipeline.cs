@@ -8,7 +8,7 @@ using UnityEngine.Rendering.RendererUtils;
 namespace AlpacaIT.DynamicLighting
 {
     /// <summary>The rendering engine of the Dynamic Lighting Render Pipeline (DLRP).</summary>
-    public class DynamicLightingRenderPipeline : RenderPipeline
+    public partial class DynamicLightingRenderPipeline : RenderPipeline
     {
         /// <summary>
         /// Called before the <see cref="DynamicLightingRenderPipeline"/> renders opaque geometry.
@@ -78,6 +78,9 @@ namespace AlpacaIT.DynamicLighting
         /// <summary>Reference to the pipeline asset scriptable object.</summary>
         private readonly DynamicLightingRenderPipelineAsset renderPipelineAsset;
 
+        /// <summary>The command buffer instance that is used for all drawing.</summary>
+        private readonly CommandBuffer cmd;
+
         /// <summary>
         /// Tells Unity which geometry to draw, based on its "LightMode" pass tag value. When a
         /// "LightMode" has not been set this defaults to "SRPDefaultUnlit" which is this shader tag identifier.
@@ -127,6 +130,8 @@ namespace AlpacaIT.DynamicLighting
             this.renderPipelineAsset = renderPipelineAsset;
             shaderTagIdSrpDefaultUnlit = new ShaderTagId("SRPDefaultUnlit");
 
+            cmd = new CommandBuffer();
+
             var dynamicLightingResources = DynamicLightingResources.Instance;
             shadowShader = dynamicLightingResources.shadowCameraDepthShader;
             photonShader = dynamicLightingResources.photonCubeShader;
@@ -140,6 +145,14 @@ namespace AlpacaIT.DynamicLighting
 
             shaderCameraOpaqueTextureId = Shader.PropertyToID("_CameraOpaqueTexture");
             shaderCameraDepthTextureId = Shader.PropertyToID("_CameraDepthTexture");
+
+            // directional cascade shadow atlas globals.
+            shaderTagIdShadowCaster = new ShaderTagId("ShadowCaster");
+            dirShadowAtlasId = Shader.PropertyToID("_DirectionalShadowAtlas");
+            dirShadowMatricesId = Shader.PropertyToID("_DirectionalShadowMatrices");
+            cascadeCountId = Shader.PropertyToID("_CascadeCount");
+            cascadeSplitsId = Shader.PropertyToID("_CascadeSplits");
+            shadowDistanceFadeId = Shader.PropertyToID("_ShadowDistanceFade");
 
 #if UNITY_POSTPROCESSING
             // prepare the post processing stack support.
@@ -176,7 +189,7 @@ namespace AlpacaIT.DynamicLighting
                 // ------------------------------------------------------------
                 // begin the rendering process
                 // ------------------------------------------------------------
-                using var cmd = new CommandBuffer();
+                cmd.Clear();
 
                 // ------------------------------------------------------------
                 // create custom render targets for color and depth
@@ -200,6 +213,17 @@ namespace AlpacaIT.DynamicLighting
                 // cull the scene as per camera settings
                 // ------------------------------------------------------------
                 var culling = ProcessCameraCulling(context, camera);
+
+                // ------------------------------------------------------------
+                // directional cascaded shadows (before camera properties)
+                // ------------------------------------------------------------
+                if (cameraType == CameraType.Default)
+                    RenderDirectionalCascades(context, camera, culling, cmd);
+
+                // ------------------------------------------------------------
+                // restore the camera color/depth targets after shadow rendering
+                // ------------------------------------------------------------
+                cmd.SetRenderTarget((RenderTargetIdentifier)shaderCameraOpaqueTextureId, (RenderTargetIdentifier)shaderCameraDepthTextureId);
 
                 // ------------------------------------------------------------
                 // update built-in global shader variables
@@ -278,6 +302,8 @@ namespace AlpacaIT.DynamicLighting
                 // ------------------------------------------------------------
                 // release temporary resources
                 // ------------------------------------------------------------
+                if (cameraType == CameraType.Default)
+                    ReleaseDirectionalShadowAtlas(cmd);
                 cmd.ReleaseTemporaryRT(shaderCameraOpaqueTextureId);
                 cmd.ReleaseTemporaryRT(shaderCameraDepthTextureId);
 

@@ -120,19 +120,36 @@ else if (bvhLightIndex != -1)
 #endif
 
 #ifndef DYNAMIC_LIGHTING_INTEGRATED_GRAPHICS
-// when the light has a shadow cubemap we sample that for real-time shadows.
+// when the light has realtime shadows we sample the appropriate map.
 if (light.is_shadow_available())
 {
-    float fragDepth = sqrt(light_distanceSqr / light.radiusSqr);
-    float2 moments = shadow_cubemaps.SampleLevel(sampler_shadow_cubemaps, float4(light_direction, light.shadowCubemapIndex), 0);
-    float E_x2 = moments.y;
-    float Ex_2 = moments.x * moments.x;
-    float variance = E_x2 - Ex_2;
-    float mD = moments.x - fragDepth;
-    float mD_2 = mD * mD;
-    float p = variance / (variance + mD_2);
-    float res = max(p, fragDepth - (0.0075 * fragDepth) <= moments.x);
-    map *= ReduceLightBleeding(res, max(max(0.3, 1.0 - NdotL), fragDepth));
+    if (light.get_type() == light_type_directional)
+    {
+        // cascaded directional shadow atlas from the render pipeline.
+        // pass the same normal orientation used for NdotL (handles cull modes).
+#if defined(DYNAMIC_LIGHTING_CULL_OFF)
+        float3 shadow_normal = is_front_face ? GENERATE_NORMAL : -GENERATE_NORMAL;
+#elif defined(DYNAMIC_LIGHTING_CULL_FRONT)
+        float3 shadow_normal = -GENERATE_NORMAL;
+#else
+        float3 shadow_normal = GENERATE_NORMAL;
+#endif
+        map *= sample_directional_cascade_shadow(i.world, shadow_normal, light.forward);
+    }
+    else
+    {
+        // variance shadow cubemap for point/spot realtime lights.
+        float fragDepth = sqrt(light_distanceSqr / light.radiusSqr);
+        float2 moments = shadow_cubemaps.SampleLevel(sampler_shadow_cubemaps, float4(light_direction, light.shadowCubemapIndex), 0);
+        float E_x2 = moments.y;
+        float Ex_2 = moments.x * moments.x;
+        float variance = E_x2 - Ex_2;
+        float mD = moments.x - fragDepth;
+        float mD_2 = mD * mD;
+        float p = variance / (variance + mD_2);
+        float res = max(p, fragDepth - (0.0075 * fragDepth) <= moments.x);
+        map *= ReduceLightBleeding(res, max(max(0.3, 1.0 - NdotL), fragDepth));
+    }
 }
 #endif
 

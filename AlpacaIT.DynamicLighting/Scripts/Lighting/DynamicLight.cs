@@ -515,6 +515,10 @@ namespace AlpacaIT.DynamicLighting
                     Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingSpotLight.png", true, lightColor);
                     break;
 
+                case DynamicLightType.Directional:
+                    Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingPointLight.png", true, lightColor);
+                    break;
+
                 case DynamicLightType.Disco:
                 case DynamicLightType.Discoball:
                     Gizmos.DrawIcon(transformPosition, "Packages/de.alpacait.dynamiclighting/AlpacaIT.DynamicLighting/Gizmos/DynamicLightingPointLightDisco.png", true, lightColor);

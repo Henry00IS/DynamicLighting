@@ -22,6 +22,7 @@
 #define light_type_rotor 5 << 6
 #define light_type_shock 6 << 6
 #define light_type_disco 7 << 6
+#define light_type_directional 8 << 6
 
 #define light_shimmer_none 0
 #define light_shimmer_water 1 << 10
@@ -349,6 +350,49 @@ uint lightmap_resolution;
 
 TextureCubeArray shadow_cubemaps;
 sampler sampler_shadow_cubemaps;
+
+// cascaded directional shadow atlas (filled by the render pipeline).
+#define DYNAMIC_LIGHTING_MAX_CASCADES 4
+Texture2D _DirectionalShadowAtlas;
+SamplerComparisonState sampler_linear_clamp_compare;
+float4x4 _DirectionalShadowMatrices[DYNAMIC_LIGHTING_MAX_CASCADES];
+int _CascadeCount;
+float4 _CascadeSplits; // view-space far depth of cascade 0..3
+float4 _ShadowDistanceFade;
+
+// samples the directional cascade atlas (1-tap; no ddx/ddy — safe inside light loops).
+float sample_directional_cascade_shadow(float3 worldPos, float3 worldNormal, float3 lightForward)
+{
+    // view-space depth (stable cascade pick under camera rotation; spheres flicker).
+    float viewDepth = -mul(UNITY_MATRIX_V, float4(worldPos, 1.0)).z;
+    float strength = saturate((1.0 - viewDepth * _ShadowDistanceFade.x) * _ShadowDistanceFade.y);
+    if (strength <= 0.0 || _CascadeCount <= 0)
+        return 1.0;
+
+    // pick cascade by depth vs pssm splits (branchless-friendly chain).
+    int cascade = 0;
+    if (_CascadeCount > 1 && viewDepth >= _CascadeSplits.x) cascade = 1;
+    if (_CascadeCount > 2 && viewDepth >= _CascadeSplits.y) cascade = 2;
+    if (_CascadeCount > 3 && viewDepth >= _CascadeSplits.z) cascade = 3;
+
+    worldNormal = normalize(worldNormal);
+    float3 toLight = -normalize(lightForward);
+    float cosTheta = saturate(dot(worldNormal, toLight));
+    float sinTheta = sqrt(max(0.0, 1.0 - cosTheta * cosTheta));
+    // mid-slope bias; falls off facing toward/away from the light (cleaner silhouettes).
+    float w = sinTheta * cosTheta;
+    float3 samplePos = worldPos + worldNormal * (0.0008 + 0.012 * w);
+    float3 sc = mul(_DirectionalShadowMatrices[cascade], float4(samplePos, 1.0)).xyz;
+    float tanTheta = sinTheta / max(cosTheta, 0.25);
+    float bias = min((0.0002 + 0.0008 * tanTheta) * cosTheta, 0.004);
+#if defined(UNITY_REVERSED_Z)
+    float z = sc.z + bias;
+#else
+    float z = sc.z - bias;
+#endif
+    float shadow = _DirectionalShadowAtlas.SampleCmpLevelZero(sampler_linear_clamp_compare, sc.xy, z);
+    return lerp(1.0, shadow, strength);
+}
 
 Texture2DArray light_cookies;
 sampler sampler_light_cookies;

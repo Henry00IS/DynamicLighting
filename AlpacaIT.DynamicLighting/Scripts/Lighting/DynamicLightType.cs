@@ -46,5 +46,12 @@ namespace AlpacaIT.DynamicLighting
         /// </summary>
         [Tooltip("The light is a disco ball with spot lights that originate from the bottom and flow and rotate towards the top.")]
         Disco,
+
+        /// <summary>
+        /// The light is a directional light (e.g. the sun) that casts parallel rays. Realtime
+        /// shadows use cascaded shadow maps in the render pipeline rather than cubemaps.
+        /// </summary>
+        [Tooltip("The light is a directional light (e.g. the sun) that casts parallel rays. Realtime shadows use cascaded shadow maps in the render pipeline rather than cubemaps.")]
+        Directional,
     }
 }
